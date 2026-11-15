@@ -177,6 +177,8 @@ export const vSessionContraindications = v.object({
   justification: v.optional(v.string()),
 });
 
+export const vGuardian = v.object({ name: v.string(), document: v.string(), relationship: v.string() });
+
 export const vSessionConsent = v.object({
   text: v.string(),
   photoUse: vPhotoUse,
@@ -184,6 +186,12 @@ export const vSessionConsent = v.object({
   professionalSignatureKey: v.optional(v.string()),
   signedAt: v.number(),
   userAgent: v.string(),
+  /** SHA-256 (hex) of the text, signature keys, signedAt, and guardian; shown as "Código de verificación". */
+  hash: v.string(),
+  /** The rendered `{documento}`, e.g. "cédula de ciudadanía 1.020.304.050". */
+  documentText: v.string(),
+  /** Clients under 18: the guardian signs instead of the client. */
+  guardian: v.optional(vGuardian),
 });
 
 export const vSessionProcedure = v.object({
@@ -238,3 +246,5 @@ export type FormField = Infer<typeof vFormField>;
 export type FormAnswer = Infer<typeof vFormAnswer>;
 export type FormAnswers = Infer<typeof vFormAnswers>;
 export type ClientHealth = Infer<typeof vClientHealth>;
+export type Guardian = Infer<typeof vGuardian>;
+export type SessionConsent = Infer<typeof vSessionConsent>;

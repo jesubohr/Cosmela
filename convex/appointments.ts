@@ -343,11 +343,16 @@ export const create = memberMutation({
   args: {
     ...appointmentFields,
     deposit: v.optional(v.object({ amount: v.number(), method: vPaymentMethod })),
+    /** "Agendar siguiente sesión": the case this appointment continues. */
+    caseId: v.optional(v.id("cases")),
   },
   handler: async (ctx, args) => {
     const { member } = await loadParts(ctx, args);
     const interval = validateTimes(args.start, args.durationMin);
     validatePrice(args.price);
+    if (args.caseId && (await getOwned(ctx, "cases", args.caseId)).clientId !== args.clientId) {
+      invalid("Ese caso no es de este cliente.");
+    }
     if (!args.allowConflicts) await assertNoConflicts(ctx, member, interval);
 
     const appointmentId = await ctx.db.insert("appointments", {
@@ -361,6 +366,7 @@ export const create = memberMutation({
       price: args.price,
       paidTotal: 0,
       notes: cleanNotes(args.notes),
+      caseId: args.caseId,
       createdBy: ctx.member._id,
     });
     if (args.deposit) {

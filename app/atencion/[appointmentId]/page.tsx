@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { AttentionFlow } from "@/components/attention/attention-flow";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export const metadata: Metadata = { title: "Atención" };
 
-export default function AtencionPage() {
-  return (
-    <main className="mx-auto w-full max-w-[720px] px-4 py-10 lg:px-8">
-      <h1 className="font-display text-[1.75rem] leading-tight">Atención</h1>
-    </main>
-  );
+export default async function AtencionPage({ params }: PageProps<"/atencion/[appointmentId]">) {
+  const { appointmentId } = await params;
+  return <AttentionFlow appointmentId={appointmentId as Id<"appointments">} />;
 }

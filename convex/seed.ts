@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { TREATMENT_TEMPLATES } from "../data/treatment-templates";
 import { components } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
@@ -103,11 +104,12 @@ const CLIENTS: ClientSeed[] = [
   { firstName: "Luisa", lastName: "Fernández", phone: "+573212223344", sex: "female", health: NO_HEALTH },
 ];
 
+// `template` copies the consent, contraindications, aftercare, and procedure form of a library template.
 const TREATMENTS = [
-  { name: "Limpieza facial profunda", category: "facial", durationMin: 60, price: 90000, color: "teal" },
-  { name: "Peeling químico", category: "facial", durationMin: 45, price: 120000, color: "plum" },
-  { name: "Lifting de pestañas", category: "lashes_brows", durationMin: 60, price: 80000, color: "coral" },
-  { name: "Depilación de cejas", category: "hair_removal", durationMin: 15, price: 25000, color: "olive" },
+  { name: "Limpieza facial profunda", category: "facial", durationMin: 60, price: 90000, color: "teal", template: "limpieza-facial" },
+  { name: "Peeling químico", category: "facial", durationMin: 45, price: 120000, color: "plum", template: "peeling-quimico" },
+  { name: "Lifting de pestañas", category: "lashes_brows", durationMin: 60, price: 80000, color: "coral", template: "lifting-pestanas" },
+  { name: "Depilación de cejas", category: "hair_removal", durationMin: 15, price: 25000, color: "olive", template: "depilacion-cera" },
 ] as const;
 
 export const run = internalMutation({
@@ -159,18 +161,21 @@ export const run = internalMutation({
     await ctx.db.insert("userSettings", { userId, activeOrgId: orgId });
 
     const treatmentIds: Id<"treatments">[] = [];
-    for (const treatment of TREATMENTS) {
+    for (const { template: key, ...treatment } of TREATMENTS) {
+      const template = TREATMENT_TEMPLATES.find((t) => t.key === key)!;
       treatmentIds.push(
         await ctx.db.insert("treatments", {
           orgId,
           ...treatment,
           active: true,
           bookableOnline: true,
-          consentText: "Yo, {cliente}, identificada con {documento}, autorizo a {negocio} a realizar {tratamiento} el {fecha}.",
-          contraindications: [],
-          aftercare: ["Usa protector solar cada 3 horas.", "No te maquilles durante 24 horas."],
-          followUpDays: 21,
-          formFields: [],
+          templateKey: key,
+          consentText: template.consentText,
+          contraindications: template.contraindications,
+          aftercare: template.aftercare,
+          followUpDays: template.followUpDays,
+          suggestedSessions: template.suggestedSessions,
+          formFields: template.formFields,
         }),
       );
     }

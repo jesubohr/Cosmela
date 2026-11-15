@@ -65,9 +65,8 @@ export const attach = memberMutation({
 
     switch (target.kind) {
       case "memberSignature": {
-        const previous = ctx.member.signatureKey;
+        // The previous file stays: signed consents keep referencing it.
         await ctx.db.patch(ctx.member._id, { signatureKey: key });
-        if (previous && previous !== key) await r2.deleteObject(ctx, previous);
         return;
       }
       case "orgLogo": {
@@ -80,6 +79,7 @@ export const attach = memberMutation({
       case "sessionPhoto": {
         const session = await getOwned(ctx, "sessions", target.sessionId);
         if (session.status !== "draft") fail("FORBIDDEN", "Esta atención ya está cerrada.");
+        if (session.consent?.photoUse === "none") fail("FORBIDDEN", "El cliente no autorizó fotos.");
         await ctx.db.patch(session._id, {
           photos: [...session.photos, { key, kind: target.photoKind, at: Date.now() }],
         });

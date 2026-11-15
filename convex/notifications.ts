@@ -21,3 +21,9 @@ export const sendAppointmentConfirmed = internalMutation({
   args: { appointmentId: v.id("appointments") },
   handler: async () => null,
 });
+
+/** Emails the aftercare instructions of a closed session to the client ("Indicaciones posteriores"). */
+export const sendAftercare = internalMutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async () => null,
+});

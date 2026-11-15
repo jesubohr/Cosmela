@@ -15,6 +15,12 @@ export function bogotaDateKey(ms: number): string {
   return format(inBogota(ms), "yyyy-MM-dd");
 }
 
+/** "2026-11-15" + 30 → "2026-12-15". Calendar arithmetic, no time zone involved. */
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
 /** "YYYY-MM-DD" + "HH:mm" in Bogotá → epoch ms. */
 export function bogotaToEpoch(dateKey: string, time = "00:00"): number {
   const [year, month, day] = dateKey.split("-").map(Number);

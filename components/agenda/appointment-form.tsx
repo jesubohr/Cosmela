@@ -32,6 +32,9 @@ export type AppointmentPrefill = {
   date?: string;
   time?: string;
   durationMin?: number;
+  treatmentId?: Id<"treatments">;
+  /** "Agendar siguiente sesión": the case the new appointment continues. */
+  caseId?: Id<"cases">;
 };
 
 const DURATIONS = [15, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240];
@@ -45,6 +48,7 @@ type Initial = {
   durationMin?: number;
   price: number | null;
   notes: string;
+  caseId?: Id<"cases">;
 };
 
 /** "Nueva cita" (prefill) or "Reprogramar cita" (appointmentId). Calls `onDone` after saving. */
@@ -89,16 +93,19 @@ export function AppointmentForm(
   } else {
     const prefill = props.mode === "create" ? props.prefill : {};
     const ownMember = options.members.find((m) => m._id === viewer.member._id);
+    const treatment = options.treatments.find((t) => t._id === prefill.treatmentId);
     initial = {
       client: prefillClient
         ? { _id: prefillClient._id, name: `${prefillClient.firstName} ${prefillClient.lastName}`.trim(), phone: prefillClient.phone }
         : null,
+      treatmentId: treatment?._id,
       memberId: prefill.memberId ?? ownMember?._id ?? options.members[0]?._id,
       date: prefill.date ?? todayKey(),
       time: prefill.time,
-      durationMin: prefill.durationMin,
-      price: null,
+      durationMin: prefill.durationMin ?? treatment?.durationMin,
+      price: treatment?.price ?? null,
       notes: "",
+      caseId: prefill.caseId,
     };
   }
 
@@ -206,6 +213,7 @@ function Fields({
         const id = await create({
           ...args,
           deposit: depositOn && depositAmount && depositMethod ? { amount: depositAmount, method: depositMethod } : undefined,
+          caseId: initial.caseId,
         });
         const link = whatsappLink(
           client.phone,

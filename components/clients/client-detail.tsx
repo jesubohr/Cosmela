@@ -166,7 +166,7 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
             {client ? <FichaTab client={client} /> : <Skeleton className="h-64 w-full" />}
           </TabsContent>
           <TabsContent value="historial" className="text-base">
-            <HistoryTab />
+            <HistoryTab clientId={clientId} />
           </TabsContent>
           <TabsContent value="citas" className="text-base">
             <AppointmentsTab clientId={clientId} archived={client?.isArchived ?? false} />

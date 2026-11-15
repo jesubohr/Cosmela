@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { SessionDetail } from "@/components/cases/session-detail";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export const metadata: Metadata = { title: "Sesión" };
 
 export default async function SesionPage({ params }: PageProps<"/casos/[id]/sesiones/[sessionId]">) {
-  const { id } = await params;
-  return (
-    <>
-      <PageHeader title="Sesión" backHref={`/casos/${id}`} />
-      <PageBody />
-    </>
-  );
+  const { id, sessionId } = await params;
+  return <SessionDetail caseId={id} sessionId={sessionId as Id<"sessions">} />;
 }
