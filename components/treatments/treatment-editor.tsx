@@ -109,6 +109,7 @@ function Editor({ treatment }: { treatment: Treatment }) {
   const viewer = useViewer();
   const isAdmin = viewer.member.role === "admin";
   const update = useMutation(api.treatments.update);
+  const markChecklist = useMutation(api.dashboard.markChecklist);
 
   const [draft, setDraft] = useState<Draft>(() => toDraft(treatment));
   const [savedVersion, setSavedVersion] = useState(() => JSON.stringify(toDraft(treatment)));
@@ -180,7 +181,15 @@ function Editor({ treatment }: { treatment: Treatment }) {
             Este tratamiento está inactivo: no aparece al agendar ni en tu página de reservas.
           </p>
         )}
-        <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="gap-6">
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            setTab(value as Tab);
+            // Checks "Revisa tu consentimiento informado" on Hoy.
+            if (value === "consentimiento") void markChecklist({ step: "consent" });
+          }}
+          className="gap-6"
+        >
           <div className="-mx-4 overflow-x-auto border-b border-line px-4 lg:-mx-8 lg:px-8">
             <TabsList variant="line" className="h-auto gap-2 p-0 sm:gap-4">
               {(

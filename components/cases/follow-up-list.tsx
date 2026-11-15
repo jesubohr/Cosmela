@@ -83,7 +83,7 @@ export function FollowUpList({ rows }: { rows: FollowUpRow[] }) {
   );
 }
 
-function DoneDialog({ row, onClose }: { row: FollowUpRow; onClose: () => void }) {
+export function DoneDialog({ row, onClose }: { row: FollowUpRow; onClose: () => void }) {
   const markDone = useMutation(api.followUps.markDone);
   const id = useId();
   const [outcome, setOutcome] = useState("");

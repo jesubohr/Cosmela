@@ -51,6 +51,9 @@ export default defineSchema({
     booking: vBookingSettings,
     reminders: v.object({ email: v.boolean() }),
     checklistDismissedAt: v.optional(v.number()),
+    // "Primeros pasos" items that leave no other trace in the data.
+    consentReviewedAt: v.optional(v.number()),
+    bookingSharedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_owner", ["ownerId"]),

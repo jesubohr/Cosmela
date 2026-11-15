@@ -47,6 +47,8 @@ export function BookingSettings() {
 
 function BookingForm({ org, members }: { org: Org; members: Member[] }) {
   const updateBooking = useMutation(api.orgs.updateBooking);
+  // Checks "Comparte tu página de reservas" on Hoy.
+  const markShared = useMutation(api.dashboard.markChecklist);
   const url = useBookingUrl(org.slug);
   const [enabled, setEnabled] = useState(org.booking.enabled);
   const [minNoticeHours, setMinNoticeHours] = useState<number | null>(org.booking.minNoticeHours);
@@ -63,6 +65,7 @@ function BookingForm({ org, members }: { org: Org; members: Member[] }) {
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Enlace copiado");
+      void markShared({ step: "booking" });
     } catch {
       toast.error("No pudimos copiar el enlace. Selecciónalo y cópialo a mano.");
     }
@@ -113,7 +116,12 @@ function BookingForm({ org, members }: { org: Org; members: Member[] }) {
               Copiar enlace
             </Button>
             <Button asChild variant="secondary">
-              <a href={whatsappLink(undefined, `Reserva tu cita en ${org.name}: ${url}`)} target="_blank" rel="noreferrer">
+              <a
+                href={whatsappLink(undefined, `Reserva tu cita en ${org.name}: ${url}`)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => void markShared({ step: "booking" })}
+              >
                 <MessageCircle strokeWidth={1.75} />
                 Compartir por WhatsApp
               </a>
