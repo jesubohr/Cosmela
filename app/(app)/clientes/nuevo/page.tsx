@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { ClientCreateForm } from "@/components/clients/client-create-form";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
 
 export const metadata: Metadata = { title: "Nuevo cliente" };
 
-export default function NuevoclientePage() {
+export default function NuevoClientePage() {
   return (
     <>
       <PageHeader title="Nuevo cliente" backHref="/clientes" />
-      <PageBody />
+      <PageBody>
+        <ClientCreateForm />
+      </PageBody>
     </>
   );
 }
