@@ -53,6 +53,7 @@ Owns: `app/atencion/**`, `app/(app)/casos/**`, `app/imprimir/**`, `components/at
 - Cases list + detail (evolution timeline, photo comparison, follow-ups, close/reopen), session detail read-only with addenda, consent document view.
 - Print views for ficha, session, and consent.
 - Client detail: Historial and Documentos tabs filled.
+- Allowed additive schema change: `sessions.consent` gets `hash: string` (SHA-256, see PRODUCT §3.3), `documentText: string` (the rendered `{documento}`), and optional `guardian: { name, document, relationship }` for clients under 18.
 - Tests: session lifecycle, gates enforced server-side (cannot save procedure without consent; cannot close without required form answers), closed session immutability, case numbering.
 
 ## Phase 3A — Hoy and reports (parallel with 3B)
