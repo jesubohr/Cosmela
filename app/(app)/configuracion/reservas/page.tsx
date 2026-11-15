@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { BookingSettings } from "@/components/settings/booking-settings";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata: Metadata = { title: "Reservas en línea" };
 
-export default function ReservasenlineaPage() {
+export default function ReservasPage() {
   return (
-    <>
-      <PageHeader title="Reservas en línea" backHref="/configuracion" />
-      <PageBody />
-    </>
+    <SettingsPage title="Reservas en línea" adminOnly>
+      <BookingSettings />
+    </SettingsPage>
   );
 }

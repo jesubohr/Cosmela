@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { ProfileSettings } from "@/components/settings/profile-settings";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 
-export default function MiperfilPage() {
+export default function PerfilPage() {
   return (
-    <>
-      <PageHeader title="Mi perfil" backHref="/configuracion" />
-      <PageBody />
-    </>
+    <SettingsPage title="Mi perfil">
+      <ProfileSettings />
+    </SettingsPage>
   );
 }

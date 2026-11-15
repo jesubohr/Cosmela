@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { PlanSettings } from "@/components/settings/plan-settings";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata: Metadata = { title: "Plan" };
 
 export default function PlanPage() {
   return (
-    <>
-      <PageHeader title="Plan" backHref="/configuracion" />
-      <PageBody />
-    </>
+    <SettingsPage title="Plan">
+      <PlanSettings />
+    </SettingsPage>
   );
 }

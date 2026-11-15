@@ -176,7 +176,9 @@ export default defineSchema({
     .index("by_org_start", ["orgId", "start"])
     .index("by_member_start", ["memberId", "start"])
     .index("by_client", ["clientId", "start"])
-    .index("by_org_status", ["orgId", "status"]),
+    .index("by_org_status", ["orgId", "status"])
+    // A treatment with appointments cannot be deleted, only deactivated.
+    .index("by_treatment", ["treatmentId"]),
 
   timeBlocks: defineTable({
     orgId: v.id("orgs"),

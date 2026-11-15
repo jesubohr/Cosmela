@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { TreatmentList } from "@/components/treatments/treatment-list";
 
 export const metadata: Metadata = { title: "Tratamientos" };
 
 export default function TratamientosPage() {
-  return (
-    <>
-      <PageHeader title="Tratamientos" />
-      <PageBody />
-    </>
-  );
+  return <TreatmentList />;
 }

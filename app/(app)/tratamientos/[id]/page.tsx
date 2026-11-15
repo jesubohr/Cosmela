@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { TreatmentEditor } from "@/components/treatments/treatment-editor";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export const metadata: Metadata = { title: "Tratamiento" };
 
-export default function TratamientoPage() {
-  return (
-    <>
-      <PageHeader title="Tratamiento" backHref="/tratamientos" />
-      <PageBody />
-    </>
-  );
+export default async function TratamientoPage({ params }: PageProps<"/tratamientos/[id]">) {
+  const { id } = await params;
+  return <TreatmentEditor id={id as Id<"treatments">} />;
 }

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { ReminderSettings } from "@/components/settings/reminder-settings";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata: Metadata = { title: "Recordatorios" };
 
 export default function RecordatoriosPage() {
   return (
-    <>
-      <PageHeader title="Recordatorios" backHref="/configuracion" />
-      <PageBody />
-    </>
+    <SettingsPage title="Recordatorios" adminOnly>
+      <ReminderSettings />
+    </SettingsPage>
   );
 }

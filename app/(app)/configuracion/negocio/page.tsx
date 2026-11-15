@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { PageBody, PageHeader } from "@/components/shell/page-header";
+import { BusinessSettings } from "@/components/settings/business-settings";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata: Metadata = { title: "Negocio" };
 
 export default function NegocioPage() {
   return (
-    <>
-      <PageHeader title="Negocio" backHref="/configuracion" />
-      <PageBody />
-    </>
+    <SettingsPage title="Negocio" adminOnly>
+      <BusinessSettings />
+    </SettingsPage>
   );
 }
