@@ -448,6 +448,7 @@ export const reject = memberMutation({
     const appointment = await getOwned(ctx, "appointments", appointmentId);
     assertStatus(appointment, "reject");
     await ctx.db.patch(appointmentId, { status: "cancelled", cancelReason: cleanNotes(reason) ?? "Solicitud rechazada" });
+    await ctx.runMutation(internal.notifications.sendRequestRejected, { appointmentId });
   },
 });
 

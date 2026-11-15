@@ -1,11 +1,19 @@
+import { fetchQuery, preloadQuery } from "convex/nextjs";
 import type { Metadata } from "next";
+import { BookingFlow } from "@/components/booking/booking-flow";
+import { api } from "@/convex/_generated/api";
 
-export const metadata: Metadata = { title: "Reserva tu cita" };
+export async function generateMetadata({ params }: PageProps<"/reservar/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const page = await fetchQuery(api.booking.page, { slug }).catch(() => null);
+  return {
+    title: page ? `Reserva tu cita en ${page.name}` : "Reserva tu cita",
+    description: page ? `Elige tratamiento, día y hora en ${page.name}.` : undefined,
+  };
+}
 
-export default function ReservatucitaPage() {
-  return (
-    <main className="mx-auto w-full max-w-[720px] px-4 py-10 lg:px-8">
-      <h1 className="font-display text-[1.75rem] leading-tight">Reserva tu cita</h1>
-    </main>
-  );
+export default async function BookingPage({ params }: PageProps<"/reservar/[slug]">) {
+  const { slug } = await params;
+  const preloaded = await preloadQuery(api.booking.page, { slug });
+  return <BookingFlow slug={slug} preloaded={preloaded} />;
 }

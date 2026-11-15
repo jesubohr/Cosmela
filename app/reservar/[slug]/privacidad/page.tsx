@@ -1,11 +1,32 @@
+import { fetchQuery } from "convex/nextjs";
 import type { Metadata } from "next";
+import { BookingMessage, BookingShell } from "@/components/booking/parts";
+import { DocumentPage, PolicyText, policyBlocks } from "@/components/booking/document";
+import { api } from "@/convex/_generated/api";
 
-export const metadata: Metadata = { title: "Política de tratamiento de datos" };
+export const metadata: Metadata = { title: "Política de privacidad" };
 
-export default function PoliticadetratamientodedatosPage() {
+export default async function BusinessPrivacyPage({ params }: PageProps<"/reservar/[slug]/privacidad">) {
+  const { slug } = await params;
+  const privacy = await fetchQuery(api.booking.privacy, { slug });
+
+  if (!privacy) {
+    return (
+      <BookingShell>
+        <BookingMessage title="No encontramos este negocio" text="Revisa el enlace o pídele uno nuevo al negocio." />
+      </BookingShell>
+    );
+  }
+
+  const blocks = policyBlocks(privacy.policy);
+  // The generated policy starts with its own title line.
+  const hasTitle = blocks[0]?.length === 1 && !/^\d+\./.test(blocks[0][0]);
   return (
-    <main className="mx-auto w-full max-w-[720px] px-4 py-10 lg:px-8">
-      <h1 className="font-display text-[1.75rem] leading-tight">Política de tratamiento de datos</h1>
-    </main>
+    <DocumentPage
+      back={{ href: `/reservar/${slug}`, label: `Volver a ${privacy.name}` }}
+      title={hasTitle ? blocks[0][0] : `Política de privacidad de ${privacy.name}`}
+    >
+      <PolicyText blocks={hasTitle ? blocks.slice(1) : blocks} />
+    </DocumentPage>
   );
 }
