@@ -76,3 +76,15 @@ Owns: `app/reservar/**`, `components/booking/**`, `convex/booking.ts`, `convex/n
 - Independent review agent: correctness, security (authz on every function, public endpoints leak nothing), spec coverage, UX against DESIGN.md, Spanish copy quality.
 - Fix agent applies findings.
 - QA pass: run the app locally, seed a demo org in the **local** backend only, screenshot key screens at 360 px and 1280 px with Playwright, fix visual issues.
+
+## Phase 5 — Subscription billing (sequential)
+
+PRODUCT §10. Polar via `@convex-dev/polar` (research: `docs/research/billing-email-analytics.md`; re-check the component README for the installed version).
+
+- The org is the Polar customer (component user id = orgId; customer email = the subscribing admin's email; metadata `orgId`).
+- `convex/billing.ts`: billing state query (`beta | trial | active | canceling | past_due | expired`, plan, limits, days left, period end), checkout link generation (admin only), customer portal URL (admin only), plan-limit checks, sync-after-checkout action (pull from the Polar API on return, so local dev works without webhooks), webhook route in `convex/http.ts`, trial reminder emails (scheduled), migration `startTrialsForExisting`.
+- Enforcement in `convex/lib/authz.ts`: a write guard used by every business-data mutation (not by billing, profile, export, sign out, or public booking create), active only when `BILLING_ENFORCED` is on.
+- UI: Plan page, read-only banner in the shell, limit errors in team invite/activate.
+- Setup: `scripts/setup-local.mjs` maps `POLAR_SANDBOX_TOKEN` → local `POLAR_ORGANIZATION_TOKEN` with `POLAR_SERVER=sandbox`; a script creates sandbox "Solo" and "Practice" products matching production (COP 90.000 and 220.000 monthly) if missing and stores their ids. Never write to the production Polar org.
+- `docs/BILLING.md`: how billing works, production setup (product ids, webhook URL and secret, events), and how to turn the switch on.
+- Tests: state machine (beta/trial/active/expired), write guard on/off, plan limits, webhook handling, staff cannot open checkout/portal.

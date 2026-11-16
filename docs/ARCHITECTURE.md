@@ -249,7 +249,7 @@ NEXT_PUBLIC_POSTHOG_KEY=<POSTHOG_KEY>
 NEXT_PUBLIC_POSTHOG_HOST=<POSTHOG_HOST>
 ```
 
-Convex deployment env (set with `npx convex env set`, values from `.env`): `BETTER_AUTH_SECRET` (generate), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`. Polar is not used in v1.
+Convex deployment env (set with `npx convex env set`, values from `.env`): `BETTER_AUTH_SECRET` (generate), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`, and billing: `POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER` (`sandbox` locally, `production` in the cloud), `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_SOLO_ID`, `POLAR_PRODUCT_SALON_ID`, `BILLING_ENFORCED`. Locally these come from `POLAR_SANDBOX_TOKEN` in `.env`; production uses `POLAR_ACCESS_TOKEN`. See `docs/BILLING.md`.
 
 **Development and testing** run against a throwaway **local anonymous Convex backend** (`CONVEX_AGENT_MODE=anonymous npx convex dev --local` or the current documented equivalent), never against the owner's cloud dev deployment, unless the orchestrator says otherwise. Never seed data into the cloud deployment.
 

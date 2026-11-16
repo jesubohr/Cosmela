@@ -183,7 +183,7 @@ Month selector. Four numbers: Ingresos recibidos, Citas atendidas, Clientes nuev
 - **Reservas en línea** (admin): on/off, public link (copy / share by WhatsApp / open), anticipación mínima (hours), máximo días a futuro, intervalo de horarios (15/30/60), mensaje de bienvenida, which professionals accept online bookings.
 - **Recordatorios** (admin): email reminder on/off (day before).
 - **Equipo** (admin, salon): members (name, role, color, active, accepts online bookings), invite by email (role), resend/cancel invitation, deactivate member.
-- **Plan**: "Beta gratuita" card, no payment.
+- **Plan** (admin): see §10.
 - **Datos**: export clients as CSV, links to Términos and Privacidad.
 - **Cerrar sesión**.
 
@@ -221,4 +221,28 @@ Emails never include health data except the aftercare instructions the professio
 
 ## 9. Out of scope for v1
 
-Payments processing and subscriptions (Polar is deferred: no PSE/Nequi support), automatic WhatsApp messages (Meta API cost), inventory, commissions, DIAN e-invoicing, offline writes, push notifications, native apps, multi-language.
+Processing client payments for treatments, automatic WhatsApp messages (Meta API cost), inventory, commissions, DIAN e-invoicing, offline writes, push notifications, native apps, multi-language.
+
+## 10. Subscription (Cosmela billing)
+
+Businesses pay Cosmela a monthly subscription by debit or credit card through Polar (Merchant of Record). This is unrelated to client payments for treatments.
+
+### Plans
+| Plan (Polar product) | Price | Who | Limit |
+|---|---|---|---|
+| Solo | $ 90.000 / mes | Independent professionals | 1 active professional |
+| Practice (shown as "Salón") | $ 220.000 / mes | Salons | Up to 5 active professionals (constant `SALON_STAFF_LIMIT`) |
+
+Prices come from Polar (never hard-coded in the UI). Any business may pick either plan; the Plan page recommends Solo for `kind: solo` and Salón for `kind: salon`. Larger salons: "¿Tienes más de 5 profesionales? Escríbenos" (WhatsApp link placeholder).
+
+### The billing switch
+One server setting, `BILLING_ENFORCED` (Convex env, default off).
+- **Off (beta, current):** everything is free with no limits. The Plan page shows "Beta gratuita" and the plans for information only, with no checkout.
+- **On:** each business gets a **14-day trial without a card** (`orgs.trialEndsAt`, set at creation; an internal migration gives existing businesses 14 days from the moment the switch is turned on). During the trial and with an active subscription, everything works. When the trial ends without a subscription, or the subscription is canceled/past due beyond its period, the business enters **read-only mode**: everyone can read and export data, sign out, and edit their own profile; admins can subscribe. Creating or editing clients, appointments, blocks, sessions, treatments, payments, and team members is blocked on the server with the Spanish message "Tu prueba terminó. Elige un plan para seguir creando citas y fichas." A calm banner shows the same message with "Ver planes" (admins) or "Pide a quien administra el negocio que elija un plan" (staff). Public booking requests keep arriving (the business must not lose clients), but the team cannot confirm them until it subscribes.
+- Plan limits apply only when on: inviting or activating a professional beyond the plan limit is blocked with "Tu plan permite hasta N profesionales. Cambia al plan Salón para agregar más."; downgrading to Solo is blocked while more than 1 professional is active.
+
+### Plan page (`/configuracion/plan`, admin; staff see the current plan only)
+- Current state in one line: "Beta gratuita", "Prueba gratis: te quedan 9 días", "Plan Salón activo. Próximo cobro: 15 de diciembre", "Tu suscripción termina el 15 de diciembre", or "Pago pendiente: actualiza tu tarjeta".
+- Plan rows (name, price per month, limit, what it includes in one line) with "Elegir plan" (opens Polar checkout with the admin's email prefilled; returns to the Plan page, which confirms "Suscripción activa").
+- "Administrar suscripción" opens the Polar customer portal (card, invoices, cancel). Plan changes go through the portal or a new checkout per Polar's model.
+- Trial reminder emails: 3 days and 1 day before the trial ends (admins only), only when the switch is on.
