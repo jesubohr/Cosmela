@@ -106,7 +106,8 @@ To go back, restore the local lines (or delete `.env.local` and run `pnpm setup:
 
 ## Deploy (when the owner asks)
 
-- Vercel for the web app, Convex cloud for the backend. Build command: `npx convex deploy --cmd 'pnpm build'` with a production `CONVEX_DEPLOY_KEY` in Vercel.
+- Live at https://cosmela.vercel.app (Vercel project `cosmela`), backend on the Convex production deployment `upbeat-kudu-713`.
+- Deploy from this machine: `CONVEX_DEPLOYMENT=dev:fearless-leopard-554 pnpm exec convex deploy -y` (functions), then `vercel deploy --prod` (web). Always deploy Convex first.
 - Vercel env: `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_SALES_WHATSAPP` (E.164 sales number for the Plan page).
 - Convex production env: as in the table above, with `SITE_URL` set to the production domain. Billing: follow the checklist in `docs/BILLING.md`.
 - Add the production origin to the R2 bucket CORS policy (GET and PUT). `http://localhost:3000` is already allowed.
