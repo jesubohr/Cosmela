@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "setup": "node scripts/setup-local.mjs",
+    "setup:local": "node scripts/setup-local.mjs",
     "dev": "concurrently -k -n next,convex -c magenta,cyan \"next dev\" \"convex dev --env-file .env.local --typecheck disable\"",
     "dev:next": "next dev",
     "dev:convex": "convex dev --env-file .env.local",

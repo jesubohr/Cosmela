@@ -252,9 +252,10 @@ NEXT_PUBLIC_CONVEX_SITE_URL=<CONVEX_SITE_URL>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_POSTHOG_KEY=<POSTHOG_KEY>
 NEXT_PUBLIC_POSTHOG_HOST=<POSTHOG_HOST>
+NEXT_PUBLIC_SALES_WHATSAPP=<WHATSAPP_CONTACT_NUMBER>
 ```
 
-Convex deployment env (set with `npx convex env set`, values from `.env`): `BETTER_AUTH_SECRET` (generate), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`, and billing: `BILLING_ENFORCED` (unset = free beta), `POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER` (`sandbox` locally, `production` in the cloud; defaults to `sandbox`), `POLAR_PRODUCT_SOLO_ID`, `POLAR_PRODUCT_SALON_ID`, and in production `POLAR_WEBHOOK_SECRET`. Locally, `pnpm setup` maps `POLAR_SANDBOX_TOKEN` from `.env` and `scripts/polar-sandbox-products.mjs` sets the sandbox product ids; production uses the `POLAR_ACCESS_TOKEN` token. See `docs/BILLING.md`.
+Convex deployment env (set with `npx convex env set`, values from `.env`): `BETTER_AUTH_SECRET` (generate), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`, and billing: `BILLING_ENFORCED` (unset = free beta), `POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER` (`sandbox` locally, `production` in the cloud; defaults to `sandbox`), `POLAR_PRODUCT_SOLO_ID`, `POLAR_PRODUCT_SALON_ID`, and in production `POLAR_WEBHOOK_SECRET`. Locally, `pnpm setup:local` maps `POLAR_SANDBOX_TOKEN` from `.env` and `scripts/polar-sandbox-products.mjs` sets the sandbox product ids; production uses the `POLAR_ACCESS_TOKEN` token. See `docs/BILLING.md`.
 
 **Development and testing** run against a throwaway **local anonymous Convex backend** (`CONVEX_AGENT_MODE=anonymous npx convex dev --local` or the current documented equivalent), never against the owner's cloud dev deployment, unless the orchestrator says otherwise. Never seed data into the cloud deployment.
 

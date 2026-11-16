@@ -30,7 +30,7 @@ if (!token) {
 }
 const deployment = parse(".env.local").CONVEX_DEPLOYMENT ?? "";
 if (!/^(anonymous|local):/.test(deployment)) {
-  console.error("Refusing to continue: CONVEX_DEPLOYMENT in .env.local is not a local deployment. Run pnpm setup first.");
+  console.error("Refusing to continue: CONVEX_DEPLOYMENT in .env.local is not a local deployment. Run pnpm setup:local first.");
   process.exit(1);
 }
 

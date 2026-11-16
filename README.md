@@ -29,12 +29,12 @@ Specs live in `docs/` (`PRODUCT.md`, `DESIGN.md`, `ARCHITECTURE.md`, `PLAN.md`, 
 
 ```bash
 pnpm install
-pnpm setup
+pnpm setup:local
 ```
 
-`pnpm setup` (`scripts/setup-local.mjs`) does three things without printing secrets:
+`pnpm setup:local` (`scripts/setup-local.mjs`) does three things without printing secrets:
 
-1. Writes `.env.local` with the public values Next.js needs (`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`).
+1. Writes `.env.local` with the public values Next.js needs (`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_SALES_WHATSAPP` from `WHATSAPP_CONTACT_NUMBER`).
 2. Creates a **local anonymous Convex backend** (first run only). The Convex CLI writes `CONVEX_DEPLOYMENT=anonymous:…`, `NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210`, and `NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211` to `.env.local`.
 3. Sets the backend env vars on that local deployment: `SITE_URL=http://localhost:3000`, a generated `BETTER_AUTH_SECRET` (kept on later runs), and `RESEND_API_KEY`, `RESEND_FROM`, `R2_*` copied from `.env`. When `.env` has `POLAR_SANDBOX_TOKEN`, it also sets `POLAR_ORGANIZATION_TOKEN` (that token) and `POLAR_SERVER=sandbox`. The production `POLAR_ACCESS_TOKEN` is never copied.
 
@@ -64,7 +64,7 @@ At the time of writing, Resend rejects sends with "The associated domain with yo
 
 | Script | What it does |
 |---|---|
-| `pnpm setup` | Creates `.env.local` and the local Convex backend, sets local backend env vars |
+| `pnpm setup:local` | Creates `.env.local` and the local Convex backend, sets local backend env vars |
 | `node scripts/polar-sandbox-products.mjs` | Creates the sandbox Polar plans if missing and sets `POLAR_PRODUCT_*_ID` locally |
 | `pnpm dev` | Next.js + Convex (local) together |
 | `pnpm dev:next` / `pnpm dev:convex` | Each one alone |
@@ -102,12 +102,12 @@ Only when the owner decides to. Development and tests use the local backend.
 3. Set the backend env vars on the cloud deployment with `pnpm exec convex env set NAME` (omit the value to paste it): `BETTER_AUTH_SECRET` (new random value, e.g. `openssl rand -base64 32`), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`. `scripts/setup-local.mjs` deliberately refuses to do this.
 4. `pnpm dev`. With a non-localhost `SITE_URL`, OTP codes are no longer logged; a failed email shows "No pudimos enviar el código".
 
-To go back, restore the local lines (or delete `.env.local` and run `pnpm setup`, which creates a fresh local backend).
+To go back, restore the local lines (or delete `.env.local` and run `pnpm setup:local`, which creates a fresh local backend).
 
 ## Deploy (when the owner asks)
 
 - Vercel for the web app, Convex cloud for the backend. Build command: `npx convex deploy --cmd 'pnpm build'` with a production `CONVEX_DEPLOY_KEY` in Vercel.
-- Vercel env: `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`.
+- Vercel env: `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_SALES_WHATSAPP` (E.164 sales number for the Plan page).
 - Convex production env: as in the table above, with `SITE_URL` set to the production domain. Billing: follow the checklist in `docs/BILLING.md`.
 - Add the production origin to the R2 bucket CORS policy (GET and PUT). `http://localhost:3000` is already allowed.
 - Verify the Resend sending domain.

@@ -30,8 +30,8 @@ Businesses pay Cosmela a monthly subscription through [Polar](https://polar.sh) 
 | Variable (Convex env) | Local | Production |
 |---|---|---|
 | `BILLING_ENFORCED` | unset (off); `true` to test | unset until launch, then `true` |
-| `POLAR_ORGANIZATION_TOKEN` | from `POLAR_SANDBOX_TOKEN` in `.env` (`pnpm setup`) | the production organization access token (`POLAR_ACCESS_TOKEN` in `.env`) |
-| `POLAR_SERVER` | `sandbox` (`pnpm setup`) | `production` |
+| `POLAR_ORGANIZATION_TOKEN` | from `POLAR_SANDBOX_TOKEN` in `.env` (`pnpm setup:local`) | the production organization access token (`POLAR_ACCESS_TOKEN` in `.env`) |
+| `POLAR_SERVER` | `sandbox` (`pnpm setup:local`) | `production` |
 | `POLAR_PRODUCT_SOLO_ID` | set by `scripts/polar-sandbox-products.mjs` | `c71b7b47-541a-4222-9dff-f992b67fb9e2` |
 | `POLAR_PRODUCT_SALON_ID` | set by `scripts/polar-sandbox-products.mjs` | `ca91878f-0026-4ea8-97f2-808d0312518f` ("Practice") |
 | `POLAR_WEBHOOK_SECRET` | not needed | the endpoint secret (`whsec_…`) |
@@ -42,7 +42,7 @@ Businesses pay Cosmela a monthly subscription through [Polar](https://polar.sh) 
 ### Local setup (Polar sandbox)
 
 1. Create an organization access token at https://sandbox.polar.sh (Settings, then Access Tokens) with the scopes `products:read`, `products:write`, `checkouts:write`, `customer_sessions:write`, `subscriptions:read`. Add it to `.env` as `POLAR_SANDBOX_TOKEN`.
-2. `pnpm setup` maps it to the local backend (`POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER=sandbox`).
+2. `pnpm setup:local` maps it to the local backend (`POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER=sandbox`).
 3. `node scripts/polar-sandbox-products.mjs` creates "Solo" and "Practice" monthly products in the sandbox if missing (COP 90.000 / 220.000 and USD 24 / 58) and sets their ids locally.
 4. To test enforcement: `CONVEX_DEPLOYMENT=anonymous:anonymous-agent pnpm exec convex env set BILLING_ENFORCED true`, then `pnpm exec convex run billing:startTrialsForExisting` (same prefix). Pay with the test card `4242 4242 4242 4242`, any future date, any CVC. Remove the switch afterwards with `convex env remove BILLING_ENFORCED`.
 

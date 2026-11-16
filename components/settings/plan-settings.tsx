@@ -24,8 +24,10 @@ const PLAN_INFO: Record<Plan, { name: string; description: string }> = {
   salon: { name: "Salón", description: `Hasta ${SALON_STAFF_LIMIT} profesionales. Todo lo de Solo para tu equipo.` },
 };
 
-// Placeholder until Cosmela has a sales WhatsApp number.
-const SALES_URL = whatsappLink(undefined, "Hola, tengo un salón con más de 5 profesionales y quiero usar Cosmela.");
+const SALES_URL = whatsappLink(
+  process.env.NEXT_PUBLIC_SALES_WHATSAPP || undefined,
+  `Hola, tengo un salón con más de ${SALON_STAFF_LIMIT} profesionales y quiero usar Cosmela.`,
+);
 
 /** "15 de diciembre" (Bogotá). */
 function dayAndMonth(ms: number) {
