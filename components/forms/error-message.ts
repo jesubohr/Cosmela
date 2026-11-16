@@ -8,3 +8,9 @@ export function errorMessage(error: unknown, fallback = "Algo salió mal. Revisa
   }
   return fallback;
 }
+
+/** First line of a ConvexError's Spanish message, or a generic one. */
+export function errorText(error: unknown) {
+  const data = (error as { data?: { message?: string } } | null)?.data;
+  return data?.message ?? "No pudimos guardar. Revisa tu conexión e intenta de nuevo.";
+}

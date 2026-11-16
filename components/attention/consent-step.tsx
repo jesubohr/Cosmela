@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Chip, SingleChips } from "@/components/clients/chips";
+import { errorText } from "@/components/forms/error-message";
 import { useUploadFile } from "@/components/shared/photo-upload";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { SignaturePad, type SignaturePadHandle } from "@/components/shared/signature-pad";
@@ -18,7 +19,7 @@ import { isMinor, renderConsentText, renderDocument } from "@/convex/lib/consent
 import { DOCUMENT_TYPES, PHOTO_USES, type DocumentType, type PhotoUse } from "@/convex/lib/validators";
 import { DOCUMENT_TYPE_LABELS, PHOTO_USE_LABELS } from "@/lib/constants";
 import { ConsentDocument } from "./consent-document";
-import { errorText, StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
+import { StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
 
 const RELATIONSHIPS = ["Madre", "Padre", "Otro"] as const;
 

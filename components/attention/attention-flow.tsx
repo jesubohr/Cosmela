@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Ellipsis, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { errorText } from "@/components/forms/error-message";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -21,7 +22,7 @@ import { DiscardAttentionDialog } from "./discard-dialog";
 import { FichaStep } from "./ficha-step";
 import { BlockedScreen, PostponedScreen, SuccessScreen } from "./finished-screens";
 import { ProcedureStep } from "./procedure-step";
-import { errorText, type DraftData, type StepProps } from "./step-parts";
+import type { DraftData, StepProps } from "./step-parts";
 
 const STEPS = [
   { title: "Ficha", component: FichaStep },

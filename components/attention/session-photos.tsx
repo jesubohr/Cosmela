@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { errorText } from "@/components/forms/error-message";
 import { PhotoUpload } from "@/components/shared/photo-upload";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,6 @@ import type { PhotoKind } from "@/convex/lib/validators";
 import { PHOTO_KIND_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useSignedUrls } from "@/components/shared/use-signed-urls";
-import { errorText } from "./step-parts";
 
 type Photo = { key: string; kind: PhotoKind; at: number };
 

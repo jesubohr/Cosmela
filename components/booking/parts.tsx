@@ -3,14 +3,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { whatsappLink } from "@/lib/whatsapp";
 
-/** "1 h 30 min", "45 min". */
-export function formatDuration(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
-
 /** Page frame shared by the booking pages: one calm column on porcelain. */
 export function BookingShell({ children }: { children: ReactNode }) {
   return (

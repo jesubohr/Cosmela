@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useAgendaSheets } from "@/components/agenda/agenda-sheets";
 import { dayStart } from "@/components/agenda/dates";
 import { confirmationMessage } from "@/components/agenda/messages";
-import { errorText } from "@/components/agenda/parts";
+import { errorText } from "@/components/forms/error-message";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { InitialsAvatar } from "@/components/shared/initials-avatar";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";

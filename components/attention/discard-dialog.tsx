@@ -3,11 +3,11 @@
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { errorText } from "@/components/forms/error-message";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { errorText } from "./step-parts";
 
 /**
  * Confirms "Descartar atención" (`sessions.discard`). Before the consent the draft is

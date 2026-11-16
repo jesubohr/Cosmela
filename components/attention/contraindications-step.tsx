@@ -5,6 +5,7 @@ import { Check, TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Chip } from "@/components/clients/chips";
+import { errorText } from "@/components/forms/error-message";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { api } from "@/convex/_generated/api";
 import { GENERAL_CONTRAINDICATIONS, type GeneralContraindicationKey } from "@/convex/lib/validators";
 import { ALLERGY_LABELS, GENERAL_CONTRAINDICATION_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { errorText, StepBody, StepFooter, StepSection, type DraftData, type StepProps } from "./step-parts";
+import { StepBody, StepFooter, StepSection, type DraftData, type StepProps } from "./step-parts";
 
 const label = (key: GeneralContraindicationKey) => GENERAL_CONTRAINDICATION_LABELS[key];
 

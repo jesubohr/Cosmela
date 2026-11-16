@@ -6,12 +6,13 @@ import { MessageCircle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppointmentForm } from "@/components/agenda/appointment-form";
+import { errorText } from "@/components/forms/error-message";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatDateTime, formatMoney, sessionLabel } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
-import { errorText, type DraftData } from "./step-parts";
+import type { DraftData } from "./step-parts";
 
 /** Prefilled WhatsApp text with the aftercare list. */
 export function aftercareMessage({ firstName, treatmentName, items, notes, orgName }: {

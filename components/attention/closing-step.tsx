@@ -5,6 +5,7 @@ import { CalendarCheck, Check, Plus } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { AppointmentForm } from "@/components/agenda/appointment-form";
 import { Chip, SingleChips } from "@/components/clients/chips";
+import { errorText } from "@/components/forms/error-message";
 import { MoneyInput } from "@/components/shared/money-input";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { PAYMENT_METHODS, type PaymentMethod } from "@/convex/lib/validators";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { formatCalendarDate, formatDateTime, formatMoney, formatShortDate, todayKey } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { errorText, StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
+import { StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
 
 type AftercareItem = { text: string; included: boolean };
 

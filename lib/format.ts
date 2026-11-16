@@ -2,6 +2,14 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { bogotaDateKey, inBogota } from "@/convex/lib/time";
 
+/** "1 h 30 min", "45 min". */
+export function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
 /** 85000 → "$ 85.000". Money is integer COP. */
 export function formatMoney(amount: number): string {
   const sign = amount < 0 ? "-" : "";

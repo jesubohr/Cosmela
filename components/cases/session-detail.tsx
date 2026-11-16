@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Printer } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { errorText } from "@/components/agenda/parts";
+import { errorText } from "@/components/forms/error-message";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";

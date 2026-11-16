@@ -5,6 +5,7 @@ import { useMutation } from "convex/react";
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { SingleChips } from "@/components/clients/chips";
+import { errorText } from "@/components/forms/error-message";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import { bogotaDateKey, bogotaToEpoch } from "@/convex/lib/time";
 import { TIME_BLOCK_KINDS, type TimeBlockKind } from "@/convex/lib/validators";
 import { TIME_BLOCK_KIND_LABELS } from "@/lib/constants";
 import { addDays, timeOf, todayKey } from "./dates";
-import { errorText, FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions, useShowOnAgenda } from "./parts";
+import { FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions, useShowOnAgenda } from "./parts";
 
 export type BlockData = {
   _id: Id<"timeBlocks">;

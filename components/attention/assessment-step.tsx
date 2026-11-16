@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from "react";
 import { SingleChips } from "@/components/clients/chips";
 import { reasonsText, sessionsProgress } from "@/components/cases/labels";
 import { MultiChoice } from "@/components/forms/choice-chips";
+import { errorText } from "@/components/forms/error-message";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import { OBSERVED_ALTERATIONS, REASONS, SKIN_TYPES, type ObservedKey, type Reaso
 import { OBSERVED_LABELS, REASON_LABELS, SKIN_TYPE_LABELS } from "@/lib/constants";
 import { formatShortDate } from "@/lib/format";
 import { SessionPhotos } from "./session-photos";
-import { errorText, StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
+import { StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
 
 /** Paso 2: which case this session belongs to, motivo, what the professional sees today, evolution, photos before. */
 export function AssessmentStep({ data, onBack, onDone, registerDraft }: StepProps) {

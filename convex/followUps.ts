@@ -54,11 +54,8 @@ export const create = memberMutation({
 
 export type FollowUpRow = Awaited<ReturnType<typeof toRow>>;
 
-async function toRow(ctx: QueryCtx, followUp: Doc<"followUps">, today: string) {
-  const [client, caseDoc] = await Promise.all([
-    ctx.db.get(followUp.clientId),
-    followUp.caseId ? ctx.db.get(followUp.caseId) : null,
-  ]);
+async function toRow(ctx: QueryCtx, followUp: Doc<"followUps">, today: string, client: Doc<"clients"> | null) {
+  const caseDoc = followUp.caseId ? await ctx.db.get(followUp.caseId) : null;
   const treatment = caseDoc ? await ctx.db.get(caseDoc.treatmentId) : null;
   return {
     _id: followUp._id,
@@ -93,7 +90,7 @@ export const listDue = memberQuery({
     for (const followUp of due) {
       const client = await ctx.db.get(followUp.clientId);
       if (client?.isArchived) continue;
-      rows.push(await toRow(ctx, followUp, today));
+      rows.push(await toRow(ctx, followUp, today, client));
     }
     return rows;
   },
@@ -109,7 +106,7 @@ export async function followUpsOfCase(ctx: QueryCtx, clientId: Id<"clients">, ca
   const ofCase = all.filter((f) => f.caseId === caseId);
   const pending = ofCase.filter((f) => f.status === "pending").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const resolved = ofCase.filter((f) => f.status !== "pending").sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
-  return await Promise.all([...pending, ...resolved].map((f) => toRow(ctx, f, today)));
+  return await Promise.all([...pending, ...resolved].map(async (f) => toRow(ctx, f, today, await ctx.db.get(f.clientId))));
 }
 
 /** "Hecho", with an optional outcome note ("Agendó para el martes"). */

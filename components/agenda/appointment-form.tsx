@@ -6,6 +6,7 @@ import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { ClientPicker, type PickedClient } from "@/components/clients/client-picker";
 import { Chip, SingleChips } from "@/components/clients/chips";
+import { errorText } from "@/components/forms/error-message";
 import { MoneyInput } from "@/components/shared/money-input";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";
@@ -21,15 +22,13 @@ import { rangesForDate } from "@/convex/lib/slots";
 import { bogotaDateKey, bogotaToEpoch } from "@/convex/lib/time";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/convex/lib/validators";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatDate, formatDuration, formatTime } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
 import { MINUTE, timeOf, todayKey } from "./dates";
 import { confirmationMessage } from "./messages";
 import {
-  errorText,
   FieldBlock,
   FormError,
-  formatDuration,
   MemberSelect,
   SheetActions,
   useFormOptions,

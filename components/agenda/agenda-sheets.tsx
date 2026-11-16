@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { CalendarOff, CalendarPlus } from "lucide-react";
 import { createContext, useCallback, useContext, useId, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { errorText } from "@/components/forms/error-message";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import { AppointmentDetail } from "./appointment-detail";
 import { AppointmentForm, type AppointmentPrefill } from "./appointment-form";
 import { BlockForm, type BlockData, type BlockPrefill } from "./block-form";
 import { formatDayKey, toMinutes, toTime } from "./dates";
-import { errorText, FormError, SheetActions } from "./parts";
+import { FormError, SheetActions } from "./parts";
 import { PaymentForm } from "./payment-form";
 import { WalkInForm } from "./walk-in-form";
 

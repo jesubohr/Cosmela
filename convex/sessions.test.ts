@@ -536,6 +536,24 @@ describe("cases list", () => {
 });
 
 describe("follow-ups", () => {
+  test("listDue excludes archived clients", async () => {
+    const { asAna, ids, t } = await setup();
+    await asAna.mutation(api.followUps.create, { clientId: ids.clientA, dueDate: bogotaDateKey(Date.now()) });
+    await t.run((ctx) => ctx.db.patch(ids.clientA, { isArchived: true }));
+
+    expect(await asAna.query(api.followUps.listDue, {})).toEqual([]);
+  });
+
+  test("listDue keeps missing clients with an empty name and phone", async () => {
+    const { asAna, ids, t } = await setup();
+    const followUpId = await asAna.mutation(api.followUps.create, { clientId: ids.clientA, dueDate: bogotaDateKey(Date.now()) });
+    await t.run((ctx) => ctx.db.delete(ids.clientA));
+
+    const due = await asAna.query(api.followUps.listDue, {});
+    expect(due).toHaveLength(1);
+    expect(due[0]).toMatchObject({ _id: followUpId, client: { _id: ids.clientA, name: "", phone: "" } });
+  });
+
   test("listDue returns pending follow-ups due today or before; done, dismissed, and rescheduled leave the list", async () => {
     const { asAna, ids } = await setup();
     const today = bogotaDateKey(Date.now());

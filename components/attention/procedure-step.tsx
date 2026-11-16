@@ -2,13 +2,14 @@
 
 import { useMutation } from "convex/react";
 import { useEffect, useId, useState } from "react";
+import { errorText } from "@/components/forms/error-message";
 import { FormRenderer, validateAnswers, type AnswerErrors } from "@/components/forms/form-renderer";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { FormAnswers } from "@/convex/lib/validators";
 import { SessionPhotos } from "./session-photos";
-import { errorText, StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
+import { StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
 
 /** Paso 5: the treatment's custom form, notes, and photos after. */
 export function ProcedureStep({ data, onBack, onDone, registerDraft }: StepProps) {

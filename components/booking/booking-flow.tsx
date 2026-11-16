@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { formatDate, formatMoney, formatTime } from "@/lib/format";
+import { formatDate, formatDuration, formatMoney, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { whatsappLink } from "@/lib/whatsapp";
 import { DaySlots } from "./day-slots";
 import { DetailsForm, type Details } from "./details-form";
-import { BookingMessage, BookingShell, BusinessHeader, formatDuration, RowList, Step } from "./parts";
+import { BookingMessage, BookingShell, BusinessHeader, RowList, Step } from "./parts";
 
 type PageData = NonNullable<FunctionReturnType<typeof api.booking.page>>;
 type Sent = { treatmentName: string; start: number; memberName?: string; email: string };

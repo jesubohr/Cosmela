@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { SingleChips } from "@/components/clients/chips";
+import { errorText } from "@/components/forms/error-message";
 import { MoneyInput } from "@/components/shared/money-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import { PAYMENT_METHODS, type PaymentMethod } from "@/convex/lib/validators";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
 import { todayKey } from "./dates";
-import { errorText, FieldBlock, FormError, SheetActions } from "./parts";
+import { FieldBlock, FormError, SheetActions } from "./parts";
 
 /** "Registrar pago": amount (prefilled with the balance), method, date, note. */
 export function PaymentForm({ appointmentId, onDone }: { appointmentId: Id<"appointments">; onDone: () => void }) {

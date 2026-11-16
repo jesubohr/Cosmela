@@ -5,7 +5,7 @@ import type { FunctionReturnType } from "convex/server";
 import { MessageCircle } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { errorText } from "@/components/agenda/parts";
+import { errorText } from "@/components/forms/error-message";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";

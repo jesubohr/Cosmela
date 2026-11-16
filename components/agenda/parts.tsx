@@ -130,17 +130,3 @@ export function useNow(intervalMs = 60_000) {
   }, [intervalMs]);
   return now;
 }
-
-/** "1 h 30 min", "45 min". */
-export function formatDuration(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
-
-/** First line of a ConvexError's Spanish message, or a generic one. */
-export function errorText(error: unknown) {
-  const data = (error as { data?: { message?: string } } | null)?.data;
-  return data?.message ?? "No pudimos guardar. Revisa tu conexión e intenta de nuevo.";
-}

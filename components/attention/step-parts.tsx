@@ -115,5 +115,3 @@ export function YesNo({
     </div>
   );
 }
-
-export { errorText } from "@/components/agenda/parts";

@@ -5,11 +5,12 @@ import { useEffect, useId, useState } from "react";
 import { Chip } from "@/components/clients/chips";
 import { FichaForm, fichaFromClient, useSaveFicha, withoutFixedErrors, type FichaErrors, type FichaValue } from "@/components/clients/ficha-form";
 import { FichaSummary } from "@/components/clients/ficha-summary";
+import { errorText } from "@/components/forms/error-message";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import { formatShortDate } from "@/lib/format";
-import { errorText, StepBody, StepFooter, StepSection, YesNo, type StepProps } from "./step-parts";
+import { StepBody, StepFooter, StepSection, YesNo, type StepProps } from "./step-parts";
 
 /** Paso 1: the permanent ficha (complete or confirm it on the first visit, review it later) plus per-visit health. */
 export function FichaStep(props: StepProps) {

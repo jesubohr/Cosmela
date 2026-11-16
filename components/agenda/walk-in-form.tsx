@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { useId, useState, type FormEvent } from "react";
 import { ClientPicker, type PickedClient } from "@/components/clients/client-picker";
+import { errorText } from "@/components/forms/error-message";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { errorText, FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions } from "./parts";
+import { FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions } from "./parts";
 
 /** "Atención sin cita": creates an appointment that starts now and opens the attention flow. */
 export function WalkInForm({ clientId }: { clientId?: Id<"clients"> }) {

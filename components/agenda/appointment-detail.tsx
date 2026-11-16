@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Ban, CalendarClock, MessageCircle, UserX, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { errorText } from "@/components/forms/error-message";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { PAYMENT_METHOD_LABELS, STAFF_COLORS } from "@/lib/constants";
 import { formatDate, formatMoney, formatPhone, formatShortDate, formatTime } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
 import { confirmationMessage } from "./messages";
-import { errorText, SheetActions, StatusChip, useNow } from "./parts";
+import { SheetActions, StatusChip, useNow } from "./parts";
 
 export type DetailActions = {
   onReschedule: () => void;
