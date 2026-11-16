@@ -56,10 +56,10 @@ Before installing, run `pnpm view <pkg> version` and use the current stable vers
 ├─ convex/
 │  ├─ schema.ts  convex.config.ts  auth.config.ts  http.ts  crons.ts
 │  ├─ betterAuth/                       Better Auth component setup
-│  ├─ lib/                              authz.ts (custom functions), validators.ts, slots.ts (pure), time.ts, emails.ts (templates)
+│  ├─ lib/                              authz.ts (custom functions), validators.ts, slots.ts (pure), time.ts, emails.ts (templates), billing.ts (state, limits), polar.ts (Polar API, webhook signature)
 │  ├─ orgs.ts members.ts invitations.ts clients.ts treatments.ts templates.ts
 │  ├─ appointments.ts timeBlocks.ts cases.ts sessions.ts followUps.ts payments.ts
-│  ├─ files.ts booking.ts (public) dashboard.ts reports.ts notifications.ts (email actions)
+│  ├─ files.ts booking.ts (public) dashboard.ts reports.ts notifications.ts (email actions) billing.ts (Polar)
 │  └─ *.test.ts
 ├─ data/treatment-templates.ts          seed library (from docs/TEMPLATES.md)
 ├─ docs/                                specs + research
@@ -84,7 +84,8 @@ orgs: {
   booking: { enabled: boolean, minNoticeHours: number, maxDaysAhead: number, slotMinutes: number, welcome?: string },
   reminders: { email: boolean },
   checklistDismissedAt?: number,
-}  index by_slug, by_owner
+  trialEndsAt?: number,                      // free trial end; counts only when BILLING_ENFORCED is on
+}  index by_slug, by_owner, by_trial_end
 
 members: {
   orgId, userId: string, email: string,
@@ -196,6 +197,9 @@ uploads: { orgId, key, kind: "photo"|"signature"|"logo", uploadedBy: Id<"members
 
 policies: { orgId, hash, text }              // accepted privacy policy texts, stored once each
   index by_org_hash
+
+subscriptions: { orgId, polarId, productId, status, currentPeriodEnd?, cancelAtPeriodEnd, modifiedAt }   // Polar subscriptions (docs/BILLING.md)
+  index by_org, by_polar_id
 ```
 
 Use shared validators in `convex/lib/validators.ts` so the UI imports the same enum lists (with Spanish labels in `lib/constants.ts`). Keep documents small: photos are R2 keys, never bytes.
@@ -205,6 +209,7 @@ Use shared validators in `convex/lib/validators.ts` so the UI imports the same e
 - `convex/lib/authz.ts` builds custom functions with `convex-helpers` (`customQuery`, `customMutation`):
   - `memberQuery` / `memberMutation`: resolve user identity → `userSettings.activeOrgId` → active `members` row. Inject `ctx.member` and `ctx.orgId`. Throw `ConvexError({ code: "UNAUTHENTICATED" | "NO_ORG" | "FORBIDDEN" })`.
   - `adminQuery` / `adminMutation`: same + `role === "admin"`.
+  - Both mutation builders also run the billing write guard (`requireWritable`): with `BILLING_ENFORCED` on, an org whose trial ended or whose subscription lapsed gets `READ_ONLY`. `unguardedMemberMutation` / `unguardedAdminMutation` skip it, only for the caller's own profile and UI preferences. Plan limits: `requireStaffRoom`. See `docs/BILLING.md`.
   - Helper `getOwned(ctx, table, id)` loads a doc and throws unless `doc.orgId === ctx.orgId`. Use it for **every** id received from the client.
 - Public functions for the booking page (`booking.ts`) take a `slug`, never return health data, and only return: business public profile, bookable treatments (name, duration, price, description), bookable members (name, color), and free slots.
 - Files: keys are `orgs/{orgId}/{kind}/{uuid}`. `files.getUrls({ keys, bucket })` signs 1-hour URLs for keys of the caller's org; clients use `useSignedUrls` (components/shared), which advances `bucket` every 45 minutes so a cached result never serves an expired URL. `generateUploadUrl` records each key in `uploads`; a record can claim only an unclaimed upload of its org and kind, and deletes only files it owns. Consent signatures are never deleted.
@@ -249,7 +254,7 @@ NEXT_PUBLIC_POSTHOG_KEY=<POSTHOG_KEY>
 NEXT_PUBLIC_POSTHOG_HOST=<POSTHOG_HOST>
 ```
 
-Convex deployment env (set with `npx convex env set`, values from `.env`): `BETTER_AUTH_SECRET` (generate), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`, and billing: `POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER` (`sandbox` locally, `production` in the cloud), `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_SOLO_ID`, `POLAR_PRODUCT_SALON_ID`, `BILLING_ENFORCED`. Locally these come from `POLAR_SANDBOX_TOKEN` in `.env`; production uses `POLAR_ACCESS_TOKEN`. See `docs/BILLING.md`.
+Convex deployment env (set with `npx convex env set`, values from `.env`): `BETTER_AUTH_SECRET` (generate), `SITE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `R2_*`, and billing: `BILLING_ENFORCED` (unset = free beta), `POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER` (`sandbox` locally, `production` in the cloud; defaults to `sandbox`), `POLAR_PRODUCT_SOLO_ID`, `POLAR_PRODUCT_SALON_ID`, and in production `POLAR_WEBHOOK_SECRET`. Locally, `pnpm setup` maps `POLAR_SANDBOX_TOKEN` from `.env` and `scripts/polar-sandbox-products.mjs` sets the sandbox product ids; production uses the `POLAR_ACCESS_TOKEN` token. See `docs/BILLING.md`.
 
 **Development and testing** run against a throwaway **local anonymous Convex backend** (`CONVEX_AGENT_MODE=anonymous npx convex dev --local` or the current documented equivalent), never against the owner's cloud dev deployment, unless the orchestrator says otherwise. Never seed data into the cloud deployment.
 

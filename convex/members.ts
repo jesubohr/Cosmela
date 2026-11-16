@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { scheduleError } from "../components/settings/schedule";
-import { adminMutation, fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
+import { adminMutation, fail, getOwned, memberQuery, requireStaffRoom, unguardedMemberMutation } from "./lib/authz";
 import { STAFF_COLORS, vRole, vScheduleRange, vStaffColor, type ScheduleRange, type StaffColor } from "./lib/validators";
 import { invalid } from "./treatments";
 
@@ -57,7 +57,7 @@ export const list = memberQuery({
   },
 });
 
-export const updateProfile = memberMutation({
+export const updateProfile = unguardedMemberMutation({
   args: { name: v.string(), title: v.optional(v.string()), color: vStaffColor },
   handler: async (ctx, args) => {
     await ctx.db.patch(ctx.member._id, {
@@ -68,7 +68,7 @@ export const updateProfile = memberMutation({
   },
 });
 
-export const updateSchedule = memberMutation({
+export const updateSchedule = unguardedMemberMutation({
   args: { schedule: v.array(vScheduleRange) },
   handler: async (ctx, { schedule }) => {
     checkSchedule(schedule);
@@ -94,6 +94,7 @@ export const update = adminMutation({
     if (changesAccess && member._id === ctx.member._id) {
       fail("FORBIDDEN", "No puedes quitarte tu propio acceso de administrador.");
     }
+    if (active && !member.active) await requireStaffRoom(ctx, ctx.orgId);
     await ctx.db.patch(id, {
       ...(role !== undefined && { role }),
       ...(bookable !== undefined && { bookable }),

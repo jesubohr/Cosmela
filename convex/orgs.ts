@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { action, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { adminMutation, authedMutation, fail, getOwned, memberQuery, requireAdmin } from "./lib/authz";
+import { DAY_MS, TRIAL_DAYS } from "./lib/billing";
 import { sha256Hex } from "./lib/consent";
 import { normalizeText } from "./lib/text";
 import { inBogota } from "./lib/time";
@@ -95,6 +96,7 @@ export const create = authedMutation({
       whatsapp: optionalPhone(args.whatsapp),
       booking: { enabled: true, minNoticeHours: 2, maxDaysAhead: 30, slotMinutes: 30 },
       reminders: { email: true },
+      trialEndsAt: Date.now() + TRIAL_DAYS * DAY_MS,
     });
     await ctx.db.insert("members", {
       orgId,

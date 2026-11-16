@@ -202,3 +202,17 @@ export function aftercareEmail(info: {
     footer: sentBy(info.orgName),
   });
 }
+
+/** Cosmela to the admins of a business whose trial ends in `daysLeft` days. */
+export function trialEndingEmail(info: { orgName: string; daysLeft: number; endsAt: number; url: string }): Email {
+  const when = info.daysLeft === 1 ? "mañana" : `en ${info.daysLeft} días`;
+  return render(`Tu prueba de Cosmela termina ${when}`, {
+    orgName: "Cosmela",
+    paragraphs: [
+      `La prueba gratis de ${info.orgName} termina el ${emailDate(info.endsAt)}.`,
+      "Elige un plan para seguir creando citas y fichas. Tus datos se conservan y puedes consultarlos siempre.",
+    ],
+    action: { label: "Ver planes", url: info.url },
+    footer: "Recibes este correo porque administras este negocio en Cosmela.",
+  });
+}

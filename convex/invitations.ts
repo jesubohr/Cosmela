@@ -4,7 +4,7 @@ import { DEFAULT_SCHEDULE } from "../components/settings/schedule";
 import { components, internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalAction, query, type MutationCtx } from "./_generated/server";
-import { adminMutation, adminQuery, authedMutation, authedQuery, fail, getOwned } from "./lib/authz";
+import { adminMutation, adminQuery, authedMutation, authedQuery, fail, getOwned, requireStaffRoom, requireWritable } from "./lib/authz";
 import { vRole } from "./lib/validators";
 import { nextFreeColor } from "./members";
 import { invalid } from "./treatments";
@@ -67,6 +67,7 @@ export const create = adminMutation({
       .withIndex("by_org", (q) => q.eq("orgId", ctx.orgId))
       .collect();
     if (members.some((m) => m.active && m.email === email)) invalid("Esta persona ya está en tu equipo.");
+    await requireStaffRoom(ctx, ctx.orgId);
 
     const pending = (
       await ctx.db
@@ -170,6 +171,10 @@ export const accept = authedMutation({
       .withIndex("by_org_user", (q) => q.eq("orgId", invitation.orgId).eq("userId", ctx.userId))
       .unique();
     if (status === "accepted" && !existing) invalid("Esta invitación ya fue usada.");
+    if (status === "pending" && !existing?.active) {
+      await requireWritable(ctx, invitation.orgId);
+      await requireStaffRoom(ctx, invitation.orgId);
+    }
 
     if (existing) {
       if (status === "pending") await ctx.db.patch(existing._id, { active: true, role: invitation.role });

@@ -2,14 +2,17 @@ import { customCtx, customMutation, customQuery } from "convex-helpers/server/cu
 import { ConvexError } from "convex/values";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
+import { billingEnforced, countActiveMembers, isReadOnly, limitMessage, loadBilling, readOnlyMessage } from "./billing";
 
-export type AuthzErrorCode = "UNAUTHENTICATED" | "NO_ORG" | "FORBIDDEN" | "NOT_FOUND";
+export type AuthzErrorCode = "UNAUTHENTICATED" | "NO_ORG" | "FORBIDDEN" | "NOT_FOUND" | "READ_ONLY" | "PLAN_LIMIT";
 
 const MESSAGES: Record<AuthzErrorCode, string> = {
   UNAUTHENTICATED: "Tu sesión terminó. Ingresa de nuevo.",
   NO_ORG: "Primero crea tu negocio.",
   FORBIDDEN: "No tienes permiso para hacer esto.",
   NOT_FOUND: "No encontramos lo que buscas.",
+  READ_ONLY: "Tu prueba terminó. Elige un plan para seguir creando citas y fichas.",
+  PLAN_LIMIT: "Tu plan no permite más profesionales.",
 };
 
 /** Throws `ConvexError({ code, message })`; `message` is Spanish and safe to show. */
@@ -47,6 +50,38 @@ export async function requireAdmin(ctx: QueryCtx) {
   return result;
 }
 
+/**
+ * Billing write guard: throws READ_ONLY when the trial ended or the subscription
+ * lapsed. Does nothing while `BILLING_ENFORCED` is off.
+ */
+export async function requireWritable(ctx: QueryCtx, orgId: Id<"orgs">) {
+  if (!billingEnforced()) return;
+  const billing = await loadBilling(ctx, orgId);
+  if (isReadOnly(billing.state)) fail("READ_ONLY", readOnlyMessage(billing));
+}
+
+/**
+ * Plan limit for adding an active professional (invite, accept, reactivate).
+ * Does nothing while `BILLING_ENFORCED` is off.
+ */
+export async function requireStaffRoom(ctx: QueryCtx, orgId: Id<"orgs">) {
+  if (!billingEnforced()) return;
+  const { limit } = await loadBilling(ctx, orgId);
+  if (limit !== undefined && (await countActiveMembers(ctx, orgId)) >= limit) fail("PLAN_LIMIT", limitMessage(limit));
+}
+
+async function requireWritableMember(ctx: QueryCtx) {
+  const result = await requireMember(ctx);
+  await requireWritable(ctx, result.orgId);
+  return result;
+}
+
+async function requireWritableAdmin(ctx: QueryCtx) {
+  const result = await requireAdmin(ctx);
+  await requireWritable(ctx, result.orgId);
+  return result;
+}
+
 /** Signed-in user, with or without an org (onboarding, invitations). Injects `ctx.userId`. */
 export const authedQuery = customQuery(
   query,
@@ -57,13 +92,23 @@ export const authedMutation = customMutation(
   customCtx(async (ctx) => ({ userId: await requireUserId(ctx) })),
 );
 
-/** Active member of the active org. Injects `ctx.userId`, `ctx.member`, `ctx.orgId`. */
+/**
+ * Active member of the active org. Injects `ctx.userId`, `ctx.member`, `ctx.orgId`.
+ * Mutations also pass the billing write guard (`requireWritable`).
+ */
 export const memberQuery = customQuery(query, customCtx(requireMember));
-export const memberMutation = customMutation(mutation, customCtx(requireMember));
+export const memberMutation = customMutation(mutation, customCtx(requireWritableMember));
 
 /** Same as member functions, but the member must have `role: "admin"`. */
 export const adminQuery = customQuery(query, customCtx(requireAdmin));
-export const adminMutation = customMutation(mutation, customCtx(requireAdmin));
+export const adminMutation = customMutation(mutation, customCtx(requireWritableAdmin));
+
+/**
+ * Member mutations that stay open in read-only mode: the caller's own profile and
+ * signature, and UI preferences. Never use them for business data.
+ */
+export const unguardedMemberMutation = customMutation(mutation, customCtx(requireMember));
+export const unguardedAdminMutation = customMutation(mutation, customCtx(requireAdmin));
 
 /** Tables whose documents carry `orgId`. */
 export type OrgTable = Exclude<TableNames, "orgs" | "userSettings">;

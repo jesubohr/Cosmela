@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
+import { fail, getOwned, memberQuery, requireWritable, unguardedMemberMutation } from "./lib/authz";
 import { vPhotoKind, vUploadKind, type UploadKind } from "./lib/validators";
 
 // Private bucket configured by the R2_* env vars on the Convex deployment.
@@ -85,9 +85,11 @@ export const sweepUploads = internalMutation({
 });
 
 /** Returns `{ key, url }`. PUT the file body to `url`, then pass `key` to a mutation that stores it. */
-export const generateUploadUrl = memberMutation({
+export const generateUploadUrl = unguardedMemberMutation({
   args: { kind: vUploadKind },
   handler: async (ctx, { kind }) => {
+    // A signature can be the caller's own; consent signatures are guarded when claimed.
+    if (kind !== "signature") await requireWritable(ctx, ctx.orgId);
     const key = `orgs/${ctx.orgId}/${kind}/${crypto.randomUUID()}`;
     await ctx.db.insert("uploads", { orgId: ctx.orgId, key, kind, uploadedBy: ctx.member._id });
     return await r2.generateUploadUrl(key);
@@ -112,7 +114,7 @@ export const getUrls = memberQuery({
  * Stores an uploaded key on its owning document. The key must be an unclaimed upload
  * of the same org and kind. Consent signatures are claimed by `sessions.signConsent`.
  */
-export const attach = memberMutation({
+export const attach = unguardedMemberMutation({
   args: {
     key: v.string(),
     target: v.union(
@@ -122,6 +124,8 @@ export const attach = memberMutation({
     ),
   },
   handler: async (ctx, { key, target }) => {
+    // The caller's own signature stays editable in read-only mode.
+    if (target.kind !== "memberSignature") await requireWritable(ctx, ctx.orgId);
     switch (target.kind) {
       case "memberSignature": {
         // The previous file stays: signed consents keep referencing it.

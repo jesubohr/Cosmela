@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { api } from "@/convex/_generated/api";
 import { identifyUser } from "@/lib/analytics";
 import { AppSidebar } from "./app-sidebar";
+import { BillingBanner } from "./billing-banner";
 import { BottomTabs } from "./bottom-tabs";
 import { PRIMARY_NAV, SECONDARY_NAV, TABS } from "./nav";
 import { OfflineBanner } from "./offline-banner";
@@ -47,6 +48,7 @@ export function AppShell({ defaultOpen, children }: { defaultOpen: boolean; chil
         <OfflineBanner />
         {viewer ? (
           <ViewerProvider viewer={viewer}>
+            <BillingBanner />
             <AgendaSheets>{children}</AgendaSheets>
           </ViewerProvider>
         ) : (

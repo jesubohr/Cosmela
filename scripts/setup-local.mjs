@@ -1,7 +1,7 @@
 // Prepares local development from the owner's .env without printing secrets:
 // 1. writes the public values Next.js needs into .env.local
 // 2. creates the local anonymous Convex deployment (first run only)
-// 3. sets the backend env vars on that local deployment
+// 3. sets the backend env vars on that local deployment (Polar: the sandbox token only)
 // It refuses to touch a cloud deployment.
 // Usage: node scripts/setup-local.mjs
 import { execSync } from "node:child_process";
@@ -59,6 +59,11 @@ if (!/^(anonymous|local):/.test(deployment)) {
 
 const backend = { SITE_URL };
 for (const key of BACKEND_KEYS) if (source[key]) backend[key] = source[key];
+// Local billing always talks to the Polar sandbox, never to the production org.
+if (source.POLAR_SANDBOX_TOKEN) {
+  backend.POLAR_ORGANIZATION_TOKEN = source.POLAR_SANDBOX_TOKEN;
+  backend.POLAR_SERVER = "sandbox";
+}
 let hasSecret = false;
 try {
   hasSecret = convex(["env", "get", "BETTER_AUTH_SECRET"], { stdio: ["ignore", "pipe", "ignore"] }).trim().length > 0;
@@ -76,3 +81,5 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 console.log(`Local Convex env set: ${Object.keys(backend).join(", ")}`);
+if (source.POLAR_SANDBOX_TOKEN) console.log("Next: node scripts/polar-sandbox-products.mjs creates the sandbox plans and sets their ids.");
+else console.log("POLAR_SANDBOX_TOKEN is not in .env: billing checkout stays off locally (see docs/BILLING.md).");

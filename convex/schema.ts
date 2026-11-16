@@ -55,9 +55,12 @@ export default defineSchema({
     // "Primeros pasos" items that leave no other trace in the data.
     consentReviewedAt: v.optional(v.number()),
     bookingSharedAt: v.optional(v.number()),
+    // End of the free trial; it counts only when BILLING_ENFORCED is on (docs/BILLING.md).
+    trialEndsAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
-    .index("by_owner", ["ownerId"]),
+    .index("by_owner", ["ownerId"])
+    .index("by_trial_end", ["trialEndsAt"]),
 
   members: defineTable({
     orgId: v.id("orgs"),
@@ -300,4 +303,19 @@ export default defineSchema({
     hash: v.string(),
     text: v.string(),
   }).index("by_org_hash", ["orgId", "hash"]),
+
+  // Polar subscriptions of each org (the org is the Polar customer), kept by the
+  // webhook and by `billing.sync`. Times are epoch ms.
+  subscriptions: defineTable({
+    orgId: v.id("orgs"),
+    polarId: v.string(),
+    productId: v.string(),
+    // Polar status: incomplete, incomplete_expired, trialing, active, past_due, canceled, unpaid, paused.
+    status: v.string(),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.boolean(),
+    modifiedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_polar_id", ["polarId"]),
 });

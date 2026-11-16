@@ -36,7 +36,9 @@ pnpm setup
 
 1. Writes `.env.local` with the public values Next.js needs (`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`).
 2. Creates a **local anonymous Convex backend** (first run only). The Convex CLI writes `CONVEX_DEPLOYMENT=anonymous:…`, `NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210`, and `NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211` to `.env.local`.
-3. Sets the backend env vars on that local deployment: `SITE_URL=http://localhost:3000`, a generated `BETTER_AUTH_SECRET` (kept on later runs), and `RESEND_API_KEY`, `RESEND_FROM`, `R2_*` copied from `.env`.
+3. Sets the backend env vars on that local deployment: `SITE_URL=http://localhost:3000`, a generated `BETTER_AUTH_SECRET` (kept on later runs), and `RESEND_API_KEY`, `RESEND_FROM`, `R2_*` copied from `.env`. When `.env` has `POLAR_SANDBOX_TOKEN`, it also sets `POLAR_ORGANIZATION_TOKEN` (that token) and `POLAR_SERVER=sandbox`. The production `POLAR_ACCESS_TOKEN` is never copied.
+
+For billing, then run `node scripts/polar-sandbox-products.mjs` once: it creates the "Solo" and "Practice" products in the Polar sandbox if missing and sets their ids locally. See `docs/BILLING.md`.
 
 The script refuses to set env vars when `.env.local` points to a non-local deployment. Local backend data lives in `.convex/local/` (gitignored). Run it again any time; it is idempotent.
 
@@ -63,6 +65,7 @@ At the time of writing, Resend rejects sends with "The associated domain with yo
 | Script | What it does |
 |---|---|
 | `pnpm setup` | Creates `.env.local` and the local Convex backend, sets local backend env vars |
+| `node scripts/polar-sandbox-products.mjs` | Creates the sandbox Polar plans if missing and sets `POLAR_PRODUCT_*_ID` locally |
 | `pnpm dev` | Next.js + Convex (local) together |
 | `pnpm dev:next` / `pnpm dev:convex` | Each one alone |
 | `pnpm typecheck` | `next typegen`, then `tsc` for the app and for `convex/` |
@@ -83,8 +86,12 @@ At the time of writing, Resend rejects sends with "The associated domain with yo
 | `BETTER_AUTH_SECRET` | Convex deployment | Session and token signing |
 | `RESEND_API_KEY`, `RESEND_FROM` | Convex deployment | OTP email |
 | `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_TOKEN` | Convex deployment | Private file storage |
+| `BILLING_ENFORCED` | Convex deployment | `true` turns on trials, read-only mode, and plan limits; unset means free beta |
+| `POLAR_ORGANIZATION_TOKEN`, `POLAR_SERVER` | Convex deployment | Polar API (sandbox token and `sandbox` locally) |
+| `POLAR_PRODUCT_SOLO_ID`, `POLAR_PRODUCT_SALON_ID` | Convex deployment | The "Solo" and "Practice" products |
+| `POLAR_WEBHOOK_SECRET` | Convex deployment (production) | Verifies `POST /polar/events` |
 
-Polar is not used in v1.
+Billing (Polar, the switch, production setup): `docs/BILLING.md`.
 
 ## Switching to the cloud dev deployment
 
@@ -101,7 +108,7 @@ To go back, restore the local lines (or delete `.env.local` and run `pnpm setup`
 
 - Vercel for the web app, Convex cloud for the backend. Build command: `npx convex deploy --cmd 'pnpm build'` with a production `CONVEX_DEPLOY_KEY` in Vercel.
 - Vercel env: `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`.
-- Convex production env: as in the table above, with `SITE_URL` set to the production domain.
+- Convex production env: as in the table above, with `SITE_URL` set to the production domain. Billing: follow the checklist in `docs/BILLING.md`.
 - Add the production origin to the R2 bucket CORS policy (GET and PUT). `http://localhost:3000` is already allowed.
 - Verify the Resend sending domain.
 
@@ -116,7 +123,8 @@ components/shared/      ResponsiveDialog, SignaturePad, PhotoUpload (+ useUpload
 components/ui/          shadcn components restyled with the DESIGN.md tokens
 convex/schema.ts        full data model (ARCHITECTURE.md §3)
 convex/lib/validators.ts  enum keys and shared validators; Spanish labels in lib/constants.ts
-convex/lib/authz.ts     authedQuery/Mutation, memberQuery/Mutation, adminQuery/Mutation, getOwned
+convex/lib/authz.ts     authedQuery/Mutation, memberQuery/Mutation, adminQuery/Mutation (+ billing write guard), getOwned
+convex/billing.ts       Polar checkout, portal, sync, webhook, trial migration and reminders (docs/BILLING.md)
 convex/auth.ts          Better Auth + email OTP, `viewer` query
 convex/files.ts         R2 upload URLs, signed URLs, attach
 lib/format.ts           Bogotá dates and times, `$ 85.000`, phones

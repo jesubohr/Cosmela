@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
-import { adminMutation, memberMutation, memberQuery } from "./lib/authz";
+import { memberQuery, unguardedAdminMutation, unguardedMemberMutation } from "./lib/authz";
 import { addDaysToDateKey, bogotaDateKey, bogotaToEpoch } from "./lib/time";
 import { owesBalance } from "./payments";
 import { invalid } from "./treatments";
@@ -127,7 +127,7 @@ export const today = memberQuery({
 });
 
 /** "Primeros pasos": the treatment consent tab was opened, or the booking link was copied or shared. */
-export const markChecklist = memberMutation({
+export const markChecklist = unguardedMemberMutation({
   args: { step: v.union(v.literal("consent"), v.literal("booking")) },
   handler: async (ctx, { step }) => {
     const org = await ctx.db.get(ctx.orgId);
@@ -141,7 +141,7 @@ export const markChecklist = memberMutation({
   },
 });
 
-export const dismissChecklist = adminMutation({
+export const dismissChecklist = unguardedAdminMutation({
   args: {},
   handler: async (ctx) => {
     await ctx.db.patch(ctx.orgId, { checklistDismissedAt: Date.now() });
