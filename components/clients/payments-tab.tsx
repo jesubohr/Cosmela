@@ -10,7 +10,10 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { formatMoney, formatShortDate } from "@/lib/format";
 
-/** Pagos: what is still owed (with "Registrar pago") and every payment received. */
+/**
+ * Pagos: what is owed for attended appointments, what is left to pay on upcoming ones,
+ * and every payment received. A no-show or cancelled appointment never counts as owed.
+ */
 export function PaymentsTab({ clientId }: { clientId: Id<"clients"> }) {
   const data = useQuery(api.payments.listByClient, { clientId });
   const openSheet = useAgendaSheets();
@@ -18,29 +21,48 @@ export function PaymentsTab({ clientId }: { clientId: Id<"clients"> }) {
   if (!data) return <Skeleton className="h-48 w-full" />;
   const { payments, owing } = data;
   const received = payments.reduce((sum, p) => sum + p.amount, 0);
+  const attended = owing.filter((a) => a.status === "completed");
+  const upcoming = owing.filter((a) => a.status === "scheduled" || a.status === "requested" || a.status === "in_progress");
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <Section title="Por cobrar">
-        {owing.length === 0 ? (
-          <p className="text-ink-soft">No debe nada.</p>
-        ) : (
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-            {owing.map((a) => (
-              <li key={a._id} className="flex min-h-16 flex-wrap items-center gap-3 px-4 py-2.5">
-                <span className="flex min-w-40 flex-1 flex-col">
-                  <span className="font-medium">{a.treatmentName}</span>
-                  <span className="text-sm text-ink-soft">{formatShortDate(a.start)}</span>
-                </span>
-                <span className="font-medium text-amber tabular-nums">{formatMoney(a.price - a.paidTotal)}</span>
-                <Button variant="secondary" onClick={() => openSheet({ kind: "payment", appointmentId: a._id })}>
-                  Registrar pago
-                </Button>
-              </li>
-            ))}
-          </ul>
+      <div className="flex flex-col gap-8">
+        <Section title="Por cobrar">
+          {attended.length === 0 ? (
+            <p className="text-ink-soft">No debe nada.</p>
+          ) : (
+            <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+              {attended.map((a) => (
+                <OwingRow
+                  key={a._id}
+                  title={a.treatmentName}
+                  detail={formatShortDate(a.start)}
+                  amount={a.price - a.paidTotal}
+                  action="Registrar pago"
+                  onAction={() => openSheet({ kind: "payment", appointmentId: a._id })}
+                />
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        {upcoming.length > 0 && (
+          <Section title="Próximas citas">
+            <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+              {upcoming.map((a) => (
+                <OwingRow
+                  key={a._id}
+                  title={a.treatmentName}
+                  detail={`Falta pagar en la cita del ${formatShortDate(a.start)}`}
+                  amount={a.price - a.paidTotal}
+                  action="Registrar abono"
+                  onAction={() => openSheet({ kind: "payment", appointmentId: a._id })}
+                />
+              ))}
+            </ul>
+          </Section>
         )}
-      </Section>
+      </div>
 
       <Section title="Pagos recibidos" meta={payments.length > 0 ? formatMoney(received) : undefined}>
         {payments.length === 0 ? (
@@ -52,7 +74,7 @@ export function PaymentsTab({ clientId }: { clientId: Id<"clients"> }) {
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-medium">{p.treatmentName}</span>
                   <span className="text-sm text-ink-soft">
-                    {formatShortDate(p.paidAt)}, {PAYMENT_METHOD_LABELS[p.method].toLowerCase()}
+                    {formatShortDate(p.paidAt)}, {PAYMENT_METHOD_LABELS[p.method]}
                   </span>
                 </span>
                 <span className="tabular-nums">{formatMoney(p.amount)}</span>
@@ -62,6 +84,33 @@ export function PaymentsTab({ clientId }: { clientId: Id<"clients"> }) {
         )}
       </Section>
     </div>
+  );
+}
+
+function OwingRow({
+  title,
+  detail,
+  amount,
+  action,
+  onAction,
+}: {
+  title: string;
+  detail: string;
+  amount: number;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <li className="flex min-h-16 flex-wrap items-center gap-3 px-4 py-2.5">
+      <span className="flex min-w-40 flex-1 flex-col">
+        <span className="font-medium">{title}</span>
+        <span className="text-sm text-ink-soft">{detail}</span>
+      </span>
+      <span className="font-medium text-amber tabular-nums">{formatMoney(amount)}</span>
+      <Button variant="secondary" onClick={onAction}>
+        {action}
+      </Button>
+    </li>
   );
 }
 

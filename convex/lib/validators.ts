@@ -145,8 +145,13 @@ export const vDataAuthorization = v.object({
   at: v.number(),
   signatureKey: v.optional(v.string()),
   method: vAuthorizationMethod,
-  policyText: v.string(),
+  /** The accepted policy. Older records carry the full text instead. */
+  policyId: v.optional(v.id("policies")),
+  policyText: v.optional(v.string()),
 });
+
+export const UPLOAD_KINDS = ["photo", "signature", "logo"] as const;
+export const vUploadKind = literals(...UPLOAD_KINDS);
 
 export const vBookingSettings = v.object({
   enabled: v.boolean(),
@@ -186,8 +191,10 @@ export const vSessionConsent = v.object({
   professionalSignatureKey: v.optional(v.string()),
   signedAt: v.number(),
   userAgent: v.string(),
-  /** SHA-256 (hex) of the text, signature keys, signedAt, and guardian; shown as "Código de verificación". */
+  /** SHA-256 (hex) of the signed evidence (see `consentHash`); shown as "Código de verificación". */
   hash: v.string(),
+  /** 2: the hash also covers `photoUse`. Older consents have no version. */
+  hashVersion: v.optional(v.number()),
   /** The rendered `{documento}`, e.g. "cédula de ciudadanía 1.020.304.050". */
   documentText: v.string(),
   /** Clients under 18: the guardian signs instead of the client. */
@@ -240,6 +247,7 @@ export type PhotoUse = Infer<typeof vPhotoUse>;
 export type PhotoKind = Infer<typeof vPhotoKind>;
 export type FollowUpStatus = Infer<typeof vFollowUpStatus>;
 export type PaymentMethod = Infer<typeof vPaymentMethod>;
+export type UploadKind = Infer<typeof vUploadKind>;
 export type GeneralContraindicationKey = (typeof GENERAL_CONTRAINDICATIONS)[number];
 export type ScheduleRange = Infer<typeof vScheduleRange>;
 export type FormField = Infer<typeof vFormField>;

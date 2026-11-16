@@ -27,9 +27,11 @@ import type * as lib_text from "../lib/text.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
+import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as orgs from "../orgs.js";
 import type * as payments from "../payments.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
 import type * as sessions from "../sessions.js";
@@ -63,9 +65,11 @@ declare const fullApi: ApiFromModules<{
   "lib/time": typeof lib_time;
   "lib/validators": typeof lib_validators;
   members: typeof members;
+  migrations: typeof migrations;
   notifications: typeof notifications;
   orgs: typeof orgs;
   payments: typeof payments;
+  rateLimits: typeof rateLimits;
   reports: typeof reports;
   seed: typeof seed;
   sessions: typeof sessions;
@@ -103,5 +107,6 @@ export declare const internal: FilterApi<
 export declare const components: {
   betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
   r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
 };

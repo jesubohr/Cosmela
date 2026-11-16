@@ -1,5 +1,7 @@
+import { MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { whatsappLink } from "@/lib/whatsapp";
 
 /** "1 h 30 min", "45 min". */
 export function formatDuration(minutes: number) {
@@ -22,11 +24,13 @@ export function BusinessHeader({
   name,
   city,
   logoUrl,
+  whatsapp,
   children,
 }: {
   name: string;
   city?: string;
   logoUrl?: string | null;
+  whatsapp?: string;
   children?: ReactNode;
 }) {
   return (
@@ -39,6 +43,17 @@ export function BusinessHeader({
         <div className="min-w-0">
           <h1 className="font-display text-[1.75rem] leading-tight text-balance sm:text-[2.25rem]">{name}</h1>
           {city && <p className="mt-0.5 text-ink-soft">{city}</p>}
+          {whatsapp && (
+            <a
+              href={whatsappLink(whatsapp, `Hola, ${name}. Tengo una pregunta sobre mi cita.`)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-flex min-h-11 items-center gap-1.5 font-medium text-plum underline-offset-4 hover:underline"
+            >
+              <MessageCircle aria-hidden className="size-4" strokeWidth={1.75} />
+              WhatsApp
+            </a>
+          )}
         </div>
       </div>
       {children}

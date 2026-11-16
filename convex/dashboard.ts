@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { adminMutation, memberMutation, memberQuery } from "./lib/authz";
 import { addDaysToDateKey, bogotaDateKey, bogotaToEpoch } from "./lib/time";
+import { owesBalance } from "./payments";
 import { invalid } from "./treatments";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +25,7 @@ export const today = memberQuery({
     const dayEnd = bogotaToEpoch(addDaysToDateKey(date, 1));
     const isAdmin = ctx.member.role === "admin";
 
-    const [org, members, dayAppointments, blocks, requested, completed, birthdays] = await Promise.all([
+    const [org, members, dayAppointments, blocks, requested, owing, birthdays] = await Promise.all([
       ctx.db.get(ctx.orgId),
       ctx.db.query("members").withIndex("by_org", (q) => q.eq("orgId", ctx.orgId)).collect(),
       ctx.db
@@ -36,7 +37,7 @@ export const today = memberQuery({
         .withIndex("by_org_start", (q) => q.eq("orgId", ctx.orgId).gte("start", dayStart).lt("start", dayEnd))
         .collect(),
       ctx.db.query("appointments").withIndex("by_org_status", (q) => q.eq("orgId", ctx.orgId).eq("status", "requested")).collect(),
-      ctx.db.query("appointments").withIndex("by_org_status", (q) => q.eq("orgId", ctx.orgId).eq("status", "completed")).collect(),
+      ctx.db.query("appointments").withIndex("by_org_balance", (q) => q.eq("orgId", ctx.orgId).eq("hasBalance", true)).collect(),
       ctx.db
         .query("clients")
         .withIndex("by_org_birthday", (q) => q.eq("orgId", ctx.orgId).eq("birthdayKey", date.slice(5)))
@@ -85,7 +86,7 @@ export const today = memberQuery({
     }
 
     const pending = [];
-    for (const a of completed.filter((c) => c.price > c.paidTotal).sort((x, y) => y.start - x.start)) {
+    for (const a of owing.sort((x, y) => y.start - x.start)) {
       const { client } = await parts(a);
       if (!client || client.isArchived) continue;
       pending.push({ _id: a._id, start: a.start, clientName: fullName(client), balance: a.price - a.paidTotal });
@@ -191,6 +192,7 @@ export const seedToday = internalMutation({
         source: status === "requested" ? "online" : "staff",
         price: t.price,
         paidTotal: paid ?? 0,
+        hasBalance: owesBalance({ status, price: t.price, paidTotal: paid ?? 0 }),
         createdBy: admin._id,
       });
       if (paid) {

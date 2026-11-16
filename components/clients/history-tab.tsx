@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { SESSION_STATUS_LABELS } from "@/lib/constants";
-import { formatShortDate } from "@/lib/format";
+import { formatShortDate, sessionLabel } from "@/lib/format";
 
 /** Historial: the client's sessions, newest first, with key values and photos. */
 export function HistoryTab({ clientId }: { clientId: Id<"clients"> }) {
@@ -33,7 +33,7 @@ export function HistoryTab({ clientId }: { clientId: Id<"clients"> }) {
                   {s.status !== "closed" && <span className="font-normal text-ink-soft">, {SESSION_STATUS_LABELS[s.status].toLowerCase()}</span>}
                 </span>
                 <span className="text-sm text-ink-soft">
-                  {formatShortDate(s.startedAt)}, sesión {s.number}, con {s.memberName}
+                  {formatShortDate(s.startedAt)}, {sessionLabel(s).toLowerCase()}, con {s.memberName}
                 </span>
               </div>
               {s.keyValues.length > 0 && (

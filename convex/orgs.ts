@@ -1,9 +1,12 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { paginationOptsValidator, type PaginationResult } from "convex/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
-import { adminMutation, adminQuery, authedMutation, fail, getOwned, memberQuery } from "./lib/authz";
+import { action, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { adminMutation, authedMutation, fail, getOwned, memberQuery, requireAdmin } from "./lib/authz";
+import { sha256Hex } from "./lib/consent";
 import { normalizeText } from "./lib/text";
 import { inBogota } from "./lib/time";
 import { vOrgKind, vScheduleRange, vStaffColor } from "./lib/validators";
@@ -196,32 +199,57 @@ export const updateReminders = adminMutation({
   },
 });
 
-/** Client rows for the CSV export (Configuración → Datos). Identification and contact data only. */
-export const exportClients = adminQuery({
-  args: {},
-  handler: async (ctx) => {
-    const clients = await ctx.db
+/** One page of the CSV export, read with the caller's identity (admins only). */
+export const exportPage = internalQuery({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const { orgId } = await requireAdmin(ctx);
+    const page = await ctx.db
       .query("clients")
-      .withIndex("by_org", (q) => q.eq("orgId", ctx.orgId))
-      .collect();
-    return clients.map((c) => ({
-      firstName: c.firstName,
-      lastName: c.lastName,
-      documentType: c.documentType,
-      documentNumber: c.documentNumber,
-      birthDate: c.birthDate,
-      sex: c.sex,
-      phone: c.phone,
-      email: c.email,
-      occupation: c.occupation,
-      address: c.address,
-      emergencyContact: c.emergencyContact,
-      createdAt: c._creationTime,
-      lastVisitAt: c.lastVisitAt,
-      isArchived: c.isArchived,
-    }));
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .paginate(paginationOpts);
+    return { ...page, page: page.page.map(exportRow) };
   },
 });
+
+/** Client rows for the CSV export (Configuración → Datos), read page by page so large orgs stay under the read limits. */
+export const exportClients = action({
+  args: {},
+  handler: async (ctx): Promise<ExportRow[]> => {
+    const rows: ExportRow[] = [];
+    let cursor: string | null = null;
+    for (;;) {
+      const result: PaginationResult<ExportRow> = await ctx.runQuery(internal.orgs.exportPage, {
+        paginationOpts: { numItems: 200, cursor },
+      });
+      rows.push(...result.page);
+      if (result.isDone) return rows;
+      cursor = result.continueCursor;
+    }
+  },
+});
+
+type ExportRow = ReturnType<typeof exportRow>;
+
+/** Identification and contact data only. */
+function exportRow(c: Doc<"clients">) {
+  return {
+    firstName: c.firstName,
+    lastName: c.lastName,
+    documentType: c.documentType,
+    documentNumber: c.documentNumber,
+    birthDate: c.birthDate,
+    sex: c.sex,
+    phone: c.phone,
+    email: c.email,
+    occupation: c.occupation,
+    address: c.address,
+    emergencyContact: c.emergencyContact,
+    createdAt: c._creationTime,
+    lastVisitAt: c.lastVisitAt,
+    isArchived: c.isArchived,
+  };
+}
 
 function displayPhone(e164: string): string {
   const match = e164.match(/^\+57(\d{3})(\d{3})(\d{4})$/);
@@ -301,4 +329,24 @@ export async function privacyPolicyText(ctx: Pick<QueryCtx, "db">, orgId: Id<"or
   const org = await ctx.db.get(orgId);
   if (!org) return "";
   return org.privacyPolicy ?? defaultPrivacyPolicy(org, await ownerEmail(ctx, org));
+}
+
+/**
+ * The stored copy of the org's current policy, for a new data authorization. Each
+ * distinct text is stored once, so clients keep a small reference instead of the text.
+ */
+export async function currentPolicyId(ctx: MutationCtx, orgId: Id<"orgs">): Promise<Id<"policies">> {
+  const text = await privacyPolicyText(ctx, orgId);
+  const hash = await sha256Hex(text);
+  const stored = await ctx.db
+    .query("policies")
+    .withIndex("by_org_hash", (q) => q.eq("orgId", orgId).eq("hash", hash))
+    .unique();
+  return stored?._id ?? (await ctx.db.insert("policies", { orgId, hash, text }));
+}
+
+/** The policy text a client accepted. */
+export async function acceptedPolicyText(ctx: Pick<QueryCtx, "db">, authorization: NonNullable<Doc<"clients">["dataAuthorization"]>) {
+  if (authorization.policyText !== undefined) return authorization.policyText;
+  return authorization.policyId ? ((await ctx.db.get(authorization.policyId))?.text ?? "") : "";
 }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SheetBar } from "./sheet-bar";
-import { emptyFicha, FichaForm, useSaveFicha, type FichaErrors } from "./ficha-form";
+import { emptyFicha, FichaForm, useSaveFicha, withoutFixedErrors, type FichaErrors, type FichaValue } from "./ficha-form";
 
 /** Quick create (name + phone) with "Completar ficha ahora" to fill the whole ficha. */
 export function ClientCreateForm() {
@@ -17,6 +17,11 @@ export function ClientCreateForm() {
   const [complete, setComplete] = useState(false);
   const [errors, setErrors] = useState<FichaErrors>({});
   const [pending, setPending] = useState(false);
+
+  function change(next: FichaValue) {
+    setErrors((current) => withoutFixedErrors(current, ficha, next));
+    setFicha(next);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -33,7 +38,7 @@ export function ClientCreateForm() {
 
   return (
     <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-8">
-      <FichaForm value={ficha} onChange={setFicha} errors={errors} sections={complete ? undefined : ["identity"]} />
+      <FichaForm value={ficha} onChange={change} errors={errors} sections={complete ? undefined : ["identity"]} />
       {!complete && (
         <div className="flex items-center gap-3">
           <Switch id="complete-ficha" checked={complete} onCheckedChange={setComplete} />

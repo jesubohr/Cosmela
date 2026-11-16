@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
@@ -18,6 +18,12 @@ type OtpInputProps = {
 /** Six one-digit boxes: auto-advance, backspace to the previous box, paste of the whole code, numeric keyboard. */
 export function OtpInput({ value, onChange, onComplete, invalid, disabled, describedBy }: OtpInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // On mount, and again when a request ends and re-enables the boxes.
+  useEffect(() => {
+    if (!disabled) refs.current[0]?.focus();
+  }, [disabled]);
+
   const digits = Array.from({ length: LENGTH }, (_, index) => value[index] ?? "");
 
   function update(next: string, focusIndex: number) {

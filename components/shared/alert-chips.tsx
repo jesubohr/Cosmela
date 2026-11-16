@@ -12,9 +12,15 @@ export type ClientAlert = { key: string; label: string; tone: "rose" | "amber"; 
 export function getClientAlerts(client: AlertSource): ClientAlert[] {
   const { health } = client;
   const alerts: ClientAlert[] = [];
-  for (const allergy of health.allergies) {
-    const what = allergy === "other" ? (health.allergiesDetail?.trim() || "otra") : ALLERGY_LABELS[allergy].toLowerCase();
-    alerts.push({ key: `allergy-${allergy}`, label: `Alergia: ${what}`, tone: "rose", icon: TriangleAlert });
+  // The detail answers "¿A qué?" for all marked allergies, so it names what to avoid better than the categories.
+  const detail = health.allergiesDetail?.trim();
+  if (detail && health.allergies.length > 0) {
+    alerts.push({ key: "allergy-detail", label: `Alergia: ${detail}`, tone: "rose", icon: TriangleAlert });
+  } else {
+    for (const allergy of health.allergies) {
+      const what = allergy === "other" ? "otra" : ALLERGY_LABELS[allergy].toLowerCase();
+      alerts.push({ key: `allergy-${allergy}`, label: `Alergia: ${what}`, tone: "rose", icon: TriangleAlert });
+    }
   }
   for (const condition of health.conditions) {
     alerts.push({ key: `condition-${condition}`, label: CONDITION_LABELS[condition], tone: "amber", icon: HeartPulse });

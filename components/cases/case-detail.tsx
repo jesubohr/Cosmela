@@ -20,8 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { addDaysToDateKey } from "@/convex/lib/time";
-import { SESSION_STATUS_LABELS } from "@/lib/constants";
-import { formatDateTime, formatShortDate, todayKey } from "@/lib/format";
+import { formatDateTime, formatShortDate, todayKey, sessionLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { FollowUpList } from "./follow-up-list";
 import { reasonsText, sessionsProgress } from "./labels";
@@ -48,7 +47,7 @@ function Body({ data }: { data: CaseData }) {
   const motivo = reasonsText(caseDoc.reasons, caseDoc.reasonOther);
   const open = caseDoc.status === "open";
   const planned = caseDoc.plannedSessions;
-  const photos = sessions.flatMap((s) => s.photos.map((p) => ({ ...p, sessionNumber: s.number })));
+  const photos = sessions.flatMap((s) => (s.number === undefined ? [] : s.photos.map((p) => ({ ...p, sessionNumber: s.number! }))));
 
   function bookNext() {
     openSheet({
@@ -144,7 +143,7 @@ function Body({ data }: { data: CaseData }) {
                     s.status === "closed" ? "bg-plum text-white" : s.status === "postponed" ? "bg-rose-soft text-rose" : "bg-lilac text-plum",
                   )}
                 >
-                  {s.number}
+                  {s.number ?? "·"}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <Link
@@ -153,8 +152,7 @@ function Body({ data }: { data: CaseData }) {
                   >
                     <span className="flex flex-col">
                       <span className="font-medium group-hover:underline">
-                        Sesión {s.number}
-                        {s.status !== "closed" && <span className="font-normal text-ink-soft">, {SESSION_STATUS_LABELS[s.status].toLowerCase()}</span>}
+                        {sessionLabel(s)}
                       </span>
                       <span className="text-sm text-ink-soft">
                         {formatShortDate(s.closedAt ?? s.startedAt)}, con {s.memberName}

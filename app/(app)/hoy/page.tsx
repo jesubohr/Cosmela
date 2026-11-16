@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { AgendaSheets } from "@/components/agenda/agenda-sheets";
 import { HoyView } from "@/components/dashboard/hoy-view";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
 import { QuickActions } from "@/components/shell/quick-actions";
@@ -11,9 +10,7 @@ export default function HoyPage() {
     <>
       <PageHeader title="Hoy" actions={<QuickActions />} />
       <PageBody>
-        <AgendaSheets>
-          <HoyView />
-        </AgendaSheets>
+        <HoyView />
       </PageBody>
     </>
   );

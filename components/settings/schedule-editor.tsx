@@ -1,6 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +27,9 @@ function withPause(ranges: ScheduleRange[]): ScheduleRange[] | null {
   ];
 }
 
+const sameHours = (a: ScheduleRange[], b: ScheduleRange[]) =>
+  a.length === b.length && a.every((range, i) => range.start === b[i].start && range.end === b[i].end);
+
 // Phones open the native picker on tap, so the icon only takes space there.
 const TIME_INPUT = "px-2.5 tabular-nums max-sm:[&::-webkit-calendar-picker-indicator]:hidden";
 
@@ -38,8 +43,22 @@ export type ScheduleEditorProps = {
 
 /** Working hours per weekday: an on/off switch, time ranges, and "Agregar pausa" for lunch. */
 export function ScheduleEditor({ value, onChange, error, disabled }: ScheduleEditorProps) {
+  // "Aplicar a todos" shows only on the day the user just edited.
+  const [editedDay, setEditedDay] = useState<number | null>(null);
+
   function setDay(day: number, ranges: ScheduleRange[]) {
+    setEditedDay(day);
     onChange([...value.filter((range) => range.day !== day), ...ranges]);
+  }
+
+  const workDays: number[] = WEEK_DAYS.map(({ day }) => day).filter((day) => rangesOf(value, day).length > 0);
+
+  function applyToWorkDays(ranges: ScheduleRange[]) {
+    onChange([
+      ...value.filter((range) => !workDays.includes(range.day)),
+      ...workDays.flatMap((day) => ranges.map((range) => ({ ...range, day }))),
+    ]);
+    toast.success("Horario aplicado a todos los días laborales");
   }
 
   return (
@@ -49,6 +68,7 @@ export function ScheduleEditor({ value, onChange, error, disabled }: ScheduleEdi
           const ranges = rangesOf(value, day);
           const open = ranges.length > 0;
           const pause = open ? withPause(ranges) : null;
+          const canApplyToAll = day === editedDay && workDays.some((other) => !sameHours(ranges, rangesOf(value, other)));
           const switchId = `schedule-day-${day}`;
 
           return (
@@ -114,17 +134,30 @@ export function ScheduleEditor({ value, onChange, error, disabled }: ScheduleEdi
                       )}
                     </div>
                   ))}
-                  {pause && ranges.length < 4 && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      disabled={disabled}
-                      className="h-11 self-start px-0"
-                      onClick={() => setDay(day, pause)}
-                    >
-                      Agregar pausa
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap gap-x-6 empty:hidden">
+                    {pause && ranges.length < 4 && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        disabled={disabled}
+                        className="h-11 px-0"
+                        onClick={() => setDay(day, pause)}
+                      >
+                        Agregar pausa
+                      </Button>
+                    )}
+                    {canApplyToAll && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        disabled={disabled}
+                        className="h-11 px-0 text-ink-soft"
+                        onClick={() => applyToWorkDays(ranges)}
+                      >
+                        Aplicar a todos los días laborales
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <p className="flex min-h-11 items-center text-ink-soft">No trabajas</p>

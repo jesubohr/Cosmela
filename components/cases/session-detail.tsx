@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { SESSION_STATUS_LABELS } from "@/lib/constants";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, sessionLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { reasonsText } from "./labels";
 import { SessionRecord, type SessionDetailData } from "./session-record";
@@ -23,7 +23,7 @@ import { SessionRecord, type SessionDetailData } from "./session-record";
 /** `/casos/[id]/sesiones/[sessionId]`: read-only session, consent, and "notas adicionales". */
 export function SessionDetail({ caseId, sessionId }: { caseId: string; sessionId: Id<"sessions"> }) {
   const data = useQuery(api.sessions.detail, { sessionId });
-  const title = data ? `Sesión ${data.session.number}` : "Sesión";
+  const title = data ? sessionLabel(data.session) : "Sesión";
 
   return (
     <>

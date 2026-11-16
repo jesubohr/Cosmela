@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -16,7 +17,7 @@ import { bogotaDateKey, bogotaToEpoch } from "@/convex/lib/time";
 import { TIME_BLOCK_KINDS, type TimeBlockKind } from "@/convex/lib/validators";
 import { TIME_BLOCK_KIND_LABELS } from "@/lib/constants";
 import { addDays, timeOf, todayKey } from "./dates";
-import { errorText, FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions } from "./parts";
+import { errorText, FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions, useShowOnAgenda } from "./parts";
 
 export type BlockData = {
   _id: Id<"timeBlocks">;
@@ -37,6 +38,8 @@ export function BlockForm({ prefill, block, onDone }: { prefill?: BlockPrefill; 
   const create = useMutation(api.timeBlocks.create);
   const update = useMutation(api.timeBlocks.update);
   const remove = useMutation(api.timeBlocks.remove);
+  const router = useRouter();
+  const showOnAgenda = useShowOnAgenda();
   const ids = { member: useId(), date: useId(), allDay: useId(), start: useId(), end: useId(), title: useId() };
 
   const isAdmin = viewer.member.role === "admin";
@@ -67,7 +70,8 @@ export function BlockForm({ prefill, block, onDone }: { prefill?: BlockPrefill; 
     try {
       if (block) await update({ blockId: block._id, ...args });
       else await create(args);
-      toast.success("Bloqueo guardado");
+      if (showOnAgenda(date)) toast.success("Bloqueo guardado");
+      else toast.success("Bloqueo guardado", { action: { label: "Ver en la agenda", onClick: () => router.push(`/agenda?vista=dia&fecha=${date}`) } });
       onDone();
     } catch (err) {
       setError(errorText(err));

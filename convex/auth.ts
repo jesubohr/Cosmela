@@ -1,5 +1,6 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { ConvexError } from "convex/values";
@@ -8,6 +9,7 @@ import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
+import { rateLimiter } from "./rateLimits";
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
@@ -20,8 +22,19 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
     baseURL: siteUrl,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
-    // Persist counters across function runs; the emailOTP plugin limits sends to 3 per minute.
+    // Persist counters across function runs; the emailOTP plugin limits sends to 3 per minute per IP.
     rateLimit: { enabled: true, storage: "database" },
+    // Set by the Next.js auth route (app/api/auth) from the platform's client IP. Requests
+    // that skip that route have no IP and share one bucket; the per-email limit below still holds.
+    advanced: { ipAddress: { ipAddressHeaders: ["x-cosmela-client-ip"] } },
+    hooks: {
+      before: createAuthMiddleware(async (auth) => {
+        if (auth.path !== "/email-otp/send-verification-otp" || !("runMutation" in ctx)) return;
+        const email = String(auth.body?.email ?? "").trim().toLowerCase();
+        const { ok } = await rateLimiter.limit(ctx, "loginCodePerEmail", { key: email });
+        if (!ok) throw new APIError("TOO_MANY_REQUESTS", { message: "Pediste varios códigos seguidos. Espera unos minutos e intenta de nuevo." });
+      }),
+    },
     plugins: [
       emailOTP({
         otpLength: 6,

@@ -8,6 +8,7 @@ import { SingleChoice } from "@/components/forms/choice-chips";
 import { errorMessage } from "@/components/forms/error-message";
 import { PhoneInput } from "@/components/shared/phone-input";
 import { PhotoUpload } from "@/components/shared/photo-upload";
+import { useSignedUrl } from "@/components/shared/use-signed-urls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ export function BusinessSettings() {
 
 function LogoSection({ logoKey }: { logoKey?: string }) {
   const attach = useMutation(api.files.attach);
-  const url = useQuery(api.files.getUrl, logoKey ? { key: logoKey } : "skip");
+  const url = useSignedUrl(logoKey);
   const [preview, setPreview] = useState<string | null>(null);
 
   return (

@@ -6,6 +6,7 @@ import { internalMutation } from "./_generated/server";
 import { clientSearchText } from "./lib/text";
 import { bogotaDateKey, bogotaToEpoch } from "./lib/time";
 import type { ScheduleRange } from "./lib/validators";
+import { owesBalance } from "./payments";
 
 // Demo data for the LOCAL backend only:
 //   pnpm exec convex run seed:run '{"email":"delivered+ana@resend.dev"}'
@@ -241,6 +242,7 @@ export const run = internalMutation({
         source: status === "requested" ? "online" : "staff",
         price: t.price,
         paidTotal: paid ?? 0,
+        hasBalance: owesBalance({ status, price: t.price, paidTotal: paid ?? 0 }),
         cancelReason: status === "cancelled" ? "La clienta tuvo un viaje." : undefined,
         createdBy: adminId,
       });

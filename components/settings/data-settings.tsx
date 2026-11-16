@@ -60,7 +60,7 @@ export function DataSettings() {
   async function exportClients() {
     setExporting(true);
     try {
-      const rows = await convex.query(api.orgs.exportClients, {});
+      const rows = await convex.action(api.orgs.exportClients, {});
       const blob = new Blob([clientsCsv(rows)], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

@@ -11,11 +11,12 @@ import { cn } from "@/lib/utils";
 
 export type SessionDetailData = FunctionReturnType<typeof api.sessions.detail>;
 
-/** Every step of a session, read-only. Shared by the session page and its print view. */
+/** Every step of a session, read-only. Shared by the session page and its print view. Empty rows and groups are hidden. */
 export function SessionRecord({ data, print = false }: { data: SessionDetailData; print?: boolean }) {
   const { session, client, member, appointment } = data;
   const { intake, assessment, contraindications, aftercare, followUp } = session;
   const observed = assessment?.observed.map((o) => (o === "other" ? assessment.observedOther || OBSERVED_LABELS.other : OBSERVED_LABELS[o]));
+  const procedureRows = withoutEmptyRows(session.procedureRows);
 
   return (
     <div className={cn("flex flex-col", print ? "gap-6" : "gap-8")}>
@@ -52,7 +53,7 @@ export function SessionRecord({ data, print = false }: { data: SessionDetailData
 
       {session.status !== "postponed" && (
         <Group title="Procedimiento" print={print}>
-          {session.procedureRows.map((row) =>
+          {procedureRows.map((row) =>
             row.kind === "section" ? (
               <div key={row.id} className="px-4 pt-4 pb-1 font-medium">
                 {row.label}
@@ -114,9 +115,17 @@ export function SessionRecord({ data, print = false }: { data: SessionDetailData
   );
 }
 
+type ProcedureRow = SessionDetailData["session"]["procedureRows"][number];
+
+/** Drops unanswered rows, then section headings left without an answer under them. */
+function withoutEmptyRows(rows: ProcedureRow[]) {
+  const answered = rows.filter((row) => row.kind === "section" || row.value);
+  return answered.filter((row, i) => row.kind === "answer" || answered[i + 1]?.kind === "answer");
+}
+
 function Group({ title, children, print }: { title: string; children: ReactNode; print?: boolean }) {
   return (
-    <section className={cn("flex flex-col gap-2", print && "break-inside-avoid-page")}>
+    <section className={cn("flex flex-col gap-2 has-[dl:empty]:hidden", print && "break-inside-avoid-page")}>
       <h2 className="text-[1.125rem] font-medium">{title}</h2>
       <dl className="divide-y divide-line rounded-xl border border-line bg-surface">{children}</dl>
     </section>
@@ -124,12 +133,12 @@ function Group({ title, children, print }: { title: string; children: ReactNode;
 }
 
 function Row({ label, children, tone }: { label: string; children: ReactNode; tone?: "rose" | "amber" }) {
-  const empty = children === null || children === undefined || children === "";
+  if (children === null || children === undefined || children === "") return null;
   return (
     <div className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:gap-4">
       <dt className="text-sm text-ink-soft sm:w-52 sm:shrink-0 sm:pt-0.5">{label}</dt>
-      <dd className={cn("min-w-0 [overflow-wrap:anywhere]", empty && "text-ink-soft", !empty && tone === "rose" && "font-medium text-rose", !empty && tone === "amber" && "text-amber")}>
-        {empty ? "Sin dato" : children}
+      <dd className={cn("min-w-0 [overflow-wrap:anywhere]", tone === "rose" && "font-medium text-rose", tone === "amber" && "text-amber")}>
+        {children}
       </dd>
     </div>
   );

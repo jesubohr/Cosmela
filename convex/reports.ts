@@ -26,7 +26,7 @@ export const month = adminQuery({
     const start = bogotaToEpoch(`${month}-01`);
     const end = bogotaToEpoch(`${nextMonthKey(month)}-01`);
 
-    const [payments, appointments, newClients, completedAll, members] = await Promise.all([
+    const [payments, appointments, newClients, owing, members] = await Promise.all([
       ctx.db
         .query("payments")
         .withIndex("by_org_paidAt", (q) => q.eq("orgId", ctx.orgId).gte("paidAt", start).lt("paidAt", end))
@@ -39,7 +39,7 @@ export const month = adminQuery({
         .query("clients")
         .withIndex("by_org", (q) => q.eq("orgId", ctx.orgId).gte("_creationTime", start).lt("_creationTime", end))
         .collect(),
-      ctx.db.query("appointments").withIndex("by_org_status", (q) => q.eq("orgId", ctx.orgId).eq("status", "completed")).collect(),
+      ctx.db.query("appointments").withIndex("by_org_balance", (q) => q.eq("orgId", ctx.orgId).eq("hasBalance", true)).collect(),
       ctx.db.query("members").withIndex("by_org", (q) => q.eq("orgId", ctx.orgId)).collect(),
     ]);
 
@@ -78,9 +78,13 @@ export const month = adminQuery({
       income,
       completed: completed.length,
       newClients: newClients.length,
-      balance: completedAll.reduce((sum, a) => sum + Math.max(0, a.price - a.paidTotal), 0),
+      balance: owing.reduce((sum, a) => sum + a.price - a.paidTotal, 0),
       byMethod: [...byMethod].map(([method, amount]) => ({ method, amount })).sort((a, b) => b.amount - a.amount),
-      treatments: treatments.sort((a, b) => b.count - a.count || b.revenue - a.revenue).slice(0, 5),
+      // "Más realizados": only treatments attended this month; `revenue` is what was collected for them.
+      treatments: treatments
+        .filter((t) => t.count > 0)
+        .sort((a, b) => b.count - a.count || b.revenue - a.revenue)
+        .slice(0, 5),
       members: members
         .filter((m) => m.active || byMember.has(m._id))
         .map((m) => ({ memberId: m._id, name: m.name, color: m.color, ...(byMember.get(m._id) ?? { count: 0, revenue: 0 }) }))

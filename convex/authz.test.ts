@@ -236,9 +236,11 @@ describe("cross-org isolation", () => {
 
   test("files: signed URLs only for keys of the caller's org", async () => {
     const { ana, ids } = await setup();
-    const foreignKey = `orgs/${ids.orgB}/photo/abc`;
-    expect(await errorCode(ana.query(api.files.getUrl, { key: foreignKey }))).toBe("NOT_FOUND");
-    expect(await errorCode(ana.query(api.files.getUrls, { keys: [foreignKey] }))).toBe("NOT_FOUND");
+    const foreignKey = `orgs/${ids.orgB}/photo/${crypto.randomUUID()}`;
+    expect(await errorCode(ana.query(api.files.getUrls, { keys: [foreignKey], bucket: 1 }))).toBe("NOT_FOUND");
+    // Keys must have the exact shape, so a path cannot climb into another org.
+    const climbing = `orgs/${ids.orgA}/../${ids.orgB}/photo/${crypto.randomUUID()}`;
+    expect(await errorCode(ana.query(api.files.getUrls, { keys: [climbing], bucket: 1 }))).toBe("NOT_FOUND");
   });
 
   test("files: cannot attach a key or a session of another org", async () => {

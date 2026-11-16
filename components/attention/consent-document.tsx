@@ -5,7 +5,7 @@ import type { SessionConsent } from "@/convex/lib/validators";
 import { PHOTO_USE_LABELS } from "@/lib/constants";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { useFileUrls } from "./step-parts";
+import { useSignedUrls } from "@/components/shared/use-signed-urls";
 
 /** The signed consent snapshot: text, photo use, signatures, and evidence. Used on screen and in print. */
 export function ConsentDocument({
@@ -19,7 +19,7 @@ export function ConsentDocument({
   professionalName: string;
   className?: string;
 }) {
-  const urls = useFileUrls([consent.clientSignatureKey, consent.professionalSignatureKey]);
+  const urls = useSignedUrls([consent.clientSignatureKey, consent.professionalSignatureKey]);
   const signer = consent.guardian ? `${consent.guardian.name} (acudiente)` : clientName;
 
   return (

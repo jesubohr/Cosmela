@@ -113,6 +113,7 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
                 </Button>
               </div>
             )}
+            <h2 className="font-display text-[1.75rem] leading-tight font-medium break-words">{name}</h2>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-soft">
               {client.birthDate && <span>{ageFromBirthDate(client.birthDate)} años</span>}
               <span className="tabular-nums">{formatPhone(client.phone)}</span>

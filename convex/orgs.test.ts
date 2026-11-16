@@ -146,7 +146,7 @@ describe("settings", () => {
   }
 
   test("staff cannot edit business, booking, or reminder settings", async () => {
-    const { sofi, t, orgId } = await salon();
+    const { ana, sofi, t, orgId } = await salon();
     expect(await errorCode(sofi.mutation(api.orgs.update, { name: "Otro", kind: "salon" }))).toBe("FORBIDDEN");
     expect(
       await errorCode(
@@ -160,7 +160,8 @@ describe("settings", () => {
       ),
     ).toBe("FORBIDDEN");
     expect(await errorCode(sofi.mutation(api.orgs.updateReminders, { email: false }))).toBe("FORBIDDEN");
-    expect(await errorCode(sofi.query(api.orgs.exportClients, {}))).toBe("FORBIDDEN");
+    expect(await errorCode(sofi.action(api.orgs.exportClients, {}))).toBe("FORBIDDEN");
+    expect(await ana.action(api.orgs.exportClients, {})).toEqual([]);
     const org = await t.run((ctx) => ctx.db.get(orgId));
     expect(org).toMatchObject({ name: ONBOARDING.name, booking: { enabled: true }, reminders: { email: true } });
   });

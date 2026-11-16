@@ -151,7 +151,7 @@ export function PendingPayments({ data }: { data: TodayData["pendingPayments"] }
               className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-porcelain"
             >
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-medium">{row.clientName}</span>
+                <span className="line-clamp-2 font-medium">{row.clientName}</span>
                 <span className="text-ink-soft tabular-nums">{formatShortDate(row.start)}</span>
               </span>
               <span className="font-medium tabular-nums">{formatMoney(row.balance)}</span>
@@ -181,7 +181,7 @@ export function Birthdays({ rows }: { rows: TodayData["birthdays"] }) {
       <ul className={listClass}>
         {rows.map((row) => (
           <li key={row._id} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-            <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
+            <span className="line-clamp-2 min-w-0 flex-1 font-medium">{row.name}</span>
             <Button variant="secondary" asChild>
               <a href={whatsappLink(row.phone, birthdayMessage(row.name, viewer.org.name))} target="_blank" rel="noopener noreferrer">
                 <MessageCircle strokeWidth={1.75} />

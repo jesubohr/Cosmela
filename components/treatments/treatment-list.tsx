@@ -114,8 +114,12 @@ function TreatmentRow({ treatment, isAdmin }: { treatment: Treatment; isAdmin: b
         {!isAdmin && <ChevronRight aria-hidden className="mr-4 size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />}
       </Link>
       {isAdmin && (
-        <div className="flex min-h-16 items-center px-4">
+        <div className="flex min-h-16 items-center gap-2 px-4">
+          <label htmlFor={`active-${treatment._id}`} className="text-sm text-ink-soft">
+            Activo
+          </label>
           <Switch
+            id={`active-${treatment._id}`}
             checked={treatment.active}
             onCheckedChange={(active) => void toggle(active)}
             aria-label={`${treatment.name} activo`}

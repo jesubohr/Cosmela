@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CalendarOff, CalendarPlus, ClipboardPlus, Plus, UserPlus } from "lucide-react";
+import { CalendarOff, CalendarPlus, ClipboardPlus, Plus, UserPlus, type LucideIcon } from "lucide-react";
+import { useAgendaSheets, type Sheet } from "@/components/agenda/agenda-sheets";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import {
@@ -12,19 +13,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { todayKey } from "@/lib/format";
 
-// Targets are owned by Phase 1B (agenda sheets read `?accion=`).
-const ACTIONS = [
-  { href: "/agenda?accion=nueva-cita", label: "Nueva cita", icon: CalendarPlus },
-  { href: "/agenda?accion=atencion-sin-cita", label: "Atención sin cita", icon: ClipboardPlus },
-  { href: "/clientes/nuevo", label: "Nuevo cliente", icon: UserPlus },
-  { href: "/agenda?accion=bloquear", label: "Bloquear horario", icon: CalendarOff },
+type Action = { label: string; icon: LucideIcon } & ({ sheet: () => Sheet } | { href: string });
+
+// Sheets open over the current page, so cancelling leaves the user where they were.
+const ACTIONS: Action[] = [
+  { label: "Nueva cita", icon: CalendarPlus, sheet: () => ({ kind: "create", prefill: { date: todayKey() } }) },
+  { label: "Atención sin cita", icon: ClipboardPlus, sheet: () => ({ kind: "walkIn" }) },
+  { label: "Nuevo cliente", icon: UserPlus, href: "/clientes/nuevo" },
+  { label: "Bloquear horario", icon: CalendarOff, sheet: () => ({ kind: "block", prefill: { date: todayKey() } }) },
 ];
 
 /** The global "+" of Hoy, Agenda, and Clientes: a bottom sheet on phones, a menu on desktop. */
 export function QuickActions() {
   const isMobile = useIsMobile(1024);
+  const router = useRouter();
+  const openSheet = useAgendaSheets();
   const [open, setOpen] = useState(false);
+
+  function run(action: Action) {
+    if ("href" in action) router.push(action.href);
+    else openSheet(action.sheet());
+  }
 
   if (isMobile) {
     return (
@@ -38,16 +49,19 @@ export function QuickActions() {
               <DrawerTitle>Crear</DrawerTitle>
             </DrawerHeader>
             <ul className="flex flex-col px-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {ACTIONS.map(({ href, label, icon: Icon }) => (
-                <li key={href}>
-                  <Link
-                    href={href}
-                    onClick={() => setOpen(false)}
-                    className="flex min-h-14 items-center gap-3 rounded-lg px-3 text-base font-medium hover:bg-lilac"
+              {ACTIONS.map((action) => (
+                <li key={action.label}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      run(action);
+                    }}
+                    className="flex min-h-14 w-full items-center gap-3 rounded-lg px-3 text-left text-base font-medium hover:bg-lilac"
                   >
-                    <Icon className="size-5 text-plum" strokeWidth={1.75} />
-                    {label}
-                  </Link>
+                    <action.icon className="size-5 text-plum" strokeWidth={1.75} />
+                    {action.label}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -66,12 +80,10 @@ export function QuickActions() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        {ACTIONS.map(({ href, label, icon: Icon }) => (
-          <DropdownMenuItem key={href} asChild className="min-h-11 text-base">
-            <Link href={href}>
-              <Icon className="size-5 text-plum" strokeWidth={1.75} />
-              {label}
-            </Link>
+        {ACTIONS.map((action) => (
+          <DropdownMenuItem key={action.label} className="min-h-11 text-base" onSelect={() => run(action)}>
+            <action.icon className="size-5 text-plum" strokeWidth={1.75} />
+            {action.label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

@@ -85,3 +85,13 @@ export function initials(name: string): string {
 export function isValidPhone(e164: string): boolean {
   return /^\+57\d{10}$/.test(e164) || /^\+(?!57)\d{8,15}$/.test(e164);
 }
+
+/**
+ * "Sesión 2"; drafts read "Sesión en curso" and postponed sessions "Sesión pospuesta"
+ * or "Atención no realizada" (their `reason`), since only closed sessions get a number.
+ */
+export function sessionLabel(session: { number?: number; status: "draft" | "closed" | "postponed"; reason?: string }): string {
+  if (session.number !== undefined) return `Sesión ${session.number}`;
+  if (session.status === "draft") return "Sesión en curso";
+  return session.reason === "Atención no realizada" ? session.reason : "Sesión pospuesta";
+}

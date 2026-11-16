@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight, LogOut } from "lucide-react";
 import { InitialsAvatar } from "@/components/shared/initials-avatar";
-import { PRIMARY_NAV, SECONDARY_NAV, TABS } from "./nav";
+import { PRIMARY_NAV, SECONDARY_NAV, TABS, visibleFor } from "./nav";
 import { useSignOut } from "./use-sign-out";
 import { useViewer } from "./viewer";
 
@@ -13,9 +13,8 @@ const tabHrefs = new Set(TABS.map((tab) => tab.href));
 export function MoreMenu() {
   const viewer = useViewer();
   const signOut = useSignOut();
-  const isAdmin = viewer.member.role === "admin";
-  const items = [...PRIMARY_NAV, ...SECONDARY_NAV].filter(
-    (item) => !tabHrefs.has(item.href) && (!item.adminOnly || isAdmin),
+  const items = visibleFor([...PRIMARY_NAV, ...SECONDARY_NAV], { role: viewer.member.role, kind: viewer.org.kind }).filter(
+    (item) => !tabHrefs.has(item.href),
   );
   const name = viewer.member.name || viewer.user.email;
 

@@ -186,7 +186,7 @@ export const TREATMENT_TEMPLATES: TreatmentTemplate[] = [
       field("Número de capas", "number", { unit: "capas", ...required }),
       field("Tiempo de exposición", "number", { unit: "min", ...required }),
       field("Neutralización", "yesno", required),
-      field("Nivel de escarcha (frost)", "single", { options: ["Ninguno", "Nivel I", "Nivel II", "Nivel III"] }),
+      field("Nivel de escarcha", "single", { options: ["Ninguno", "Nivel I", "Nivel II", "Nivel III"] }),
     ],
   }),
   template({

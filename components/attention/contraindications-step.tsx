@@ -71,8 +71,12 @@ function Checklist({ data, onBack, onDone }: StepProps) {
     setMarked((current) => (current.includes(item) ? current.filter((i) => i !== item) : [...current, item]));
   }
 
+  // Today's pregnancy or lactation answers can only be passed with "Continuar bajo mi criterio".
+  const unmarked = premarked.filter((item) => !present.includes(item));
   const blocked =
-    present.length === 0 && !noneApplies
+    unmarked.length > 0
+      ? `Hoy respondió que hay ${unmarked.join(" y ").toLowerCase()}. Déjalo marcado y elige si pospones o continúas bajo tu criterio.`
+      : present.length === 0 && !noneApplies
       ? "Marca las contraindicaciones presentes o toca «Ninguna aplica»."
       : present.length > 0 && !proceed
         ? "Más abajo, elige si pospones el tratamiento o continúas bajo tu criterio."
@@ -112,6 +116,7 @@ function Checklist({ data, onBack, onDone }: StepProps) {
           <Chip
             aria-pressed={noneApplies}
             selected={noneApplies}
+            disabled={premarked.length > 0}
             onClick={() => {
               setNoneApplies(true);
               setMarked([]);

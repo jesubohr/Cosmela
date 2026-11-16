@@ -3,12 +3,14 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { AgendaSheets } from "@/components/agenda/agenda-sheets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { api } from "@/convex/_generated/api";
 import { identifyUser } from "@/lib/analytics";
 import { AppSidebar } from "./app-sidebar";
 import { BottomTabs } from "./bottom-tabs";
+import { PRIMARY_NAV, SECONDARY_NAV, TABS } from "./nav";
 import { OfflineBanner } from "./offline-banner";
 import { ViewerProvider, type Viewer } from "./viewer";
 
@@ -43,18 +45,33 @@ export function AppShell({ defaultOpen, children }: { defaultOpen: boolean; chil
       <AppSidebar viewer={viewer} />
       <SidebarInset className="min-h-dvh pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] lg:pb-0">
         <OfflineBanner />
-        {viewer ? <ViewerProvider viewer={viewer}>{children}</ViewerProvider> : <ShellSkeleton />}
+        {viewer ? (
+          <ViewerProvider viewer={viewer}>
+            <AgendaSheets>{children}</AgendaSheets>
+          </ViewerProvider>
+        ) : (
+          <ShellSkeleton title={routeTitle(pathname)} />
+        )}
       </SidebarInset>
       <BottomTabs />
     </SidebarProvider>
   );
 }
 
-function ShellSkeleton() {
+/** Top-level routes show their title while the viewer loads; detail pages wait for their own. */
+function routeTitle(pathname: string) {
+  return [...PRIMARY_NAV, ...SECONDARY_NAV, ...TABS].find((item) => item.href === pathname)?.label;
+}
+
+function ShellSkeleton({ title }: { title?: string }) {
   return (
     <div aria-busy className="w-full max-w-[1120px]">
       <div className="flex h-14 items-center border-b border-line px-4 lg:h-16 lg:px-8">
-        <Skeleton className="h-7 w-32" />
+        {title ? (
+          <p className="font-display text-[1.375rem] leading-tight lg:text-[1.75rem]">{title}</p>
+        ) : (
+          <Skeleton className="h-7 w-32" />
+        )}
       </div>
       <div className="flex flex-col gap-3 px-4 py-6 lg:px-8">
         <Skeleton className="h-14 w-full" />

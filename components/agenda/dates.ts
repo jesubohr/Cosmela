@@ -92,10 +92,10 @@ export function formatDayKey(key: string): string {
   return format(localDate(key), "EEEE d 'de' MMMM", { locale: es });
 }
 
-/** Phone titles: "jueves 12 nov", "9 – 15 nov", "nov 2026". */
+/** Phone titles: "jue 12 nov", "9 – 15 nov", "noviembre 2026". */
 export function formatCompactTitle(view: "dia" | "semana" | "mes", key: string): string {
   if (view === "mes") return format(localDate(key), "MMMM yyyy", { locale: es });
-  if (view === "dia") return format(localDate(key), "EEEE d MMM", { locale: es }).replace(".", "");
+  if (view === "dia") return format(localDate(key), "EEE d MMM", { locale: es }).replace(/\./g, "");
   const start = weekStart(key);
   const end = addDays(start, 6);
   const first = format(localDate(start), start.slice(5, 7) === end.slice(5, 7) ? "d" : "d MMM", { locale: es });

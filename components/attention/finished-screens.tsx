@@ -9,7 +9,7 @@ import { AppointmentForm } from "@/components/agenda/appointment-form";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { formatDateTime, formatMoney, sessionLabel } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
 import { errorText, type DraftData } from "./step-parts";
 
@@ -72,7 +72,7 @@ export function SuccessScreen({ data }: { data: DraftData }) {
       <div className="flex flex-col gap-1">
         <p className="text-lg font-medium">{`${client.firstName} ${client.lastName}`.trim()}</p>
         <p className="text-ink-soft">
-          {treatment.name}, sesión {session.number}
+          {treatment.name}, {sessionLabel(session).toLowerCase()}
         </p>
         {balance > 0 && <p className="mt-2 font-medium text-amber tabular-nums">Saldo pendiente {formatMoney(balance)}</p>}
         {nextAppointment && <p className="mt-2">Próxima cita: {formatDateTime(nextAppointment.start)}</p>}
@@ -87,7 +87,7 @@ export function SuccessScreen({ data }: { data: DraftData }) {
           </Button>
         )}
         {items.length > 0 &&
-          (client.email ? (
+          (client.email || data.appointment.contactEmail ? (
             <Button size="lg" variant="secondary" onClick={() => void email()} disabled={sending}>
               {sending ? "Enviando…" : "Enviar por correo"}
             </Button>
@@ -109,12 +109,13 @@ export function SuccessScreen({ data }: { data: DraftData }) {
 export function PostponedScreen({ data }: { data: DraftData }) {
   const { session, client, treatment } = data;
   const [booking, setBooking] = useState(false);
+  const notPerformed = session.reason === "Atención no realizada";
   return (
-    <Screen title="Tratamiento pospuesto">
+    <Screen title={notPerformed ? "Atención no realizada" : "Tratamiento pospuesto"}>
       <div className="flex flex-col gap-2">
         <p className="text-lg font-medium">{`${client.firstName} ${client.lastName}`.trim()}</p>
         <p className="text-ink-soft">La cita de {treatment.name.toLowerCase()} quedó cancelada y la atención se guardó en su historial.</p>
-        {session.contraindications && session.contraindications.present.length > 0 && (
+        {!notPerformed && session.contraindications && session.contraindications.present.length > 0 && (
           <p className="text-rose">Contraindicación: {session.contraindications.present.join(", ")}.</p>
         )}
       </div>

@@ -217,7 +217,8 @@ function Sidebar({
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+          // Painted like the sidebar so its surface spans the whole page, not only the fixed viewport-high container.
+          "relative h-full w-(--sidebar-width) bg-sidebar transition-[width] duration-200 ease-linear group-data-[side=left]:border-r group-data-[side=left]:border-sidebar-border",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"

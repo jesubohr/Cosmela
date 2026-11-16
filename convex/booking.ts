@@ -2,12 +2,13 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
-import { r2 } from "./files";
+import { r2, URL_TTL_SECONDS } from "./files";
 import { freeSlots, rangesForDate, type Interval } from "./lib/slots";
 import { clientSearchText } from "./lib/text";
 import { addDaysToDateKey, bogotaDateKey, bogotaToEpoch } from "./lib/time";
 import type { AppointmentStatus } from "./lib/validators";
-import { privacyPolicyText } from "./orgs";
+import { currentPolicyId, privacyPolicyText } from "./orgs";
+import { rateLimiter } from "./rateLimits";
 
 // Public functions for /reservar/[slug]. No sign-in: they take the business slug
 // and return only public fields (never health data, never other clients).
@@ -15,9 +16,11 @@ import { privacyPolicyText } from "./orgs";
 const DAY = 24 * 60 * 60_000;
 const ACTIVE: AppointmentStatus[] = ["requested", "scheduled", "in_progress"];
 const MAX_OPEN_REQUESTS = 2;
-const LOGO_URL_TTL_SECONDS = 60 * 60;
+/** Days per `availability` call; the page asks for the next window with "Ver más días". */
+export const AVAILABILITY_WINDOW_DAYS = 14;
 const PHONE = /^\+57\d{10}$|^\+(?!57)\d{8,15}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function invalid(message: string): never {
   throw new ConvexError({ code: "INVALID", message });
@@ -75,15 +78,6 @@ function memberSlots(org: Doc<"orgs">, treatment: Doc<"treatments">, member: Doc
   });
 }
 
-async function logoUrl(org: Doc<"orgs">) {
-  if (!org.logoKey) return null;
-  try {
-    return await r2.getUrl(org.logoKey, { expiresIn: LOGO_URL_TTL_SECONDS });
-  } catch {
-    return null;
-  }
-}
-
 /** The business header, bookable treatments, and bookable professionals. Null for an unknown slug. */
 export const page = query({
   args: { slug: v.string() },
@@ -105,7 +99,7 @@ export const page = query({
       city: org.city,
       // Already public: the business's privacy policy shows it as its contact channel.
       whatsapp: org.whatsapp,
-      logoUrl: await logoUrl(org),
+      hasLogo: org.logoKey !== undefined,
       enabled,
       welcome: enabled ? org.booking.welcome : undefined,
       treatments: treatments
@@ -117,26 +111,47 @@ export const page = query({
   },
 });
 
+/** Signed logo URL. `bucket` rolls the cached result over before the URL expires (`useTimeBucket`). */
+export const logo = query({
+  args: { slug: v.string(), bucket: v.number() },
+  handler: async (ctx, { slug }) => {
+    const org = await orgBySlug(ctx, slug);
+    if (!org?.logoKey) return null;
+    try {
+      return await r2.getUrl(org.logoKey, { expiresIn: URL_TTL_SECONDS });
+    } catch {
+      return null;
+    }
+  },
+});
+
 /**
- * Days with free times for a treatment, from today to `maxDaysAhead`, as
- * `{ date: "YYYY-MM-DD", slots: epoch ms[] }`. Without `memberId`, the union over
- * every bookable professional ("Cualquiera disponible").
+ * Days with free times for a treatment, as `{ date: "YYYY-MM-DD", slots: epoch ms[] }`,
+ * for a window of `AVAILABILITY_WINDOW_DAYS` days from `from` (today by default), cut at
+ * `maxDaysAhead`. `nextFrom` is the first day of the next window, or null at the horizon.
+ * Without `memberId`, the union over every bookable professional ("Cualquiera disponible").
  */
 export const availability = query({
-  args: { slug: v.string(), treatmentId: v.id("treatments"), memberId: v.optional(v.id("members")) },
-  handler: async (ctx, { slug, treatmentId, memberId }) => {
+  args: { slug: v.string(), treatmentId: v.id("treatments"), memberId: v.optional(v.id("members")), from: v.optional(v.string()) },
+  handler: async (ctx, { slug, treatmentId, memberId, from }) => {
+    const none = { days: [], nextFrom: null };
     const org = await orgBySlug(ctx, slug);
-    if (!org?.booking.enabled) return [];
+    if (!org?.booking.enabled) return none;
     const treatment = await bookableTreatment(ctx, org, treatmentId);
-    if (!treatment) return [];
+    if (!treatment) return none;
 
     const now = Date.now();
     const today = bogotaDateKey(now);
-    const dates = Array.from({ length: org.booking.maxDaysAhead + 1 }, (_, i) => addDaysToDateKey(today, i));
-    const from = bogotaToEpoch(today) - DAY;
-    const to = bogotaToEpoch(dates[dates.length - 1]) + 2 * DAY;
+    const last = addDaysToDateKey(today, org.booking.maxDaysAhead);
+    const first = from && DATE.test(from) && from > today ? from : today;
+    if (first > last) return none;
+    const dates = [];
+    for (let date = first; date <= last && dates.length < AVAILABILITY_WINDOW_DAYS; date = addDaysToDateKey(date, 1)) dates.push(date);
+
     const members = await bookableMembers(ctx, org, memberId);
-    const busy = await Promise.all(members.map((m) => busyIntervals(ctx, m._id, from, to)));
+    const rangeStart = bogotaToEpoch(dates[0]) - DAY;
+    const rangeEnd = bogotaToEpoch(dates[dates.length - 1]) + 2 * DAY;
+    const busy = await Promise.all(members.map((m) => busyIntervals(ctx, m._id, rangeStart, rangeEnd)));
 
     const days = [];
     for (const date of dates) {
@@ -146,7 +161,8 @@ export const availability = query({
       });
       if (slots.size > 0) days.push({ date, slots: [...slots].sort((a, b) => a - b) });
     }
-    return days;
+    const next = addDaysToDateKey(dates[dates.length - 1], 1);
+    return { days, nextFrom: next <= last ? next : null };
   },
 });
 
@@ -164,6 +180,8 @@ export const privacy = query({
  * "Enviar solicitud": re-checks the time against current availability, finds the
  * client by phone (or creates one), and creates a `requested` online appointment.
  * Without `memberId`, the first free professional takes it.
+ * An anonymous request never changes an existing client: its email stays on the
+ * appointment (`contactEmail`) until the team saves it to the ficha.
  */
 export const create = mutation({
   args: {
@@ -177,8 +195,11 @@ export const create = mutation({
     email: v.string(),
     note: v.optional(v.string()),
     authorized: v.boolean(),
+    /** Hidden field that people leave empty; bots fill it in. */
+    website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (args.website?.trim()) invalid("No pudimos enviar tu solicitud. Intenta de nuevo.");
     const org = await orgBySlug(ctx, args.slug);
     if (!org?.booking.enabled) invalid("Este negocio no está recibiendo reservas en línea en este momento.");
     const firstName = clean(args.firstName, 60);
@@ -186,7 +207,7 @@ export const create = mutation({
     const email = args.email.trim().toLowerCase();
     if (!firstName) invalid("Escribe tu nombre.");
     if (!PHONE.test(args.phone)) invalid("Escribe un WhatsApp de 10 dígitos.");
-    if (!EMAIL.test(email)) invalid("Escribe un correo válido, como nombre@correo.com.");
+    if (!EMAIL.test(email) || email.length > 200) invalid("Escribe un correo válido, como nombre@correo.com.");
     if (!args.authorized) invalid("Para enviar la solicitud, autoriza el tratamiento de tus datos.");
 
     const treatment = await bookableTreatment(ctx, org, args.treatmentId);
@@ -207,29 +228,37 @@ export const create = mutation({
     }
     if (!member) throw new ConvexError({ code: "SLOT_TAKEN", message: "Este horario ya no está disponible. Elige otro." });
 
-    const existing = await ctx.db
-      .query("clients")
-      .withIndex("by_org_phone", (q) => q.eq("orgId", org._id).eq("phone", args.phone))
-      .first();
+    // Archived clients are left alone; the team decides whether to restore them.
+    const existing = (
+      await ctx.db
+        .query("clients")
+        .withIndex("by_org_phone", (q) => q.eq("orgId", org._id).eq("phone", args.phone))
+        .collect()
+    ).find((c) => !c.isArchived);
     if (existing) {
       const upcoming = await ctx.db
         .query("appointments")
         .withIndex("by_client", (q) => q.eq("clientId", existing._id).gt("start", now))
         .collect();
       if (upcoming.filter((a) => a.status === "requested").length >= MAX_OPEN_REQUESTS) {
-        invalid(`Ya tienes ${MAX_OPEN_REQUESTS} solicitudes pendientes en ${org.name}. Espera a que te confirmen o escríbeles por WhatsApp.`);
+        invalid(`Ya hay solicitudes pendientes con este número. Espera a que ${org.name} te confirme o escríbele por WhatsApp.`);
       }
     }
 
-    const authorization = { at: now, method: "online_checkbox" as const, policyText: await privacyPolicyText(ctx, org._id) };
+    // Per-business limits, so a script cannot fill the calendar or the team's inbox.
+    for (const name of ["bookingPerHour", "bookingPerDay"] as const) {
+      const { ok } = await rateLimiter.limit(ctx, name, { key: org._id });
+      if (!ok) {
+        throw new ConvexError({
+          code: "RATE_LIMITED",
+          message: `${org.name} recibió muchas solicitudes en poco tiempo. Intenta más tarde o escríbele por WhatsApp.`,
+        });
+      }
+    }
+
     let clientId: Id<"clients">;
     if (existing) {
       clientId = existing._id;
-      // The business's data stays as it is; only missing pieces are filled in.
-      await ctx.db.patch(clientId, {
-        ...(existing.email ? {} : { email }),
-        ...(existing.dataAuthorization ? {} : { dataAuthorization: authorization }),
-      });
     } else {
       clientId = await ctx.db.insert("clients", {
         orgId: org._id,
@@ -241,7 +270,7 @@ export const create = mutation({
         health: { conditions: [], allergies: [], skinConditions: [], none: { conditions: false, allergies: false, skin: false } },
         habits: {},
         skin: {},
-        dataAuthorization: authorization,
+        dataAuthorization: { at: now, method: "online_checkbox", policyId: await currentPolicyId(ctx, org._id) },
         // Online clients have no author; the professional who takes the request stands in.
         createdBy: member._id,
         isArchived: false,
@@ -259,6 +288,7 @@ export const create = mutation({
       source: "online",
       price: treatment.price,
       paidTotal: 0,
+      contactEmail: existing && existing.email !== email ? email : undefined,
       notes: clean(args.note, 500),
     });
     await ctx.runMutation(internal.notifications.notifyNewRequest, { appointmentId });

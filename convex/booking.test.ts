@@ -23,7 +23,7 @@ async function setup() {
       health: { conditions: ["herpes"], allergies: ["medication"], allergiesDetail: "Penicilina", skinConditions: [], none: { conditions: false, allergies: false, skin: false } },
     });
   });
-  const request = (extra: Partial<{ start: number; phone: string; memberId: Id<"members">; firstName: string; authorized: boolean; slug: string }> = {}) =>
+  const request = (extra: Partial<{ start: number; phone: string; memberId: Id<"members">; firstName: string; authorized: boolean; slug: string; website: string }> = {}) =>
     s.t.mutation(api.booking.create, {
       slug: "alba",
       treatmentId: s.ids.treatmentA,
@@ -70,7 +70,7 @@ describe("booking page", () => {
       name: "Alba",
       city: "Medellín",
       whatsapp: undefined,
-      logoUrl: null,
+      hasLogo: false,
       enabled: true,
       welcome: undefined,
       treatments: [{ _id: ids.treatmentA, name: "Limpieza facial", description: undefined, durationMin: 60, price: 100000 }],
@@ -90,7 +90,7 @@ describe("booking page", () => {
       await ctx.db.patch(ids.orgA, { booking: { ...org.booking, enabled: false } });
     });
     expect(await t.query(api.booking.page, { slug: "alba" })).toMatchObject({ enabled: false, treatments: [], members: [] });
-    expect(await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA })).toEqual([]);
+    expect(await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA })).toEqual({ days: [], nextFrom: null });
   });
 
   test("the privacy page shows the business policy", async () => {
@@ -108,7 +108,7 @@ describe("availability", () => {
       const org = (await ctx.db.get(ids.orgA))!;
       await ctx.db.patch(ids.orgA, { booking: { ...org.booking, maxDaysAhead: 3 } });
     });
-    const days = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA });
+    const { days } = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA });
     // Sunday has no schedule; Monday to Wednesday are within 3 days.
     expect(days.map((d) => d.date)).toEqual(["2030-01-07", "2030-01-08", "2030-01-09"]);
     expect(days[0].slots[0]).toBe(at("08:00"));
@@ -125,8 +125,8 @@ describe("availability", () => {
       durationMin: 60,
       price: 100000,
     });
-    const anyone = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA });
-    const ana = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA, memberId: ids.ana });
+    const { days: anyone } = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA });
+    const { days: ana } = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA, memberId: ids.ana });
     expect(anyone[0].slots).toContain(at("08:00"));
     expect(ana[0].slots).not.toContain(at("08:00"));
     expect(ana[0].slots).not.toContain(at("08:30"));
@@ -136,9 +136,27 @@ describe("availability", () => {
   test("respects the minimum notice", async () => {
     const { t, ids } = await setup();
     vi.setSystemTime(at("09:10"));
-    const days = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA });
+    const { days } = await t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA });
     // 2 h notice from 09:10 → 11:30 is the first 30-minute step.
     expect(days[0].slots[0]).toBe(at("11:30"));
+  });
+
+  test("returns one window of 14 days at a time, up to maxDaysAhead", async () => {
+    const { t, ids } = await setup();
+    const query = (from?: string) => t.query(api.booking.availability, { slug: "alba", treatmentId: ids.treatmentA, from });
+    const first = await query();
+    // Today (Sunday Jan 6) through Saturday Jan 19: 14 days, 12 of them working days.
+    expect(first.days).toHaveLength(12);
+    expect(first.nextFrom).toBe("2030-01-20");
+    const second = await query(first.nextFrom!);
+    expect(second.days[0].date).toBe("2030-01-21");
+    // maxDaysAhead is 30, so the third window ends on Feb 5.
+    const third = await query(second.nextFrom!);
+    expect(third.days.at(-1)?.date).toBe("2030-02-05");
+    expect(third.nextFrom).toBeNull();
+    // A start in the past reads as today; beyond the horizon there is nothing.
+    expect((await query("2020-01-01")).nextFrom).toBe("2030-01-20");
+    expect((await query("2030-03-01")).days).toEqual([]);
   });
 });
 
@@ -155,22 +173,72 @@ describe("booking.create", () => {
     expect(appointment.reminderJobId).toBeUndefined();
     expect(client).toMatchObject({ firstName: "Valentina", lastName: "Ríos", phone: "+573110000000", email: "vale@example.com" });
     expect(client?.dataAuthorization).toMatchObject({ method: "online_checkbox" });
-    expect(client?.dataAuthorization?.policyText).toContain("Alba");
+    expect(appointment.contactEmail).toBeUndefined();
+    // The accepted policy is stored once and referenced.
+    const policy = await t.run((ctx) => ctx.db.get(client!.dataAuthorization!.policyId!));
+    expect(policy?.text).toContain("Alba");
+    await request({ phone: "+573110000001", start: at("11:00") });
+    expect(await t.run(async (ctx) => (await ctx.db.query("policies").collect()).length)).toBe(1);
   });
 
-  test("matches an existing client by phone without overwriting their data", async () => {
-    const { t, ids, request } = await setup();
+  test("never changes an existing client: the request email stays on the appointment", async () => {
+    const { t, ids, request, asAna } = await setup();
+    const before = await t.run((ctx) => ctx.db.get(ids.clientA));
     await request({ phone: "+573001234567", firstName: "Otra" });
-    const client = await t.run((ctx) => ctx.db.get(ids.clientA));
-    expect(client).toMatchObject({ firstName: "Laura", lastName: "Prueba", email: "vale@example.com" });
-    expect(client?.health.allergiesDetail).toBe("Penicilina");
-    expect(client?.dataAuthorization?.method).toBe("online_checkbox");
+    expect(await t.run((ctx) => ctx.db.get(ids.clientA))).toEqual(before);
     expect(await t.run(async (ctx) => (await ctx.db.query("clients").collect()).length)).toBe(2);
+    const appointment = (await t.run((ctx) => ctx.db.query("appointments").first()))!;
+    expect(appointment).toMatchObject({ clientId: ids.clientA, contactEmail: "vale@example.com" });
 
-    // An existing email stays.
+    // The team sees it and can save it to the ficha.
+    const detail = await asAna.query(api.appointments.detail, { appointmentId: appointment._id });
+    expect(detail.appointment.contactEmail).toBe("vale@example.com");
+    await asAna.mutation(api.appointments.saveContactEmail, { appointmentId: appointment._id });
+    expect((await t.run((ctx) => ctx.db.get(ids.clientA)))?.email).toBe("vale@example.com");
+    expect((await t.run((ctx) => ctx.db.get(appointment._id)))?.contactEmail).toBeUndefined();
+  });
+
+  test("the request email is used only when the client has none", async () => {
+    const { t, ids, request, asAna, deliveries } = await setup();
+    const confirmations = async () => (await deliveries()).filter((e) => e.subject.includes("está confirmada")).map((e) => e.to);
     await t.run((ctx) => ctx.db.patch(ids.clientA, { email: "laura@example.com" }));
+    await request({ phone: "+573001234567" });
+    const [first] = await t.run((ctx) => ctx.db.query("appointments").collect());
+    await asAna.mutation(api.appointments.confirm, { appointmentId: first._id });
+    expect(await confirmations()).toEqual(["laura@example.com"]);
+
+    await t.run((ctx) => ctx.db.patch(ids.clientA, { email: undefined }));
     await request({ phone: "+573001234567", start: at("11:00") });
-    expect((await t.run((ctx) => ctx.db.get(ids.clientA)))?.email).toBe("laura@example.com");
+    const [, second] = await t.run((ctx) => ctx.db.query("appointments").collect());
+    await asAna.mutation(api.appointments.confirm, { appointmentId: second._id });
+    expect(await confirmations()).toEqual(["laura@example.com", "vale@example.com"]);
+  });
+
+  test("an archived client with the same phone gets a fresh client", async () => {
+    const { t, ids, request } = await setup();
+    await t.run((ctx) => ctx.db.patch(ids.clientA, { isArchived: true }));
+    await request({ phone: "+573001234567" });
+    const appointment = (await t.run((ctx) => ctx.db.query("appointments").first()))!;
+    expect(appointment.clientId).not.toBe(ids.clientA);
+    expect(appointment.contactEmail).toBeUndefined();
+  });
+
+  test("rejects the honeypot field", async () => {
+    const { t, request } = await setup();
+    expect(await errorCode(request({ website: "https://spam.example" }))).toBe("INVALID");
+    expect(await t.run(async (ctx) => (await ctx.db.query("appointments").collect()).length)).toBe(0);
+  });
+
+  test("limits online requests per business to 10 an hour", async () => {
+    const { t, request } = await setup();
+    // A different phone each time, so the per-phone limit does not apply.
+    const starts = ["2030-01-07", "2030-01-08"].flatMap((date) => ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00"].map((time) => at(time, date)));
+    for (let i = 0; i < 10; i++) await request({ phone: `+5731100001${String(i).padStart(2, "0")}`, start: starts[i] });
+    expect(await errorCode(request({ phone: "+573110000199", start: starts[10] }))).toBe("RATE_LIMITED");
+    expect(await t.run(async (ctx) => (await ctx.db.query("appointments").collect()).length)).toBe(10);
+    // The window resets after an hour.
+    vi.setSystemTime(NOW + 61 * 60_000);
+    await expect(request({ phone: "+573110000199", start: starts[10] })).resolves.toBeDefined();
   });
 
   test("assigns the first free professional for 'Cualquiera disponible'", async () => {
@@ -202,7 +270,7 @@ describe("booking.create", () => {
     await request({ start: at("09:00") });
     await request({ start: at("11:00") });
     expect(await errorMessage(request({ start: at("13:00") }))).toBe(
-      "Ya tienes 2 solicitudes pendientes en Alba. Espera a que te confirmen o escríbeles por WhatsApp.",
+      "Ya hay solicitudes pendientes con este número. Espera a que Alba te confirme o escríbele por WhatsApp.",
     );
     await expect(request({ start: at("13:00"), phone: "+573110000009" })).resolves.toBeDefined();
   });

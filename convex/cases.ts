@@ -2,13 +2,14 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
+import type { AppointmentStatus } from "./lib/validators";
 import { followUpsOfCase } from "./followUps";
-import { keyValues } from "./sessions";
+import { keyValues, NOT_PERFORMED_REASON } from "./sessions";
 import { invalid } from "./treatments";
 
 type OrgCtx = QueryCtx & { orgId: Id<"orgs"> };
 
-const UPCOMING = ["scheduled", "requested"];
+const UPCOMING: AppointmentStatus[] = ["scheduled", "requested"];
 
 /** The next appointment booked for a case, if any. */
 async function nextAppointment(ctx: OrgCtx, caseDoc: Doc<"cases">) {
@@ -26,7 +27,7 @@ async function sessionsOf(ctx: OrgCtx, caseId: Id<"cases">) {
     .collect();
 }
 
-/** Casos list. `memberId` keeps cases with at least one session by that professional. */
+/** Casos list. `memberId` keeps cases with at least one closed or postponed session by that professional. */
 export const list = memberQuery({
   args: { status: v.union(v.literal("open"), v.literal("closed"), v.literal("all")), memberId: v.optional(v.id("members")) },
   handler: async (ctx, { status, memberId }) => {
@@ -40,21 +41,40 @@ export const list = memberQuery({
           .collect()),
       );
     }
+
+    // One read each for upcoming appointments and pending follow-ups, grouped by case.
+    const [future, pendingFollowUps] = await Promise.all([
+      ctx.db
+        .query("appointments")
+        .withIndex("by_org_start", (q) => q.eq("orgId", ctx.orgId).gt("start", Date.now()))
+        .collect(),
+      ctx.db
+        .query("followUps")
+        .withIndex("by_org_status_due", (q) => q.eq("orgId", ctx.orgId).eq("status", "pending"))
+        .collect(),
+    ]);
+    const nextStart = new Map<Id<"cases">, number>();
+    for (const a of future) {
+      if (a.caseId && UPCOMING.includes(a.status) && !nextStart.has(a.caseId)) nextStart.set(a.caseId, a.start);
+    }
+    const nextDue = new Map<Id<"cases">, string>();
+    for (const f of pendingFollowUps) {
+      if (f.caseId && !nextDue.has(f.caseId)) nextDue.set(f.caseId, f.dueDate);
+    }
+
+    const clients = new Map<Id<"clients">, Doc<"clients"> | null>();
+    const treatments = new Map<Id<"treatments">, Doc<"treatments"> | null>();
+
     const rows = [];
     for (const c of cases) {
-      const sessions = await sessionsOf(ctx, c._id);
-      if (memberId && !sessions.some((s) => s.memberId === memberId)) continue;
-      const [client, treatment, appointment] = await Promise.all([
-        ctx.db.get(c.clientId),
-        ctx.db.get(c.treatmentId),
-        nextAppointment(ctx, c),
-      ]);
+      if (memberId && !c.memberIds?.includes(memberId)) continue;
+      if (!clients.has(c.clientId)) clients.set(c.clientId, await ctx.db.get(c.clientId));
+      if (!treatments.has(c.treatmentId)) treatments.set(c.treatmentId, await ctx.db.get(c.treatmentId));
+      const client = clients.get(c.clientId);
+      const treatment = treatments.get(c.treatmentId);
       if (!client || client.isArchived) continue;
-      const followUp = appointment
-        ? undefined
-        : (await ctx.db.query("followUps").withIndex("by_client", (q) => q.eq("clientId", c.clientId)).collect())
-            .filter((f) => f.caseId === c._id && f.status === "pending")
-            .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+      const appointmentStart = nextStart.get(c._id);
+      const dueDate = nextDue.get(c._id);
       rows.push({
         _id: c._id,
         status: c.status,
@@ -68,11 +88,12 @@ export const list = memberQuery({
         lastSessionAt: c.lastSessionAt,
         openedAt: c.openedAt,
         closedAt: c.closedAt,
-        next: appointment
-          ? { kind: "appointment" as const, start: appointment.start }
-          : followUp
-            ? { kind: "followUp" as const, dueDate: followUp.dueDate }
-            : null,
+        next:
+          appointmentStart !== undefined
+            ? { kind: "appointment" as const, start: appointmentStart }
+            : dueDate !== undefined
+              ? { kind: "followUp" as const, dueDate }
+              : null,
       });
     }
     return rows.sort((a, b) => (b.lastSessionAt ?? b.openedAt) - (a.lastSessionAt ?? a.openedAt));
@@ -105,6 +126,7 @@ export const get = memberQuery({
         appointmentId: s.appointmentId,
         number: s.number,
         status: s.status,
+        reason: s.reason,
         startedAt: s.startedAt,
         closedAt: s.closedAt,
         memberId: s.memberId,
@@ -112,7 +134,7 @@ export const get = memberQuery({
         keyValues: keyValues(s.procedure),
         notes: s.procedure?.notes,
         evolution: s.intake?.evolution,
-        contraindications: s.status === "postponed" ? s.contraindications?.present : undefined,
+        contraindications: s.status === "postponed" && s.reason !== NOT_PERFORMED_REASON ? s.contraindications?.present : undefined,
         photos: s.photos,
       });
     }

@@ -3,6 +3,15 @@ import { addDaysToDateKey, bogotaDateKey } from "@/convex/lib/time";
 import { formatDate, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+/** Amber chip for a scheduled appointment whose start time passed without an attention. */
+export function NotStartedChip({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex min-h-7 items-center rounded-full bg-amber-soft px-2.5 text-sm font-medium text-amber", className)}>
+      Sin iniciar
+    </span>
+  );
+}
+
 /** "10:30" in Newsreader with a small "a. m." after it. */
 export function TimeText({ ms, className, periodClassName }: { ms: number; className?: string; periodClassName?: string }) {
   const [clock, ...period] = formatTime(ms).split(" ");

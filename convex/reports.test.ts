@@ -2,8 +2,10 @@ import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { bogotaDateKey } from "./lib/time";
-import { at, errorCode, setupOrgs } from "./lib/fixtures.testing";
+import { at, errorCode, setupOrgs, withTestClock } from "./lib/fixtures.testing";
 import { nextMonthKey } from "./reports";
+
+withTestClock();
 
 async function setup() {
   const s = await setupOrgs();
@@ -60,6 +62,15 @@ describe("reports.month", () => {
     const feb = await asAna.query(api.reports.month, { month: "2030-02" });
     expect(feb.income).toBe(50000);
     expect(feb.completed).toBe(1);
+  });
+
+  test("an abono for a later appointment counts as income but not as an attended treatment", async () => {
+    const { asAna, book, pay, ids } = await setup();
+    const february = await book(at("09:00", "2030-02-04"), ids.ana, false);
+    await pay(february, 40000, "nequi", at("10:00", "2030-01-07"));
+    const january = await asAna.query(api.reports.month, { month: "2030-01" });
+    expect(january.income).toBe(40000);
+    expect(january.treatments).toEqual([]);
   });
 
   test("counts clients created in the month", async () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
@@ -103,6 +104,21 @@ export function MemberSelect({
       </SelectContent>
     </Select>
   );
+}
+
+/**
+ * Moves the agenda to `date` after saving something there, so the user sees it.
+ * Returns false when the agenda is not the current page.
+ */
+export function useShowOnAgenda() {
+  const router = useRouter();
+  return (date: string) => {
+    if (window.location.pathname !== "/agenda") return false;
+    const search = new URLSearchParams(window.location.search);
+    search.set("fecha", date);
+    router.replace(`/agenda?${search}`, { scroll: false });
+    return true;
+  };
 }
 
 /** Re-renders every minute; returns the current epoch ms. */

@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { Copy, EllipsisVertical, Power, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { SingleChoice } from "@/components/forms/choice-chips";
 import { ColorPicker } from "@/components/forms/color-picker";
@@ -11,6 +11,7 @@ import { DurationInput } from "@/components/forms/duration-input";
 import { errorMessage } from "@/components/forms/error-message";
 import { FormBuilder, formFieldsError } from "@/components/forms/form-builder";
 import { StringListEditor } from "@/components/forms/string-list-editor";
+import { useUnsavedChangesGuard } from "@/components/forms/use-unsaved-changes-guard";
 import { MoneyInput } from "@/components/shared/money-input";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
@@ -124,12 +125,7 @@ function Editor({ treatment }: { treatment: Treatment }) {
     if (JSON.stringify(draft) === savedVersion) setDraft(toDraft(treatment));
   }
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  const leaveDialog = useUnsavedChangesGuard(dirty);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const template = findTemplate(treatment.templateKey);
@@ -239,15 +235,17 @@ function Editor({ treatment }: { treatment: Treatment }) {
         </Tabs>
 
         {isAdmin && dirty && (
-          <div className="sticky bottom-[calc(var(--tabbar-height)+env(safe-area-inset-bottom)+12px)] flex gap-2 lg:bottom-6">
-            <Button size="lg" className="shadow-float" disabled={saving} onClick={() => void save()}>
+          // In flow at the end of the page, so it never covers content; the negative margin drops the page's bottom padding.
+          <div className="sticky bottom-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-6 flex gap-2 border-t border-line bg-surface px-4 py-3 lg:bottom-0 lg:-mx-8 lg:-mb-8 lg:px-8 [&>*]:flex-1 sm:[&>*]:flex-none">
+            <Button size="lg" disabled={saving} onClick={() => void save()}>
               {saving ? "Guardando…" : "Guardar tratamiento"}
             </Button>
-            <Button size="lg" variant="secondary" className="shadow-float" disabled={saving} onClick={() => setDraft(toDraft(treatment))}>
-              Descartar
+            <Button size="lg" variant="secondary" disabled={saving} onClick={() => setDraft(toDraft(treatment))}>
+              Descartar cambios
             </Button>
           </div>
         )}
+        {leaveDialog}
       </PageBody>
     </>
   );

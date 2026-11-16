@@ -17,6 +17,8 @@ export type Details = {
   email: string;
   note: string;
   authorized: boolean;
+  /** Honeypot: hidden from people, so only bots fill it in. */
+  website: string;
 };
 
 type Errors = Partial<Record<keyof Details, string>>;
@@ -49,6 +51,7 @@ export function DetailsForm({
     email: "",
     note: "",
     authorized: false,
+    website: "",
   });
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function DetailsForm({
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+    <form onSubmit={submit} noValidate className="relative flex flex-col gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <Field id="booking-firstName" label="Nombre" error={errors.firstName}>
           <Input
@@ -128,33 +131,44 @@ export function DetailsForm({
         />
       </Field>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-start gap-3">
+      <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label htmlFor="booking-website">Sitio web</label>
+        <input
+          id="booking-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={details.website}
+          onChange={(e) => set("website", e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {/* The whole row toggles the box; the policy link sits apart so a tap on the sentence never leaves the page. */}
+        <label htmlFor="booking-authorized" className="flex min-h-11 cursor-pointer items-start gap-3 py-2 text-base leading-normal">
           <Checkbox
             id="booking-authorized"
             checked={details.authorized}
             onCheckedChange={(checked) => set("authorized", checked === true)}
             aria-invalid={!!errors.authorized}
             aria-describedby={errors.authorized ? "booking-authorized-error" : undefined}
-            className="mt-0.5"
+            className="mt-0.5 size-6"
           />
-          <Label htmlFor="booking-authorized" className="block text-base leading-normal font-normal">
-            Autorizo el tratamiento de mis datos personales según la{" "}
-            <Link
-              href={`/reservar/${slug}/privacidad`}
-              target="_blank"
-              className="text-plum underline underline-offset-4 hover:text-plum-hover"
-            >
-              política de privacidad de {orgName}
-            </Link>
-            .
-          </Label>
-        </div>
+          <span>Autorizo a {orgName} a tratar mis datos personales según su política de privacidad.</span>
+        </label>
         {errors.authorized && (
-          <p id="booking-authorized-error" className="pl-8 text-sm text-rose">
+          <p id="booking-authorized-error" className="pl-9 text-sm text-rose">
             {errors.authorized}
           </p>
         )}
+        <Link
+          href={`/reservar/${slug}/privacidad`}
+          target="_blank"
+          className="inline-flex min-h-11 items-center self-start pl-9 text-sm text-plum underline underline-offset-4 hover:text-plum-hover"
+        >
+          Leer la política de privacidad
+        </Link>
       </div>
 
       {formError && (

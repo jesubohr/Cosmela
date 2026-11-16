@@ -10,21 +10,23 @@ import { useSignOut } from "@/components/shell/use-sign-out";
 import { useViewer } from "@/components/shell/viewer";
 import { cn } from "@/lib/utils";
 
-type Section = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean };
+type Section = { href: string; label: string; icon: LucideIcon; adminOnly?: boolean; salonOnly?: boolean };
 
 export const SETTINGS_SECTIONS: Section[] = [
   { href: "/configuracion/perfil", label: "Mi perfil", icon: UserRound },
   { href: "/configuracion/negocio", label: "Negocio", icon: Store, adminOnly: true },
   { href: "/configuracion/reservas", label: "Reservas en línea", icon: CalendarCheck, adminOnly: true },
   { href: "/configuracion/recordatorios", label: "Recordatorios", icon: Bell, adminOnly: true },
-  { href: "/configuracion/equipo", label: "Equipo", icon: UsersRound, adminOnly: true },
+  { href: "/configuracion/equipo", label: "Equipo", icon: UsersRound, adminOnly: true, salonOnly: true },
   { href: "/configuracion/plan", label: "Plan", icon: CreditCard },
   { href: "/configuracion/datos", label: "Datos", icon: Database },
 ];
 
 function useSections() {
-  const isAdmin = useViewer().member.role === "admin";
-  return SETTINGS_SECTIONS.filter((section) => !section.adminOnly || isAdmin);
+  const { member, org } = useViewer();
+  return SETTINGS_SECTIONS.filter(
+    (section) => (!section.adminOnly || member.role === "admin") && (!section.salonOnly || org.kind === "salon"),
+  );
 }
 
 export type SettingsPageProps = {

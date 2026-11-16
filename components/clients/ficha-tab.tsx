@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ClientDoc } from "@/convex/clients";
-import { FichaForm, fichaFromClient, useSaveFicha, type FichaErrors } from "./ficha-form";
+import { FichaForm, fichaFromClient, useSaveFicha, withoutFixedErrors, type FichaErrors, type FichaValue } from "./ficha-form";
 import { FichaSummary } from "./ficha-summary";
 import { SheetBar } from "./sheet-bar";
 
@@ -30,6 +30,11 @@ function FichaEditor({ client, onClose }: { client: ClientDoc; onClose: () => vo
   const [errors, setErrors] = useState<FichaErrors>({});
   const [pending, setPending] = useState(false);
 
+  function change(next: FichaValue) {
+    setErrors((current) => withoutFixedErrors(current, ficha, next));
+    setFicha(next);
+  }
+
   async function save() {
     setPending(true);
     const result = await saveFicha({ clientId: client._id, value: ficha });
@@ -51,7 +56,7 @@ function FichaEditor({ client, onClose }: { client: ClientDoc; onClose: () => vo
       }}
       className="flex max-w-3xl flex-col gap-8"
     >
-      <FichaForm value={ficha} onChange={setFicha} errors={errors} />
+      <FichaForm value={ficha} onChange={change} errors={errors} />
       <SheetBar>
         <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
           Cancelar

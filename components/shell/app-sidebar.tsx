@@ -24,14 +24,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ROLE_LABELS } from "@/lib/constants";
-import { isActive, PRIMARY_NAV, SECONDARY_NAV, type NavItem } from "./nav";
+import { isActive, PRIMARY_NAV, SECONDARY_NAV, visibleFor, type NavItem } from "./nav";
 import { useSignOut } from "./use-sign-out";
 import type { Viewer } from "./viewer";
 
 /** Desktop navigation (≥ 1024 px): 240 px, collapsible to icons. `viewer` is undefined while loading. */
 export function AppSidebar({ viewer }: { viewer: Viewer | undefined }) {
-  const isAdmin = viewer?.member.role === "admin";
-  const visible = (items: NavItem[]) => items.filter((item) => !item.adminOnly || isAdmin);
+  const visible = (items: NavItem[]) => visibleFor(items, { role: viewer?.member.role, kind: viewer?.org.kind });
 
   return (
     <Sidebar collapsible="icon">

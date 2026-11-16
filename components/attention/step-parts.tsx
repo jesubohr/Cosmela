@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import type { ReactNode } from "react";
 import { SingleChips } from "@/components/clients/chips";
@@ -115,13 +114,6 @@ export function YesNo({
       />
     </div>
   );
-}
-
-/** Signed URLs (`{ [key]: url }`) for R2 keys of the org; `{}` while loading or without keys. */
-export function useFileUrls(keys: (string | undefined)[]) {
-  const present = keys.filter((key): key is string => Boolean(key));
-  const urls = useQuery(api.files.getUrls, present.length > 0 ? { keys: present } : "skip");
-  return urls ?? {};
 }
 
 export { errorText } from "@/components/agenda/parts";

@@ -30,17 +30,20 @@ export function PaymentForm({ appointmentId, onDone }: { appointmentId: Id<"appo
     );
   }
   const balance = detail.appointment.price - detail.appointment.paidTotal;
-  return <Fields appointmentId={appointmentId} balance={balance} treatmentName={detail.treatment.name} onDone={onDone} />;
+  const clientName = `${detail.client.firstName} ${detail.client.lastName}`.trim();
+  return <Fields appointmentId={appointmentId} balance={balance} clientName={clientName} treatmentName={detail.treatment.name} onDone={onDone} />;
 }
 
 function Fields({
   appointmentId,
   balance,
+  clientName,
   treatmentName,
   onDone,
 }: {
   appointmentId: Id<"appointments">;
   balance: number;
+  clientName: string;
   treatmentName: string;
   onDone: () => void;
 }) {
@@ -75,9 +78,13 @@ function Fields({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-      <p className="text-ink-soft">
-        {treatmentName}. Saldo: <span className="font-medium text-ink tabular-nums">{formatMoney(balance)}</span>
-      </p>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[1.125rem] font-medium">{clientName}</p>
+        <p className="text-ink-soft">{treatmentName}</p>
+        <p className="text-ink-soft">
+          Saldo <span className="font-medium text-ink tabular-nums">{formatMoney(balance)}</span>
+        </p>
+      </div>
       <FieldBlock label="Valor" htmlFor={ids.amount}>
         <MoneyInput id={ids.amount} value={amount} onChange={setAmount} className="max-w-48" />
       </FieldBlock>

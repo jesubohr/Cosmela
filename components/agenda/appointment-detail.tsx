@@ -30,6 +30,7 @@ export function AppointmentDetail({ appointmentId, actions }: { appointmentId: I
   const detail = useQuery(api.appointments.detail, { appointmentId });
   const confirm = useMutation(api.appointments.confirm);
   const markNoShow = useMutation(api.appointments.markNoShow);
+  const saveContactEmail = useMutation(api.appointments.saveContactEmail);
   const now = useNow();
   const [pending, setPending] = useState(false);
 
@@ -82,6 +83,24 @@ export function AppointmentDetail({ appointmentId, actions }: { appointmentId: I
         <p className="text-ink-soft tabular-nums">{formatPhone(client.phone)}</p>
         <AlertChips client={client} />
       </div>
+
+      {appointment.contactEmail && appointment.contactEmail !== client.email && (
+        <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm text-ink-soft">Correo de la solicitud</p>
+            <p className="[overflow-wrap:anywhere]">{appointment.contactEmail}</p>
+            {client.email && <p className="text-sm text-ink-soft">En la ficha: {client.email}</p>}
+          </div>
+          <Button
+            variant="secondary"
+            className="self-start"
+            disabled={pending}
+            onClick={() => void run(() => saveContactEmail({ appointmentId }), "Correo guardado en la ficha")}
+          >
+            Guardar en la ficha
+          </Button>
+        </div>
+      )}
 
       <dl className="divide-y divide-line rounded-xl border border-line bg-surface">
         <Row label="Tratamiento">

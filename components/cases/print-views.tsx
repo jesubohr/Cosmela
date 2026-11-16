@@ -2,14 +2,14 @@
 
 import { useQuery } from "convex/react";
 import type { ReactNode } from "react";
-import { useFileUrls } from "@/components/attention/step-parts";
+import { useSignedUrls } from "@/components/shared/use-signed-urls";
 import { FichaSummary } from "@/components/clients/ficha-summary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { consentDate, renderDocument } from "@/convex/lib/consent";
 import { AUTHORIZATION_METHOD_LABELS } from "@/lib/constants";
-import { formatDateTime, formatShortDate, formatTime } from "@/lib/format";
+import { formatDateTime, formatShortDate, formatTime, sessionLabel } from "@/lib/format";
 import { reasonsText } from "./labels";
 import { PrintFrame } from "./print-frame";
 import { SessionRecord } from "./session-record";
@@ -49,7 +49,7 @@ export function PrintSession({ sessionId }: { sessionId: Id<"sessions"> }) {
         items={[
           ["Cliente", client.name],
           ["Documento", renderDocument(client.documentType, client.documentNumber)],
-          ["Tratamiento", `${treatment.name}, sesión ${session.number}`],
+          ["Tratamiento", `${treatment.name}, ${sessionLabel(session).toLowerCase()}`],
           ...(motivo ? [["Motivo de consulta", motivo] as [string, ReactNode]] : []),
           ["Fecha", consentDate(session.closedAt ?? session.startedAt)],
           ["Profesional", member.title ? `${member.name}, ${member.title.toLowerCase()}` : member.name],
@@ -80,7 +80,7 @@ export function PrintFicha({ clientId }: { clientId: Id<"clients"> }) {
   const client = useQuery(api.clients.get, { clientId });
   const org = useQuery(api.orgs.get);
   const sessions = useQuery(api.sessions.listByClient, { clientId });
-  const signature = useFileUrls([client?.dataAuthorization?.signatureKey])[client?.dataAuthorization?.signatureKey ?? ""];
+  const signature = useSignedUrls([client?.dataAuthorization?.signatureKey])[client?.dataAuthorization?.signatureKey ?? ""];
   if (!client || !org || !sessions) return <Loading />;
   const authorization = client.dataAuthorization;
   const done = sessions.filter((s) => s.status !== "draft");
@@ -113,7 +113,7 @@ export function PrintFicha({ clientId }: { clientId: Id<"clients"> }) {
             {done.map((s) => (
               <li key={s._id} className="flex flex-col px-4 py-2">
                 <span>
-                  {formatShortDate(s.startedAt)}, {s.treatmentName}, sesión {s.number}
+                  {formatShortDate(s.startedAt)}, {s.treatmentName}, {sessionLabel(s).toLowerCase()}
                   {s.status === "postponed" && ", pospuesta"}
                 </span>
                 <span className="text-sm text-ink-soft">Con {s.memberName}</span>

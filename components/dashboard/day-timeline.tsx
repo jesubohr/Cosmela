@@ -8,7 +8,7 @@ import type { StaffColor } from "@/convex/lib/validators";
 import { STAFF_COLORS, TIME_BLOCK_KIND_LABELS } from "@/lib/constants";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { TimeText } from "./parts";
+import { NotStartedChip, TimeText } from "./parts";
 import type { DayAppointment, DayBlock } from "./hoy-view";
 
 type Item = { kind: "appointment"; start: number; appointment: DayAppointment } | { kind: "block"; start: number; block: DayBlock };
@@ -41,7 +41,7 @@ export function DayTimeline({
     return (
       <li key={item.kind === "appointment" ? item.appointment._id : item.block._id}>
         {item.kind === "appointment" ? (
-          <AppointmentRow appointment={item.appointment} member={member} onOpen={() => openSheet({ kind: "detail", appointmentId: item.appointment._id })} />
+          <AppointmentRow appointment={item.appointment} member={member} notStarted={item.appointment.status === "scheduled" && item.appointment.start <= now} onOpen={() => openSheet({ kind: "detail", appointmentId: item.appointment._id })} />
         ) : (
           <BlockRow block={item.block} member={member} onOpen={() => openSheet({ kind: "block", block: item.block })} />
         )}
@@ -66,10 +66,12 @@ const rowClass = "flex w-full items-stretch gap-3 rounded-lg py-2.5 text-left ho
 function AppointmentRow({
   appointment,
   member,
+  notStarted,
   onOpen,
 }: {
   appointment: DayAppointment;
   member?: { name: string; color: StaffColor };
+  notStarted: boolean;
   onOpen: () => void;
 }) {
   const muted = appointment.status === "completed" || appointment.status === "no_show";
@@ -82,11 +84,12 @@ function AppointmentRow({
         style={{ backgroundColor: STAFF_COLORS[appointment.color].strong, borderColor: STAFF_COLORS[appointment.color].strong }}
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className={cn("truncate font-medium", muted && "text-ink-soft", appointment.status === "no_show" && "line-through")}>
+        <span className={cn("line-clamp-2 font-medium", muted && "text-ink-soft", appointment.status === "no_show" && "line-through")}>
           {appointment.client.name}
         </span>
-        <span className="truncate text-ink-soft">{appointment.treatmentName}</span>
+        <span className="line-clamp-2 text-ink-soft">{appointment.treatmentName}</span>
         {appointment.status !== "scheduled" && <StatusChip status={appointment.status} className="mt-1 self-start" />}
+        {notStarted && <NotStartedChip className="mt-1 self-start" />}
       </span>
       {member && (
         <span className="self-center" title={member.name}>
@@ -108,7 +111,7 @@ function BlockRow({ block, member, onOpen }: { block: DayBlock; member?: { name:
       )}
       <span aria-hidden className="w-1 shrink-0 rounded-full" style={{ backgroundImage: HATCH, backgroundColor: "var(--line)" }} />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate font-medium text-ink-soft">{block.title || `Bloqueo ${TIME_BLOCK_KIND_LABELS[block.kind].toLowerCase()}`}</span>
+        <span className="line-clamp-2 font-medium text-ink-soft">{block.title || `Bloqueo ${TIME_BLOCK_KIND_LABELS[block.kind].toLowerCase()}`}</span>
         {!block.allDay && <span className="text-ink-soft">Hasta las {formatTime(block.end)}</span>}
       </span>
       {member && (

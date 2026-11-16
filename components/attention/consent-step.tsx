@@ -7,7 +7,7 @@ import { Chip, SingleChips } from "@/components/clients/chips";
 import { useUploadFile } from "@/components/shared/photo-upload";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { SignaturePad, type SignaturePadHandle } from "@/components/shared/signature-pad";
-import { useViewer } from "@/components/shell/viewer";
+import { useSignedUrl } from "@/components/shared/use-signed-urls";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { isMinor, renderConsentText, renderDocument } from "@/convex/lib/consent
 import { DOCUMENT_TYPES, PHOTO_USES, type DocumentType, type PhotoUse } from "@/convex/lib/validators";
 import { DOCUMENT_TYPE_LABELS, PHOTO_USE_LABELS } from "@/lib/constants";
 import { ConsentDocument } from "./consent-document";
-import { errorText, StepBody, StepFooter, StepSection, useFileUrls, type StepProps } from "./step-parts";
+import { errorText, StepBody, StepFooter, StepSection, type StepProps } from "./step-parts";
 
 const RELATIONSHIPS = ["Madre", "Padre", "Otro"] as const;
 
@@ -43,8 +43,8 @@ export function ConsentStep(props: StepProps) {
 }
 
 function SignForm({ data, onBack, onDone }: StepProps) {
-  const { session, client, treatment, member, org } = data;
-  const viewer = useViewer();
+  // The member running the attention signs as the professional.
+  const { session, client, treatment, signer, org } = data;
   const upload = useUploadFile();
   const sign = useMutation(api.sessions.signConsent);
   const attach = useMutation(api.files.attach);
@@ -54,8 +54,7 @@ function SignForm({ data, onBack, onDone }: StepProps) {
 
   const minor = isMinor(client.birthDate);
   const needsAuthorization = !client.dataAuthorization;
-  const isOwnSession = viewer.member._id === member._id;
-  const savedSignatureUrl = useFileUrls([member.signatureKey])[member.signatureKey ?? ""];
+  const savedSignatureUrl = useSignedUrl(signer.signatureKey);
 
   const [docType, setDocType] = useState<DocumentType | undefined>(minor ? "TI" : "CC");
   const [docNumber, setDocNumber] = useState("");
@@ -66,7 +65,7 @@ function SignForm({ data, onBack, onDone }: StepProps) {
   const [photoUse, setPhotoUse] = useState<PhotoUse | undefined>();
   const [authorize, setAuthorize] = useState(false);
   const [clientSigned, setClientSigned] = useState(false);
-  const [redrawPro, setRedrawPro] = useState(!member.signatureKey);
+  const [redrawPro, setRedrawPro] = useState(!signer.signatureKey);
   const [proSigned, setProSigned] = useState(false);
   const [saveToProfile, setSaveToProfile] = useState(true);
   const [policyOpen, setPolicyOpen] = useState(false);
@@ -99,25 +98,34 @@ function SignForm({ data, onBack, onDone }: StepProps) {
               ? "Falta la firma del acudiente."
               : `Falta la firma de ${client.firstName}.`
             : redrawPro && !proSigned
-              ? isOwnSession
-                ? "Falta tu firma."
-                : `Falta la firma de ${member.name}.`
+              ? "Falta tu firma."
               : null;
 
   async function submit() {
     if (!photoUse) return;
     setPending(true);
     setError(null);
+    let clientSignatureKey: string;
+    let professionalSignatureKey: string | undefined;
     try {
       const clientBlob = await clientPad.current?.toBlob();
       if (!clientBlob) throw new Error("empty signature");
-      const clientSignatureKey = await upload(clientBlob, "signature");
-      let professionalSignatureKey: string | undefined;
+      clientSignatureKey = await upload(clientBlob, "signature");
       if (redrawPro) {
         const proBlob = await proPad.current?.toBlob();
         if (!proBlob) throw new Error("empty signature");
         professionalSignatureKey = await upload(proBlob, "signature");
-        if (isOwnSession && saveToProfile) await attach({ key: professionalSignatureKey, target: { kind: "memberSignature" } });
+      }
+    } catch (err) {
+      // Storage failures (e.g. the bucket rejects this site's origin) are not connection problems.
+      console.error("Signature upload failed", err);
+      setError("No pudimos guardar las firmas. Intenta de nuevo; si sigue, escríbenos.");
+      setPending(false);
+      return;
+    }
+    try {
+      if (professionalSignatureKey && !signer.signatureKey && saveToProfile) {
+        await attach({ key: professionalSignatureKey, target: { kind: "memberSignature" } });
       }
       await sign({
         sessionId: session._id,
@@ -212,7 +220,7 @@ function SignForm({ data, onBack, onDone }: StepProps) {
           <StepSection title="Autorización de tratamiento de datos">
             <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
               <p className="max-w-[70ch]">
-                {org.name} guarda tus datos de contacto y de salud, tus fotos y tu firma para atenderte y llevar tu historia. Los datos de salud son sensibles: no estás obligado a darlos. Puedes conocer, corregir o pedir que se eliminen tus datos cuando quieras.
+                {org.name} guarda tus datos de contacto y de salud, tus fotos y tu firma para atenderte y llevar tu historia. Los datos de salud son sensibles y no tienes la obligación de darlos. Puedes conocer, corregir o pedir que se eliminen tus datos cuando quieras.
               </p>
               <Button variant="link" className="h-auto self-start p-0" onClick={() => setPolicyOpen(true)}>
                 Leer la política completa
@@ -231,11 +239,11 @@ function SignForm({ data, onBack, onDone }: StepProps) {
           <SignaturePad ref={clientPad} label={signerLabel} onChange={(empty) => setClientSigned(!empty)} disabled={pending} />
         </StepSection>
 
-        <StepSection title={isOwnSession ? "Tu firma" : `Firma de ${member.name}`}>
+        <StepSection title="Tu firma">
           {redrawPro ? (
             <div className="flex flex-col gap-3">
-              <SignaturePad ref={proPad} label={isOwnSession ? "Tu firma" : `Firma de ${member.name}`} onChange={(empty) => setProSigned(!empty)} disabled={pending} />
-              {isOwnSession && !member.signatureKey && (
+              <SignaturePad ref={proPad} label="Tu firma" onChange={(empty) => setProSigned(!empty)} disabled={pending} />
+              {!signer.signatureKey && (
                 <div className="flex items-center gap-3">
                   <Checkbox id={ids.saveSignature} checked={saveToProfile} onCheckedChange={(value) => setSaveToProfile(value === true)} className="size-6" />
                   <Label htmlFor={ids.saveSignature} className="text-base font-normal">
@@ -249,7 +257,7 @@ function SignForm({ data, onBack, onDone }: StepProps) {
               <div className="flex h-28 items-center rounded-xl border border-line bg-surface px-4">
                 {savedSignatureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-                  <img src={savedSignatureUrl} alt={`Firma guardada de ${member.name}`} className="max-h-24 max-w-full object-contain" />
+                  <img src={savedSignatureUrl} alt={`Firma guardada de ${signer.name}`} className="max-h-24 max-w-full object-contain" />
                 )}
               </div>
               <p className="text-sm text-ink-soft">Se usa la firma guardada en el perfil.</p>

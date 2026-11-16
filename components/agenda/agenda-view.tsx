@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Chip } from "@/components/clients/chips";
 import { InitialsAvatar } from "@/components/shared/initials-avatar";
 import { useViewer } from "@/components/shell/viewer";
@@ -73,21 +73,6 @@ export function AgendaView() {
     router.replace(`${pathname}?${search}`, { scroll: false });
   }
 
-  // "+" menu and deep links: ?accion=nueva-cita|atencion-sin-cita|bloquear, ?cliente=, ?cita=
-  useEffect(() => {
-    const action = params.get("accion");
-    const clientId = (params.get("cliente") ?? undefined) as Id<"clients"> | undefined;
-    const appointmentId = params.get("cita") as Id<"appointments"> | null;
-    if (!action && !appointmentId) return;
-    if (action === "nueva-cita") openSheet({ kind: "create", prefill: { clientId, date } });
-    else if (action === "atencion-sin-cita") openSheet({ kind: "walkIn", clientId });
-    else if (action === "bloquear") openSheet({ kind: "block", prefill: { date } });
-    else if (appointmentId) openSheet({ kind: "detail", appointmentId });
-    const search = new URLSearchParams(params);
-    for (const key of ["accion", "cliente", "cita"]) search.delete(key);
-    router.replace(search.size ? `${pathname}?${search}` : pathname, { scroll: false });
-  }, [params, openSheet, router, pathname, date]);
-
   const range = useMemo(() => {
     if (view === "dia") return { days: [date], start: dayStart(date), end: dayStart(addDays(date, 1)) };
     if (view === "semana") {
@@ -127,14 +112,18 @@ export function AgendaView() {
           <Button variant="ghost" size="icon" aria-label="Siguiente" onClick={() => step(1)}>
             <ChevronRight strokeWidth={1.75} />
           </Button>
-          <Button variant="secondary" onClick={() => navigate({ fecha: today })} disabled={date === today} className="ml-1">
-            Hoy
-          </Button>
+          {/* Phones only show "Hoy" when it does something, to keep the controls on one row. */}
+          {(!isPhone || date !== today) && (
+            <Button variant="secondary" onClick={() => navigate({ fecha: today })} disabled={date === today} className="ml-1">
+              Hoy
+            </Button>
+          )}
         </div>
-        <Segmented value={view} onChange={(vista) => navigate({ vista })} />
+        {!isPhone && <Segmented value={view} onChange={(vista) => navigate({ vista })} />}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        {isPhone && <Segmented value={view} onChange={(vista) => navigate({ vista })} compact />}
         {isSalon && !singleMemberDay && (
           <Chip selected={selected === "all"} aria-pressed={selected === "all"} onClick={() => setMemberFilter("all")} className="shrink-0">
             Todo el equipo
@@ -263,11 +252,8 @@ function GridForView({
           date,
           memberId: selected === "all" ? undefined : selected,
           header:
-            view === "dia" ? (
-              <span className="font-medium text-ink-soft">
-                {selected === "all" ? "Todo el equipo" : visibleMembers[0]?.name}
-              </span>
-            ) : (
+            // The member chips already say whose day it is.
+            view === "dia" ? null : (
               <span className="flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1.5">
                 <span className="text-sm text-ink-soft">{short.weekday}</span>
                 <span
@@ -377,9 +363,13 @@ function DatePicker({ title, value, onChange }: { title: string; value: string; 
   );
 }
 
-function Segmented({ value, onChange }: { value: View; onChange: (value: View) => void }) {
+function Segmented({ value, onChange, compact }: { value: View; onChange: (value: View) => void; compact?: boolean }) {
   return (
-    <div role="radiogroup" aria-label="Vista" className="flex rounded-[0.75rem] border border-line bg-porcelain p-1">
+    <div
+      role="radiogroup"
+      aria-label="Vista"
+      className={cn("flex shrink-0 rounded-[0.75rem] border border-line bg-porcelain", compact ? "p-0.5" : "p-1")}
+    >
       {VIEWS.map((option) => (
         <button
           key={option.value}
@@ -388,7 +378,8 @@ function Segmented({ value, onChange }: { value: View; onChange: (value: View) =
           aria-checked={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "min-h-11 flex-1 rounded-lg px-4 text-base font-medium transition-colors lg:flex-none",
+            "rounded-lg text-base font-medium transition-colors",
+            compact ? "min-h-10 px-3" : "min-h-11 flex-1 px-4 lg:flex-none",
             value === option.value ? "bg-surface text-ink shadow-[0_1px_2px_rgb(42_33_49/0.08)]" : "text-ink-soft hover:text-ink",
           )}
         >

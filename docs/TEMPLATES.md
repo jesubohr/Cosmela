@@ -55,7 +55,7 @@ Posibles riesgos y reacciones: {risks}
 Puedo retirar este consentimiento en cualquier momento antes de iniciar el procedimiento.
 ```
 
-Rendering rule for `{documento}`: "cédula de ciudadanía 1.023.456.789" (type label + formatted number). If the client has no document, the consent step asks for it (optional); if still empty, render "documento no registrado".
+Rendering rule for `{documento}`: "cédula de ciudadanía 1.023.456.789" (type label + formatted number). If the client has no document, the consent step asks for it (optional); if still empty, the ", con {documento}" clause is dropped ("Yo, {cliente}, autorizo…"); any other use renders "documento no registrado".
 
 ## Field notation
 
@@ -103,7 +103,7 @@ Common closing fields (append to every template):
   - `Número de capas` — `number` [capas]*
   - `Tiempo de exposición` — `number` [min]*
   - `Neutralización` — `yesno`*
-  - `Nivel de escarcha (frost)` — `single` [Ninguno, Nivel I, Nivel II, Nivel III]
+  - `Nivel de escarcha` — `single` [Ninguno, Nivel I, Nivel II, Nivel III]
   - common closing fields
 
 ## 3. Hidrafacial

@@ -11,6 +11,19 @@ export function money(amount: number) {
 
 export type PaymentInput = { amount: number; method: PaymentMethod; paidAt: number; note?: string };
 
+/** A completed appointment that still owes money ("saldo pendiente"). */
+export function owesBalance(appointment: Pick<Doc<"appointments">, "status" | "price" | "paidTotal">) {
+  return appointment.status === "completed" && appointment.price > appointment.paidTotal;
+}
+
+/** Recomputes `hasBalance` after any change to an appointment's status, price, or payments. */
+export async function syncBalance(ctx: MutationCtx, appointmentId: Id<"appointments">) {
+  const appointment = await ctx.db.get(appointmentId);
+  if (!appointment) return;
+  const hasBalance = owesBalance(appointment);
+  if (Boolean(appointment.hasBalance) !== hasBalance) await ctx.db.patch(appointmentId, { hasBalance });
+}
+
 /** Inserts a payment and keeps `appointment.paidTotal` in step. Used by `record` and by appointment create (abono). */
 export async function addPayment(
   ctx: MutationCtx & { orgId: Id<"orgs">; member: Doc<"members"> },
@@ -45,6 +58,7 @@ export async function addPayment(
     recordedBy: ctx.member._id,
   });
   await ctx.db.patch(appointment._id, { paidTotal: appointment.paidTotal + amount });
+  await syncBalance(ctx, appointment._id);
   return paymentId;
 }
 
@@ -70,6 +84,7 @@ export const remove = memberMutation({
     const appointment = await getOwned(ctx, "appointments", payment.appointmentId);
     await ctx.db.delete(paymentId);
     await ctx.db.patch(appointment._id, { paidTotal: Math.max(0, appointment.paidTotal - payment.amount) });
+    await syncBalance(ctx, appointment._id);
   },
 });
 
@@ -96,7 +111,11 @@ export const listByAppointment = memberQuery({
   },
 });
 
-/** Pagos tab: the client's payments (newest first) and the appointments that still owe money. */
+/**
+ * Pagos tab: the client's payments (newest first) and the attended appointments that
+ * still owe money (the same rule as "Saldo pendiente" in Resumen). Abonos for appointments
+ * that have not happened are credit, not debt (see `clients.summary`).
+ */
 export const listByClient = memberQuery({
   args: { clientId: v.id("clients") },
   handler: async (ctx, { clientId }) => {
@@ -124,8 +143,7 @@ export const listByClient = memberQuery({
 
     const owing = [];
     for (const appointment of appointments.sort((a, b) => b.start - a.start)) {
-      const balance = appointment.price - appointment.paidTotal;
-      if (balance <= 0 || appointment.status === "cancelled") continue;
+      if (!owesBalance(appointment)) continue;
       owing.push({
         _id: appointment._id,
         start: appointment.start,

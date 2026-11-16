@@ -3,7 +3,6 @@
 import { useMutation } from "convex/react";
 import { CalendarCheck, Check, Plus } from "lucide-react";
 import { useEffect, useId, useState } from "react";
-import { toast } from "sonner";
 import { AppointmentForm } from "@/components/agenda/appointment-form";
 import { Chip, SingleChips } from "@/components/clients/chips";
 import { MoneyInput } from "@/components/shared/money-input";
@@ -44,7 +43,7 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
   const [recommended, setRecommended] = useState<boolean | undefined>(session.followUp?.recommended);
   const [inDays, setInDays] = useState<number | undefined>(session.followUp?.inDays ?? treatment.followUpDays ?? 30);
   const [followNote, setFollowNote] = useState(session.followUp?.note ?? "");
-  const [reminder, setReminder] = useState(false);
+  const [followMode, setFollowMode] = useState<"book" | "reminder" | undefined>();
   const [booking, setBooking] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +66,11 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
               ? "Elige si recomiendas seguimiento."
               : recommended && !inDays
                 ? "Escribe en cuántos días recomiendas el seguimiento."
-                : recommended && !nextAppointment && !reminder
+                : recommended && !nextAppointment && !followMode
                   ? "Elige «Agendar ahora» o «Crear recordatorio»."
-                  : null;
+                  : recommended && !nextAppointment && followMode === "book"
+                    ? "Agenda la próxima cita o elige «Crear recordatorio»."
+                    : null;
 
   useEffect(() => {
     registerDraft(() => saveClosing({ sessionId: session._id, aftercare, followUp }));
@@ -92,11 +93,10 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
         sessionId: session._id,
         aftercare,
         followUp,
-        reminder: Boolean(recommended && reminder && !nextAppointment),
+        reminder: Boolean(recommended && followMode === "reminder" && !nextAppointment),
         price,
         payment: balance > 0 && payNow && method ? { amount: amountDue, method } : undefined,
       });
-      toast.success("Atención finalizada");
     } catch (err) {
       setError(errorText(err));
       setPending(false);
@@ -257,20 +257,26 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
                   Próxima cita: {formatDateTime(nextAppointment.start)}
                 </p>
               ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button variant="secondary" size="lg" onClick={() => setBooking(true)} disabled={!inDays}>
-                    Agendar ahora
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    aria-pressed={reminder}
-                    onClick={() => setReminder((value) => !value)}
-                    className={cn(reminder && "border-plum/30 bg-lilac text-plum hover:bg-lilac")}
-                  >
-                    {reminder && <Check />}
-                    Crear recordatorio
-                  </Button>
+                <div className="flex flex-col gap-3">
+                  <div role="radiogroup" aria-label="Seguimiento" className="grid grid-cols-2 gap-2">
+                    <Chip role="radio" aria-checked={followMode === "book"} selected={followMode === "book"} onClick={() => setFollowMode("book")} className="min-h-12 justify-center">
+                      Agendar ahora
+                    </Chip>
+                    <Chip
+                      role="radio"
+                      aria-checked={followMode === "reminder"}
+                      selected={followMode === "reminder"}
+                      onClick={() => setFollowMode("reminder")}
+                      className="min-h-12 justify-center"
+                    >
+                      Crear recordatorio
+                    </Chip>
+                  </div>
+                  {followMode === "book" && (
+                    <Button variant="secondary" size="lg" className="self-start" onClick={() => setBooking(true)} disabled={!inDays}>
+                      Elegir día y hora
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { X } from "lucide-react";
+import { Ellipsis, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -16,6 +17,7 @@ import { AssessmentStep } from "./assessment-step";
 import { ClosingStep } from "./closing-step";
 import { ConsentStep } from "./consent-step";
 import { ContraindicationsStep } from "./contraindications-step";
+import { DiscardAttentionDialog } from "./discard-dialog";
 import { FichaStep } from "./ficha-step";
 import { BlockedScreen, PostponedScreen, SuccessScreen } from "./finished-screens";
 import { ProcedureStep } from "./procedure-step";
@@ -38,16 +40,18 @@ export function AttentionFlow({ appointmentId }: { appointmentId: Id<"appointmen
   const start = useMutation(api.sessions.start);
   const [startError, setStartError] = useState<string | null>(null);
   const starting = useRef(false);
+  // Set when the attention is discarded, so the page does not start a new draft while it leaves.
+  const [leaving, setLeaving] = useState(false);
 
   const needsStart = data && !data.session && STARTABLE.includes(data.appointment.status);
   useEffect(() => {
-    if (!needsStart || starting.current) return;
+    if (!needsStart || starting.current || leaving) return;
     starting.current = true;
     start({ appointmentId }).catch((error) => setStartError(errorText(error)));
-  }, [needsStart, start, appointmentId]);
+  }, [needsStart, start, appointmentId, leaving]);
 
   if (startError) return <BlockedScreen message={startError} />;
-  if (data === undefined || needsStart) return <FlowSkeleton />;
+  if (data === undefined || needsStart || (leaving && !data.session)) return <FlowSkeleton />;
   if (!data.session) {
     return (
       <BlockedScreen
@@ -62,15 +66,16 @@ export function AttentionFlow({ appointmentId }: { appointmentId: Id<"appointmen
   const draft = data as DraftData;
   if (draft.session.status === "closed") return <SuccessScreen data={draft} />;
   if (draft.session.status === "postponed") return <PostponedScreen data={draft} />;
-  return <Stepper data={draft} />;
+  return <Stepper data={draft} onLeave={() => setLeaving(true)} />;
 }
 
-function Stepper({ data }: { data: DraftData }) {
+function Stepper({ data, onLeave }: { data: DraftData; onLeave: () => void }) {
   const router = useRouter();
   const { client, treatment, appointment, session } = data;
   const [step, setStep] = useState(() => Math.min(session.step + 1, STEPS.length));
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [closing, setClosing] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const draft = useRef<(() => Promise<unknown>) | null>(null);
 
   function go(next: number) {
@@ -119,6 +124,18 @@ function Stepper({ data }: { data: DraftData }) {
                 <span className="font-display ml-3 text-ink tabular-nums">{formatTime(appointment.start)}</span>
               </span>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Más opciones" disabled={closing}>
+                  <Ellipsis className="size-6" strokeWidth={1.75} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem variant="destructive" className="min-h-11 text-base" onSelect={() => setDiscarding(true)}>
+                  Descartar atención
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="ghost" size="icon" aria-label="Cerrar y guardar" onClick={() => void closeFlow()} disabled={closing} className="-mr-2">
               <X className="size-6" strokeWidth={1.75} />
             </Button>
@@ -153,6 +170,14 @@ function Stepper({ data }: { data: DraftData }) {
         <h1 className="font-display mb-6 text-[1.75rem] leading-tight">{title}</h1>
         <Step {...props} />
       </main>
+      <DiscardAttentionDialog
+        sessionId={session._id}
+        consentSigned={session.consent !== undefined}
+        open={discarding}
+        onOpenChange={setDiscarding}
+        onBeforeDiscard={onLeave}
+        onDiscarded={() => router.push("/hoy")}
+      />
     </div>
   );
 }

@@ -17,7 +17,7 @@ import { bogotaDateKey, inBogota } from "@/convex/lib/time";
 import { formatDate } from "@/lib/format";
 import { DayTimeline } from "./day-timeline";
 import { FirstSteps } from "./first-steps";
-import { InProgressCard, NextAppointmentCard } from "./next-appointment";
+import { InProgressCard, NextAppointmentCard, TomorrowCard } from "./next-appointment";
 import { firstName, Section } from "./parts";
 import { Birthdays, DueFollowUps, PendingPayments, Requests } from "./today-lists";
 
@@ -87,6 +87,7 @@ export function HoyView() {
             team={team}
             today={today}
             now={now}
+            viewerMemberId={viewer.member._id}
           />
         )}
       </div>
@@ -116,6 +117,7 @@ function Day({
   team,
   today,
   now,
+  viewerMemberId,
 }: {
   appointments: DayAppointment[];
   blocks: DayBlock[];
@@ -124,10 +126,11 @@ function Day({
   team: boolean;
   today: string;
   now: number;
+  viewerMemberId: Id<"members">;
 }) {
   const openSheet = useAgendaSheets();
-  // Late arrivals stay "next" until their slot ends.
-  const next = appointments.find((a) => a.status === "scheduled" && a.end > now);
+  // An appointment past its start that nobody started stays "next" until someone starts it or marks a no-show.
+  const next = appointments.find((a) => a.status === "scheduled");
 
   return (
     <>
@@ -138,11 +141,15 @@ function Day({
           ))}
         </Section>
       ) : (
-        next && (
-          <Section title="Próxima cita">
-            <NextAppointmentCard appointment={next} member={team ? members.get(next.memberId) : undefined} />
-          </Section>
-        )
+        <>
+          {next ? (
+            <Section title="Próxima cita">
+              <NextAppointmentCard appointment={next} member={team ? members.get(next.memberId) : undefined} now={now} />
+            </Section>
+          ) : (
+            <TomorrowCard today={today} memberId={team ? undefined : viewerMemberId} members={team ? members : undefined} />
+          )}
+        </>
       )}
 
       <Section title="Tu día">

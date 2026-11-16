@@ -19,6 +19,8 @@ export function ProcedureStep({ data, onBack, onDone, registerDraft }: StepProps
   const [answers, setAnswers] = useState<FormAnswers>(session.procedure?.answers ?? {});
   const [notes, setNotes] = useState(session.procedure?.notes ?? "");
   const [errors, setErrors] = useState<AnswerErrors>({});
+  // A form with its own long text field already asks for notes.
+  const showNotes = !fields.some((f) => f.type === "longtext") || Boolean(session.procedure?.notes);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,19 +52,15 @@ export function ProcedureStep({ data, onBack, onDone, registerDraft }: StepProps
   return (
     <>
       <StepBody>
-        {fields.length > 0 ? (
-          <StepSection title={treatment.name}>
-            <FormRenderer fields={fields} value={answers} onChange={setAnswers} errors={errors} />
-          </StepSection>
-        ) : null}
-        <StepSection title="Notas">
+        {fields.length > 0 && <FormRenderer fields={fields} value={answers} onChange={setAnswers} errors={errors} />}
+        {showNotes && (
           <div className="flex flex-col gap-2">
             <Label htmlFor={notesId} className="text-base">
               Notas del procedimiento
             </Label>
             <Textarea id={notesId} rows={3} className="min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
-        </StepSection>
+        )}
         <StepSection title="Fotos después" description="Opcional.">
           {session.consent?.photoUse === "none" ? (
             <p className="text-ink-soft">El cliente no autorizó fotos.</p>

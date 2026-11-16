@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { Printer } from "lucide-react";
 import { useState } from "react";
-import { useFileUrls } from "@/components/attention/step-parts";
+import { useSignedUrls } from "@/components/shared/use-signed-urls";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { api } from "@/convex/_generated/api";
 import type { ClientDoc } from "@/convex/clients";
 import { AUTHORIZATION_METHOD_LABELS } from "@/lib/constants";
 import { consentDate } from "@/convex/lib/consent";
-import { formatShortDate, formatTime } from "@/lib/format";
+import { formatShortDate, formatTime, sessionLabel } from "@/lib/format";
 
 /** Documentos: the data authorization and every signed consent, viewable and printable. */
 export function DocumentsTab({ client }: { client: ClientDoc }) {
@@ -45,7 +45,7 @@ export function DocumentsTab({ client }: { client: ClientDoc }) {
             <Link href={`/casos/${s.caseId}/sesiones/${s._id}`} className="flex min-w-0 flex-1 flex-col">
               <span className="font-medium hover:underline">Consentimiento de {s.treatmentName.toLowerCase()}</span>
               <span className="text-sm text-ink-soft">
-                {formatShortDate(s.signedAt!)}, sesión {s.number}
+                {formatShortDate(s.signedAt!)}, {sessionLabel(s).toLowerCase()}
               </span>
             </Link>
             <PrintLink href={`/imprimir/sesion/${s._id}`} label={`Imprimir consentimiento de ${s.treatmentName.toLowerCase()}`} />
@@ -76,7 +76,7 @@ function AuthorizationDialog({
   onOpenChange: (open: boolean) => void;
   authorization: NonNullable<ClientDoc["dataAuthorization"]>;
 }) {
-  const url = useFileUrls([authorization.signatureKey])[authorization.signatureKey ?? ""];
+  const url = useSignedUrls([authorization.signatureKey])[authorization.signatureKey ?? ""];
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange} title="Autorización de tratamiento de datos" desktop="sheet">
       <div className="flex flex-col gap-6 pb-4">

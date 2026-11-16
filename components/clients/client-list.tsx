@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Search, TriangleAlert } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getClientAlerts } from "@/components/shared/alert-chips";
@@ -102,9 +102,9 @@ function PagedList({ search, birthdayMonth }: { search: string; birthdayMonth?: 
               birthdayMonth ? (
                 <BirthdayMeta client={client} />
               ) : client.lastVisitAt ? (
-                <span>
-                  <span className="hidden sm:inline">Última visita </span>
-                  {formatShortDate(client.lastVisitAt)}
+                <span className="flex flex-col items-end">
+                  <span>Última visita</span>
+                  <span className="tabular-nums">{formatShortDate(client.lastVisitAt)}</span>
                 </span>
               ) : null
             }
@@ -160,15 +160,18 @@ function ClientRowLink({ client, meta }: { client: ClientRow; meta?: React.React
       <Link href={`/clientes/${client._id}`} className="flex min-h-16 items-center gap-3 px-4 py-2.5 hover:bg-porcelain">
         <InitialsAvatar name={name} />
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="flex items-center gap-2">
-            <span className="truncate font-medium">{name}</span>
+          <span className="flex items-start gap-1.5">
+            <span className="line-clamp-2 font-medium">{name}</span>
             {hasAlerts && (
-              <span className="size-2 shrink-0 rounded-full bg-rose" role="img" aria-label="Tiene alertas de salud" />
+              <span title="Tiene alertas de salud" className="mt-0.5 shrink-0 text-rose">
+                <TriangleAlert aria-hidden className="size-4" strokeWidth={1.75} />
+                <span className="sr-only">Tiene alertas de salud</span>
+              </span>
             )}
           </span>
           <span className="truncate text-sm text-ink-soft tabular-nums">{formatPhone(client.phone)}</span>
         </span>
-        {meta && <span className="shrink-0 text-sm text-ink-soft">{meta}</span>}
+        {meta && <span className="shrink-0 text-right text-sm text-ink-soft">{meta}</span>}
         <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
       </Link>
     </li>

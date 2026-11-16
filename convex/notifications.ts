@@ -119,6 +119,11 @@ async function loadAppointment(ctx: MutationCtx, appointmentId: Id<"appointments
 }
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadAppointment>>>;
 
+/** Where this appointment's emails go: the client's email, else the email typed in the online request. */
+function recipient(client: Doc<"clients">, appointment: Doc<"appointments"> | null) {
+  return client.email ?? appointment?.contactEmail;
+}
+
 function fullName(client: Doc<"clients">) {
   return `${client.firstName} ${client.lastName}`.trim();
 }
@@ -192,10 +197,11 @@ export const sendReminder = internalMutation({
     if (!loaded) return null;
     const { appointment, org, client } = loaded;
     const due = appointment.status === "scheduled" && !appointment.reminderSentAt && appointment.start > Date.now();
-    if (!due || !org.reminders.email || !client.email) return null;
+    const to = recipient(client, appointment);
+    if (!due || !org.reminders.email || !to) return null;
 
     const text = `Hola, soy ${fullName(client)}. Necesito reprogramar mi cita ${when(appointment.start)}.`;
-    await queue(ctx, client.email, reminderEmail(appointmentInfo(loaded, text)), {
+    await queue(ctx, to, reminderEmail(appointmentInfo(loaded, text)), {
       name: org.name,
       replyTo: await ownerEmail(ctx, org),
     });
@@ -226,7 +232,8 @@ export const sweepReminders = internalMutation({
           const job = await ctx.db.system.get(appointment.reminderJobId);
           if (job?.state.kind === "pending" || job?.state.kind === "inProgress") continue;
         }
-        if (!(await ctx.db.get(appointment.clientId))?.email) continue;
+        const client = await ctx.db.get(appointment.clientId);
+        if (!client || !recipient(client, appointment)) continue;
         if (await scheduleFor(ctx, appointment)) scheduled++;
       }
     }
@@ -239,10 +246,11 @@ export const sendAppointmentConfirmed = internalMutation({
   args: { appointmentId: v.id("appointments") },
   handler: async (ctx, { appointmentId }) => {
     const loaded = await loadAppointment(ctx, appointmentId);
-    if (!loaded?.client.email) return null;
+    const to = loaded && recipient(loaded.client, loaded.appointment);
+    if (!loaded || !to) return null;
     const { appointment, org, client } = loaded;
     const text = `Hola, soy ${fullName(client)}. Te escribo por mi cita ${when(appointment.start)}.`;
-    await queue(ctx, client.email!, appointmentConfirmedEmail(appointmentInfo(loaded, text)), {
+    await queue(ctx, to, appointmentConfirmedEmail(appointmentInfo(loaded, text)), {
       name: org.name,
       replyTo: await ownerEmail(ctx, org),
     });
@@ -257,7 +265,8 @@ export const sendRequestRejected = internalMutation({
   args: { appointmentId: v.id("appointments") },
   handler: async (ctx, { appointmentId }) => {
     const loaded = await loadAppointment(ctx, appointmentId);
-    if (!loaded?.client.email) return null;
+    const to = loaded && recipient(loaded.client, loaded.appointment);
+    if (!loaded || !to) return null;
     const { appointment, org, client, treatment } = loaded;
     const reason = appointment.cancelReason === DEFAULT_REJECT_REASON ? undefined : appointment.cancelReason;
     const email = requestRejectedEmail({
@@ -268,7 +277,7 @@ export const sendRequestRejected = internalMutation({
       reason,
       bookingUrl: org.booking.enabled ? `${siteUrl}/reservar/${org.slug}` : undefined,
     });
-    await queue(ctx, client.email!, email, { name: org.name, replyTo: await ownerEmail(ctx, org) });
+    await queue(ctx, to, email, { name: org.name, replyTo: await ownerEmail(ctx, org) });
     return null;
   },
 });
@@ -291,7 +300,8 @@ export const notifyNewRequest = internalMutation({
       orgName: org.name,
       clientName: fullName(client),
       clientPhone: client.phone,
-      clientEmail: client.email ?? "",
+      // The email typed in this request, which may differ from the one in the ficha.
+      clientEmail: appointment.contactEmail ?? client.email ?? "",
       treatmentName: treatment.name,
       start: appointment.start,
       memberName: org.kind === "salon" ? member.name : undefined,
@@ -308,12 +318,14 @@ export const sendAftercare = internalMutation({
   handler: async (ctx, { sessionId }) => {
     const session = await ctx.db.get(sessionId);
     if (!session?.aftercare) return null;
-    const [org, client, treatment] = await Promise.all([
+    const [org, client, treatment, appointment] = await Promise.all([
       ctx.db.get(session.orgId),
       ctx.db.get(session.clientId),
       ctx.db.get(session.treatmentId),
+      ctx.db.get(session.appointmentId),
     ]);
-    if (!org || !client?.email || !treatment) return null;
+    const to = client && recipient(client, appointment);
+    if (!org || !client || !to || !treatment) return null;
     const email = aftercareEmail({
       orgName: org.name,
       clientFirstName: client.firstName,
@@ -325,7 +337,7 @@ export const sendAftercare = internalMutation({
         ? whatsappLink(org.whatsapp, `Hola, soy ${fullName(client)}. Tengo una pregunta sobre mis cuidados.`)
         : undefined,
     });
-    await queue(ctx, client.email, email, { name: org.name, replyTo: await ownerEmail(ctx, org) });
+    await queue(ctx, to, email, { name: org.name, replyTo: await ownerEmail(ctx, org) });
     return null;
   },
 });

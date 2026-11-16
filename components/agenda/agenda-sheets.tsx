@@ -210,8 +210,8 @@ function ReasonForm({
   const copy = useMemo(
     () =>
       action === "cancel"
-        ? { label: "Motivo", button: "Cancelar cita", done: "Cita cancelada" }
-        : { label: "Motivo para la clienta", button: "Rechazar solicitud", done: "Solicitud rechazada" },
+        ? { label: "Motivo", help: undefined, button: "Cancelar cita", done: "Cita cancelada" }
+        : { label: "Motivo", help: "Se lo enviamos por correo.", button: "Rechazar solicitud", done: "Solicitud rechazada" },
     [action],
   );
 
@@ -233,7 +233,20 @@ function ReasonForm({
         <Label htmlFor={id} className="text-base">
           {copy.label}
         </Label>
-        <Textarea id={id} rows={2} className="min-h-20" placeholder="Opcional" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <Textarea
+          id={id}
+          rows={2}
+          className="min-h-20"
+          placeholder="Opcional"
+          aria-describedby={copy.help ? `${id}-help` : undefined}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+        {copy.help && (
+          <p id={`${id}-help`} className="text-sm text-ink-soft">
+            {copy.help}
+          </p>
+        )}
       </div>
       <FormError>{error}</FormError>
       <SheetActions>

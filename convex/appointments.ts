@@ -29,10 +29,20 @@ const ALLOWED_FROM = {
   noShow: ["scheduled"],
 } satisfies Record<string, AppointmentStatus[]>;
 
-function assertStatus(appointment: Doc<"appointments">, action: keyof typeof ALLOWED_FROM) {
-  if (!(ALLOWED_FROM[action] as AppointmentStatus[]).includes(appointment.status)) {
-    invalid("Esta cita ya no se puede cambiar así. Revisa su estado.");
+/**
+ * An appointment left `in_progress` without a session (nothing was recorded) can be
+ * rescheduled, cancelled, or marked as a no-show like a scheduled one.
+ */
+async function assertStatus(ctx: OrgCtx, appointment: Doc<"appointments">, action: keyof typeof ALLOWED_FROM) {
+  if ((ALLOWED_FROM[action] as AppointmentStatus[]).includes(appointment.status)) return;
+  if (appointment.status === "in_progress" && action !== "confirm" && action !== "reject") {
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_appointment", (q) => q.eq("appointmentId", appointment._id))
+      .first();
+    if (!session) return;
   }
+  invalid("Esta cita ya no se puede cambiar así. Revisa su estado.");
 }
 
 async function activeMember(ctx: OrgCtx, memberId: Id<"members">) {
@@ -202,6 +212,8 @@ export const detail = memberQuery({
         paidTotal: appointment.paidTotal,
         notes: appointment.notes,
         cancelReason: appointment.cancelReason,
+        /** "Correo de la solicitud": shown with "Guardar en la ficha" (`saveContactEmail`). */
+        contactEmail: appointment.contactEmail,
         clientId: appointment.clientId,
         treatmentId: appointment.treatmentId,
         memberId: appointment.memberId,
@@ -350,8 +362,11 @@ export const create = memberMutation({
     const { member } = await loadParts(ctx, args);
     const interval = validateTimes(args.start, args.durationMin);
     validatePrice(args.price);
-    if (args.caseId && (await getOwned(ctx, "cases", args.caseId)).clientId !== args.clientId) {
-      invalid("Ese caso no es de este cliente.");
+    if (args.caseId) {
+      const caseDoc = await getOwned(ctx, "cases", args.caseId);
+      if (caseDoc.clientId !== args.clientId || caseDoc.treatmentId !== args.treatmentId || caseDoc.status !== "open") {
+        invalid("Ese caso no corresponde a este cliente y tratamiento.");
+      }
     }
     if (!args.allowConflicts) await assertNoConflicts(ctx, member, interval);
 
@@ -384,7 +399,7 @@ export const update = memberMutation({
   args: { appointmentId: v.id("appointments"), ...appointmentFields },
   handler: async (ctx, { appointmentId, ...args }) => {
     const appointment = await getOwned(ctx, "appointments", appointmentId);
-    assertStatus(appointment, "edit");
+    await assertStatus(ctx, appointment, "edit");
     const { member } = await loadParts(ctx, args);
     const interval = validateTimes(args.start, args.durationMin);
     validatePrice(args.price);
@@ -393,6 +408,7 @@ export const update = memberMutation({
     }
     if (!args.allowConflicts) await assertNoConflicts(ctx, member, interval, appointmentId);
 
+    const clientChanged = args.clientId !== appointment.clientId;
     await ctx.db.patch(appointmentId, {
       clientId: args.clientId,
       treatmentId: args.treatmentId,
@@ -400,9 +416,21 @@ export const update = memberMutation({
       ...interval,
       price: args.price,
       notes: cleanNotes(args.notes),
+      // An attention that never got a session goes back to the agenda.
+      ...(appointment.status === "in_progress" && { status: "scheduled" as const }),
+      // The request email belonged to the previous client.
+      ...(clientChanged && { contactEmail: undefined }),
     });
+    if (clientChanged) {
+      // Abonos follow the appointment, so both clients' Pagos and Resumen agree.
+      const payments = await ctx.db
+        .query("payments")
+        .withIndex("by_appointment", (q) => q.eq("appointmentId", appointmentId))
+        .collect();
+      for (const payment of payments) await ctx.db.patch(payment._id, { clientId: args.clientId });
+    }
     const moved = interval.start !== appointment.start || args.memberId !== appointment.memberId;
-    if (moved && appointment.status === "scheduled") {
+    if (appointment.status === "in_progress" || (moved && appointment.status === "scheduled")) {
       await ctx.runMutation(internal.notifications.cancelReminder, { appointmentId });
       await ctx.runMutation(internal.notifications.scheduleReminder, { appointmentId });
     }
@@ -434,7 +462,7 @@ export const confirm = memberMutation({
   args: { appointmentId: v.id("appointments") },
   handler: async (ctx, { appointmentId }) => {
     const appointment = await getOwned(ctx, "appointments", appointmentId);
-    assertStatus(appointment, "confirm");
+    await assertStatus(ctx, appointment, "confirm");
     await ctx.db.patch(appointmentId, { status: "scheduled" });
     await ctx.runMutation(internal.notifications.scheduleReminder, { appointmentId });
     await ctx.runMutation(internal.notifications.sendAppointmentConfirmed, { appointmentId });
@@ -446,7 +474,7 @@ export const reject = memberMutation({
   args: { appointmentId: v.id("appointments"), reason: v.optional(v.string()) },
   handler: async (ctx, { appointmentId, reason }) => {
     const appointment = await getOwned(ctx, "appointments", appointmentId);
-    assertStatus(appointment, "reject");
+    await assertStatus(ctx, appointment, "reject");
     await ctx.db.patch(appointmentId, { status: "cancelled", cancelReason: cleanNotes(reason) ?? "Solicitud rechazada" });
     await ctx.runMutation(internal.notifications.sendRequestRejected, { appointmentId });
   },
@@ -456,9 +484,21 @@ export const cancel = memberMutation({
   args: { appointmentId: v.id("appointments"), reason: v.optional(v.string()) },
   handler: async (ctx, { appointmentId, reason }) => {
     const appointment = await getOwned(ctx, "appointments", appointmentId);
-    assertStatus(appointment, "cancel");
+    await assertStatus(ctx, appointment, "cancel");
     await ctx.db.patch(appointmentId, { status: "cancelled", cancelReason: cleanNotes(reason) });
     await ctx.runMutation(internal.notifications.cancelReminder, { appointmentId });
+  },
+});
+
+/** "Guardar en la ficha": the email of an online request becomes the client's email. */
+export const saveContactEmail = memberMutation({
+  args: { appointmentId: v.id("appointments") },
+  handler: async (ctx, { appointmentId }) => {
+    const appointment = await getOwned(ctx, "appointments", appointmentId);
+    if (!appointment.contactEmail) invalid("Esta cita no tiene un correo de solicitud.");
+    await getOwned(ctx, "clients", appointment.clientId);
+    await ctx.db.patch(appointment.clientId, { email: appointment.contactEmail });
+    await ctx.db.patch(appointmentId, { contactEmail: undefined });
   },
 });
 
@@ -466,7 +506,7 @@ export const markNoShow = memberMutation({
   args: { appointmentId: v.id("appointments") },
   handler: async (ctx, { appointmentId }) => {
     const appointment = await getOwned(ctx, "appointments", appointmentId);
-    assertStatus(appointment, "noShow");
+    await assertStatus(ctx, appointment, "noShow");
     await ctx.db.patch(appointmentId, { status: "no_show" });
     await ctx.runMutation(internal.notifications.cancelReminder, { appointmentId });
   },

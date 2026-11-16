@@ -35,7 +35,7 @@ export function ClientPicker({ value, onChange, error }: ClientPickerProps) {
       <div className="flex min-h-16 items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2">
         <InitialsAvatar name={value.name} />
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate font-medium">{value.name}</span>
+          <span className="line-clamp-2 font-medium">{value.name}</span>
           <span className="text-sm text-ink-soft tabular-nums">{formatPhone(value.phone)}</span>
         </span>
         <Button type="button" variant="ghost" onClick={() => onChange(null)}>
@@ -96,7 +96,7 @@ export function ClientPicker({ value, onChange, error }: ClientPickerProps) {
                     className="flex min-h-14 w-full items-center gap-3 px-3 text-left hover:bg-porcelain"
                   >
                     <InitialsAvatar name={name} size="sm" />
-                    <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+                    <span className="line-clamp-2 min-w-0 flex-1 font-medium">{name}</span>
                     <span className="shrink-0 text-sm text-ink-soft tabular-nums">{formatPhone(client.phone)}</span>
                   </button>
                 </li>

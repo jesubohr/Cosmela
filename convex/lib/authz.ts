@@ -41,7 +41,7 @@ export async function requireMember(ctx: QueryCtx) {
   return { userId, member, orgId: member.orgId };
 }
 
-async function requireAdmin(ctx: QueryCtx) {
+export async function requireAdmin(ctx: QueryCtx) {
   const result = await requireMember(ctx);
   if (result.member.role !== "admin") fail("FORBIDDEN", "Solo un administrador puede hacer esto.");
   return result;

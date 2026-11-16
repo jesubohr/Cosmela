@@ -31,6 +31,7 @@ import {
   vStaffColor,
   vTimeBlockKind,
   vTreatmentCategory,
+  vUploadKind,
 } from "./lib/validators";
 
 // Times are epoch ms (UTC). Calendar-only dates are "YYYY-MM-DD" in Bogotá time.
@@ -168,6 +169,11 @@ export default defineSchema({
     price: v.number(),
     // Maintained by payment mutations.
     paidTotal: v.number(),
+    // Completed and `price > paidTotal`; kept in step by `syncBalance` (convex/payments.ts).
+    hasBalance: v.optional(v.boolean()),
+    // Email typed in an online request for an existing client. Used for this
+    // appointment's emails only when the client has no email of their own.
+    contactEmail: v.optional(v.string()),
     notes: v.optional(v.string()),
     caseId: v.optional(v.id("cases")),
     sessionId: v.optional(v.id("sessions")),
@@ -180,6 +186,7 @@ export default defineSchema({
     .index("by_member_start", ["memberId", "start"])
     .index("by_client", ["clientId", "start"])
     .index("by_org_status", ["orgId", "status"])
+    .index("by_org_balance", ["orgId", "hasBalance"])
     // A treatment with appointments cannot be deleted, only deactivated.
     .index("by_treatment", ["treatmentId"]),
 
@@ -208,6 +215,8 @@ export default defineSchema({
     summary: v.optional(v.string()),
     sessionCount: v.number(),
     lastSessionAt: v.optional(v.number()),
+    // Professionals with a closed or postponed session in the case (Casos filter).
+    memberIds: v.optional(v.array(v.id("members"))),
   })
     .index("by_org_status", ["orgId", "status"])
     .index("by_client", ["clientId"]),
@@ -219,9 +228,11 @@ export default defineSchema({
     appointmentId: v.id("appointments"),
     memberId: v.id("members"),
     treatmentId: v.id("treatments"),
-    // 1-based within the case.
-    number: v.number(),
+    // 1-based within the case, assigned at close. Drafts and postponed sessions have none.
+    number: v.optional(v.number()),
     status: vSessionStatus,
+    // Why a session ended as postponed (contraindication, or not performed).
+    reason: v.optional(v.string()),
     // Last completed step, for resume.
     step: v.number(),
     startedAt: v.number(),
@@ -269,4 +280,24 @@ export default defineSchema({
     .index("by_org_paidAt", ["orgId", "paidAt"])
     .index("by_appointment", ["appointmentId"])
     .index("by_client", ["clientId"]),
+
+  // Every R2 key handed out by `files.generateUploadUrl`. A key is stored on a record
+  // only while unattached, and deleted only by the record that owns it.
+  uploads: defineTable({
+    orgId: v.id("orgs"),
+    key: v.string(),
+    kind: vUploadKind,
+    uploadedBy: v.id("members"),
+    // "session:<id>", "consent:<sessionId>", "member:<id>", or "org".
+    attachedTo: v.optional(v.string()),
+  })
+    .index("by_key", ["key"])
+    .index("by_attached", ["attachedTo"]),
+
+  // Privacy policy texts that clients accepted, stored once per distinct text.
+  policies: defineTable({
+    orgId: v.id("orgs"),
+    hash: v.string(),
+    text: v.string(),
+  }).index("by_org_hash", ["orgId", "hash"]),
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFileUrls } from "@/components/attention/step-parts";
+import { useSignedUrls } from "@/components/shared/use-signed-urls";
 import type { PhotoKind } from "@/convex/lib/validators";
 import { formatShortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
   const [pair, setPair] = useState<[string, string]>([photos[0].key, photos[photos.length - 1].key]);
   const [slot, setSlot] = useState<0 | 1>(0);
   const [position, setPosition] = useState(50);
-  const urls = useFileUrls(photos.map((p) => p.key));
+  const urls = useSignedUrls(photos.map((p) => p.key));
   const first = photos.find((p) => p.key === pair[0])!;
   const second = photos.find((p) => p.key === pair[1])!;
 

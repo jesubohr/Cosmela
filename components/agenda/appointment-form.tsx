@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { TriangleAlert } from "lucide-react";
+import { CircleCheck, MessageCircle, TriangleAlert } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { ClientPicker, type PickedClient } from "@/components/clients/client-picker";
@@ -17,14 +17,25 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { rangesForDate } from "@/convex/lib/slots";
 import { bogotaDateKey, bogotaToEpoch } from "@/convex/lib/time";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/convex/lib/validators";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
-import { formatTime } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
 import { MINUTE, timeOf, todayKey } from "./dates";
 import { confirmationMessage } from "./messages";
-import { errorText, FieldBlock, FormError, formatDuration, MemberSelect, SheetActions, useFormOptions, type FormOptions } from "./parts";
+import {
+  errorText,
+  FieldBlock,
+  FormError,
+  formatDuration,
+  MemberSelect,
+  SheetActions,
+  useFormOptions,
+  useShowOnAgenda,
+  type FormOptions,
+} from "./parts";
 
 export type AppointmentPrefill = {
   clientId?: Id<"clients">;
@@ -136,6 +147,7 @@ function Fields({
   const viewer = useViewer();
   const create = useMutation(api.appointments.create);
   const update = useMutation(api.appointments.update);
+  const showOnAgenda = useShowOnAgenda();
   const isSalon = viewer.org.kind === "salon" && options.members.length > 1;
   const ids = { treatment: useId(), member: useId(), date: useId(), time: useId(), duration: useId(), price: useId(), notes: useId(), deposit: useId() };
 
@@ -152,6 +164,7 @@ function Fields({
   const [depositMethod, setDepositMethod] = useState<PaymentMethod | undefined>("cash");
   const [errors, setErrors] = useState<Partial<Record<"client" | "treatment" | "time" | "price" | "deposit" | "form", string>>>({});
   const [pending, setPending] = useState(false);
+  const [saved, setSaved] = useState<{ id: Id<"appointments">; clientName: string; start: number; whatsapp: string } | null>(null);
 
   const treatment = options.treatments.find((t) => t._id === treatmentId);
   const member = options.members.find((m) => m._id === memberId);
@@ -207,6 +220,7 @@ function Fields({
     try {
       if (appointmentId) {
         await update({ appointmentId, ...args });
+        showOnAgenda(date);
         toast.success("Cita reprogramada");
         onDone(appointmentId);
       } else {
@@ -225,11 +239,8 @@ function Fields({
             orgName: options.orgName,
           }),
         );
-        toast.success("Cita guardada", {
-          action: { label: "Enviar confirmación", onClick: () => window.open(link, "_blank", "noopener") },
-          duration: 8000,
-        });
-        onDone(id);
+        showOnAgenda(date);
+        setSaved({ id, clientName: client.name, start, whatsapp: link });
       }
     } catch (error) {
       setErrors({ form: errorText(error) });
@@ -237,6 +248,16 @@ function Fields({
       setPending(false);
     }
   }
+
+  if (saved) return <SavedState {...saved} onDone={() => onDone(saved.id)} />;
+
+  const memberWorks = !member || rangesForDate(member.schedule, date).length > 0;
+  const noSlotsText =
+    date < todayKey()
+      ? "Este día ya pasó. Escribe la hora si quieres registrarla."
+      : !memberWorks
+        ? `${member?._id === viewer.member._id ? "No trabajas" : `${member?.name} no trabaja`} este día. Elige otro día o escribe otra hora.`
+        : "No quedan horarios libres este día. Elige otro día o escribe otra hora.";
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
@@ -290,17 +311,15 @@ function Fields({
         {!durationMin ? (
           <p className="text-sm text-ink-soft">Elige el tratamiento para ver los horarios libres.</p>
         ) : slots === undefined ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-11 w-24 rounded-full" />
+              <Skeleton key={i} className="h-11 rounded-full" />
             ))}
           </div>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-ink-soft">
-            {date < todayKey() ? "Este día ya pasó. Escribe la hora si quieres registrarla." : "No quedan horarios libres este día. Escribe otra hora."}
-          </p>
+          <p className="text-sm text-ink-soft">{noSlotsText}</p>
         ) : (
-          <div role="radiogroup" aria-label="Horarios libres" className="flex flex-wrap gap-2">
+          <div role="radiogroup" aria-label="Horarios libres" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {slots.map((slot, index) => (
               <Chip
                 key={slot}
@@ -308,7 +327,7 @@ function Fields({
                 aria-checked={time === slotTimes[index]}
                 selected={time === slotTimes[index]}
                 onClick={() => setTime(slotTimes[index])}
-                className="tabular-nums"
+                className="justify-center px-2 whitespace-nowrap tabular-nums"
               >
                 {formatTime(slot)}
               </Chip>
@@ -406,6 +425,35 @@ function Fields({
         </Button>
       </SheetActions>
     </form>
+  );
+}
+
+/** After "Guardar cita": the WhatsApp confirmation stays on screen until the user taps Listo. */
+function SavedState({ clientName, start, whatsapp, onDone }: { clientName: string; start: number; whatsapp: string; onDone: () => void }) {
+  return (
+    <div className="flex flex-col gap-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div role="status" className="flex gap-3">
+        <CircleCheck aria-hidden className="mt-0.5 size-6 shrink-0 text-sage" strokeWidth={1.75} />
+        <div className="flex flex-col gap-1">
+          <p className="text-[1.125rem] font-medium">Cita guardada</p>
+          <p className="text-ink-soft">{clientName}</p>
+          <p className="text-ink-soft first-letter:uppercase">
+            {formatDate(start)}, {formatTime(start)}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
+        <Button asChild>
+          <a href={whatsapp} target="_blank" rel="noopener noreferrer">
+            <MessageCircle strokeWidth={1.75} />
+            Enviar confirmación por WhatsApp
+          </a>
+        </Button>
+        <Button variant="secondary" onClick={onDone}>
+          Listo
+        </Button>
+      </div>
+    </div>
   );
 }
 

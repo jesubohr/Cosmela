@@ -44,6 +44,8 @@ function AdminReports() {
   const [current] = useState(() => bogotaDateKey(Date.now()).slice(0, 7));
   const [month, setMonth] = useState(current);
   const report = useQuery(api.reports.month, { month });
+  // The query also tallies treatments that only received an abono this month.
+  const treatments = report?.treatments.filter((t) => t.count > 0) ?? [];
 
   return (
     <div className="flex max-w-3xl flex-col gap-10">
@@ -81,13 +83,15 @@ function AdminReports() {
           ) : (
             <>
               <ByMethod rows={report.byMethod} />
-              <Block title="Tratamientos más realizados">
-                <ul className="divide-y divide-line rounded-card border border-line bg-surface">
-                  {report.treatments.map((t) => (
-                    <Row key={t.treatmentId} primary={t.name} secondary={citas(t.count)} amount={t.revenue} />
-                  ))}
-                </ul>
-              </Block>
+              {treatments.length > 0 && (
+                <Block title="Tratamientos más realizados">
+                  <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+                    {treatments.map((t) => (
+                      <Row key={t.treatmentId} primary={t.name} secondary={citas(t.count)} amount={t.revenue} />
+                    ))}
+                  </ul>
+                </Block>
+              )}
               {viewer.org.kind === "salon" && (
                 <Block title="Por profesional">
                   <ul className="divide-y divide-line rounded-card border border-line bg-surface">
@@ -169,7 +173,10 @@ function Row({ leading, primary, secondary, amount }: { leading?: ReactNode; pri
         <span className="truncate font-medium">{primary}</span>
         <span className="text-ink-soft">{secondary}</span>
       </span>
-      <span className="font-medium tabular-nums">{formatMoney(amount)}</span>
+      <span className="flex flex-col items-end">
+        <span className="font-medium tabular-nums">{formatMoney(amount)}</span>
+        <span className="text-sm text-ink-soft">recibido</span>
+      </span>
     </li>
   );
 }

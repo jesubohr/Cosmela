@@ -2,14 +2,10 @@
 
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useState } from "react";
 import { inBogota } from "@/convex/lib/time";
 import { cn } from "@/lib/utils";
 
 type Day = { date: string; slots: number[] };
-
-/** Days shown before "Ver más días" on wide screens, where the strip wraps instead of scrolling. */
-const WIDE_LIMIT = 14;
 
 const PERIODS = [
   { label: "Mañana", test: (hour: number) => hour < 12 },
@@ -36,52 +32,39 @@ export function DaySlots({
   onDateChange: (date: string) => void;
   onPick: (start: number) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
   const active = days.find((d) => d.date === date) ?? days[0];
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <div
-          role="radiogroup"
-          aria-label="Día"
-          className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0"
-        >
-          {days.map((day, index) => {
-            const calendar = calendarDate(day.date);
-            const selected = day.date === active.date;
-            return (
-              <button
-                key={day.date}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                aria-label={format(calendar, "EEEE d 'de' MMMM", { locale: es })}
-                onClick={() => onDateChange(day.date)}
-                className={cn(
-                  "flex h-[76px] w-16 shrink-0 snap-start sm:w-auto flex-col items-center justify-center gap-0.5 rounded-lg border transition-colors",
-                  selected
-                    ? "border-plum bg-plum text-white"
-                    : "border-line bg-surface hover:border-plum/40 hover:bg-porcelain",
-                  !showAll && index >= WIDE_LIMIT && "sm:hidden",
-                )}
-              >
-                <span className={cn("text-sm", !selected && "text-ink-soft")}>{short(calendar, "EEE")}</span>
-                <span className="font-display text-[1.375rem] leading-none tabular-nums">{calendar.getDate()}</span>
-                <span className={cn("text-sm", !selected && "text-ink-soft")}>{short(calendar, "MMM")}</span>
-              </button>
-            );
-          })}
-        </div>
-        {!showAll && days.length > WIDE_LIMIT && (
-          <button
-            type="button"
-            onClick={() => setShowAll(true)}
-            className="hidden self-start text-sm font-medium text-plum underline-offset-4 hover:underline sm:block"
-          >
-            Ver más días
-          </button>
-        )}
+      <div
+        role="radiogroup"
+        aria-label="Día"
+        className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0"
+      >
+        {days.map((day) => {
+          const calendar = calendarDate(day.date);
+          const selected = day.date === active.date;
+          return (
+            <button
+              key={day.date}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={format(calendar, "EEEE d 'de' MMMM", { locale: es })}
+              onClick={() => onDateChange(day.date)}
+              className={cn(
+                "flex h-[76px] w-16 shrink-0 snap-start sm:w-auto flex-col items-center justify-center gap-0.5 rounded-lg border transition-colors",
+                selected
+                  ? "border-plum bg-plum text-white"
+                  : "border-line bg-surface hover:border-plum/40 hover:bg-porcelain",
+              )}
+            >
+              <span className={cn("text-sm", !selected && "text-ink-soft")}>{short(calendar, "EEE")}</span>
+              <span className="font-display text-[1.375rem] leading-none tabular-nums">{calendar.getDate()}</span>
+              <span className={cn("text-sm", !selected && "text-ink-soft")}>{short(calendar, "MMM")}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div key={active.date} className="flex flex-col gap-5">

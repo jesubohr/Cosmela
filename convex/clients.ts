@@ -6,6 +6,8 @@ import { getOwned, memberMutation, memberQuery } from "./lib/authz";
 import { clientSearchText, normalizeText } from "./lib/text";
 import { bogotaDateKey } from "./lib/time";
 import { vClientHabits, vClientHealth, vClientSkin, vDocumentType, vSex } from "./lib/validators";
+import { acceptedPolicyText } from "./orgs";
+import { owesBalance } from "./payments";
 
 /** Every editable permanent field of the ficha (PRODUCT §3.1). Empty strings mean "not set". */
 export const vClientInput = v.object({
@@ -237,14 +239,13 @@ export const list = memberQuery({
 
 /** Completed appointments that still owe money, grouped by client. */
 async function balancesByClient(ctx: QueryCtx & { orgId: Id<"orgs"> }) {
-  const completed = await ctx.db
+  const owing = await ctx.db
     .query("appointments")
-    .withIndex("by_org_status", (q) => q.eq("orgId", ctx.orgId).eq("status", "completed"))
+    .withIndex("by_org_balance", (q) => q.eq("orgId", ctx.orgId).eq("hasBalance", true))
     .collect();
   const balances = new Map<Id<"clients">, number>();
-  for (const appointment of completed) {
-    const owed = appointment.price - appointment.paidTotal;
-    if (owed > 0) balances.set(appointment.clientId, (balances.get(appointment.clientId) ?? 0) + owed);
+  for (const appointment of owing) {
+    balances.set(appointment.clientId, (balances.get(appointment.clientId) ?? 0) + appointment.price - appointment.paidTotal);
   }
   return balances;
 }
@@ -287,11 +288,14 @@ export const pick = memberQuery({
   },
 });
 
-/** The whole client record (the ficha). */
+/** The whole client record (the ficha), with the text of the policy the client accepted. */
 export const get = memberQuery({
   args: { clientId: v.id("clients") },
   handler: async (ctx, { clientId }) => {
-    return await getOwned(ctx, "clients", clientId);
+    const client = await getOwned(ctx, "clients", clientId);
+    const authorization = client.dataAuthorization;
+    if (!authorization) return client;
+    return { ...client, dataAuthorization: { ...authorization, policyText: await acceptedPolicyText(ctx, authorization) } };
   },
 });
 export type ClientDoc = Doc<"clients">;
@@ -310,13 +314,9 @@ export const summary = memberQuery({
     const upcoming = appointments
       .filter((a) => a.end >= now && (a.status === "scheduled" || a.status === "requested" || a.status === "in_progress"))
       .sort((a, b) => a.start - b.start)[0];
-    const balance = appointments
-      .filter((a) => a.status === "completed")
-      .reduce((sum, a) => sum + Math.max(0, a.price - a.paidTotal), 0);
-    // Abonos paid ahead for appointments that have not happened yet.
-    const credit = appointments
-      .filter((a) => a.status === "scheduled" || a.status === "requested")
-      .reduce((sum, a) => sum + a.paidTotal, 0);
+    const balance = appointments.filter(owesBalance).reduce((sum, a) => sum + a.price - a.paidTotal, 0);
+    // Abonos for appointments not attended (yet): upcoming, postponed, cancelled, or missed.
+    const credit = appointments.filter((a) => a.status !== "completed").reduce((sum, a) => sum + a.paidTotal, 0);
 
     const cases = (await ctx.db.query("cases").withIndex("by_client", (q) => q.eq("clientId", clientId)).collect()).filter(
       (c) => c.status === "open",

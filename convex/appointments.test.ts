@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { at, errorCode, MONDAY, setupOrgs } from "./lib/fixtures.testing";
+import { at, errorCode, MONDAY, setupOrgs, withTestClock } from "./lib/fixtures.testing";
+
+withTestClock();
 
 async function setup() {
   const s = await setupOrgs();

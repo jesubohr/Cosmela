@@ -12,7 +12,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { PhotoKind } from "@/convex/lib/validators";
 import { PHOTO_KIND_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { errorText, useFileUrls } from "./step-parts";
+import { useSignedUrls } from "@/components/shared/use-signed-urls";
+import { errorText } from "./step-parts";
 
 type Photo = { key: string; kind: PhotoKind; at: number };
 
@@ -30,7 +31,7 @@ export function PhotoThumbs({
   size?: "sm" | "md";
   className?: string;
 }) {
-  const urls = useFileUrls(photos.map((p) => p.key));
+  const urls = useSignedUrls(photos.map((p) => p.key));
   if (photos.length === 0) return null;
   return (
     <ul className={cn("flex flex-wrap gap-2", className)}>

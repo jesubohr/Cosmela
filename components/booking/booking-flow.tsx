@@ -7,6 +7,7 @@ import { ChevronRight, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorMessage } from "@/components/forms/error-message";
 import { InitialsAvatar } from "@/components/shared/initials-avatar";
+import { useTimeBucket } from "@/components/shared/use-signed-urls";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
@@ -23,6 +24,8 @@ type Sent = { treatmentName: string; start: number; memberName?: string; email: 
 
 export function BookingFlow({ slug, preloaded }: { slug: string; preloaded: Preloaded<typeof api.booking.page> }) {
   const page = usePreloadedQuery(preloaded);
+  const bucket = useTimeBucket();
+  const logoUrl = useQuery(api.booking.logo, page?.hasLogo ? { slug, bucket } : "skip");
 
   if (!page) {
     return (
@@ -37,7 +40,7 @@ export function BookingFlow({ slug, preloaded }: { slug: string; preloaded: Prel
 
   return (
     <BookingShell>
-      <BusinessHeader name={page.name} city={page.city} logoUrl={page.logoUrl}>
+      <BusinessHeader name={page.name} city={page.city} logoUrl={logoUrl} whatsapp={page.whatsapp}>
         {page.welcome && <p className="max-w-[52ch] whitespace-pre-line">{page.welcome}</p>}
       </BusinessHeader>
       {page.enabled ? (
@@ -70,6 +73,9 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
   const [member, setMember] = useState<Id<"members"> | "any" | null>(null);
   const [date, setDate] = useState<string | null>(null);
   const [start, setStart] = useState<number | null>(null);
+  // Availability comes in windows of up to 14 days; `earlier` holds the starts of the windows seen before.
+  const [windowFrom, setWindowFrom] = useState<string | undefined>();
+  const [earlier, setEarlier] = useState<(string | undefined)[]>([]);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent | null>(null);
   const create = useMutation(api.booking.create);
@@ -80,10 +86,12 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
   const chosenMember = page.members.find((m) => m._id === memberId);
   const step = !treatment ? "treatment" : needsMember && !member ? "member" : start === null ? "time" : "details";
 
-  const days = useQuery(
+  const availability = useQuery(
     api.booking.availability,
-    treatment && step !== "member" ? { slug, treatmentId: treatment._id, memberId } : "skip",
+    treatment && step !== "member" ? { slug, treatmentId: treatment._id, memberId, from: windowFrom } : "skip",
   );
+  const days = availability?.days;
+  const nextFrom = availability?.nextFrom ?? null;
 
   // Bring the next step into view after each choice (not on first load).
   const stepRef = useRef<HTMLDivElement>(null);
@@ -103,6 +111,14 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
     setDate(null);
     setStart(null);
     setSlotError(null);
+    setWindowFrom(undefined);
+    setEarlier([]);
+  }
+
+  function showWindow(from: string | undefined, back: boolean) {
+    setEarlier((stack) => (back ? stack.slice(0, -1) : [...stack, windowFrom]));
+    setWindowFrom(from);
+    setDate(null);
   }
 
   async function submit(details: Details) {
@@ -119,6 +135,7 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
         email: details.email,
         note: details.note || undefined,
         authorized: details.authorized,
+        website: details.website || undefined,
       });
       setSent({
         treatmentName: treatment.name,
@@ -243,7 +260,7 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
             )}
             {days === undefined ? (
               <TimeSkeleton />
-            ) : days.length === 0 ? (
+            ) : days.length === 0 && !nextFrom && earlier.length === 0 ? (
               <BookingMessage
                 title="No hay horarios libres en los próximos días"
                 text={memberId ? `Elige otra persona del equipo o escribe a ${page.name}.` : `Escribe a ${page.name} para buscar un espacio.`}
@@ -251,15 +268,35 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
                 <WhatsAppButton phone={page.whatsapp} orgName={page.name} />
               </BookingMessage>
             ) : (
-              <DaySlots
-                days={days}
-                date={date}
-                onDateChange={setDate}
-                onPick={(slot) => choose(() => {
-                  setStart(slot);
-                  setSlotError(null);
-                })}
-              />
+              <>
+                {days.length === 0 ? (
+                  <p className="text-ink-soft">No hay horarios libres en estos días.</p>
+                ) : (
+                  <DaySlots
+                    days={days}
+                    date={date}
+                    onDateChange={setDate}
+                    onPick={(slot) => choose(() => {
+                      setStart(slot);
+                      setSlotError(null);
+                    })}
+                  />
+                )}
+                {(earlier.length > 0 || nextFrom) && (
+                  <div className="flex flex-wrap gap-2">
+                    {earlier.length > 0 && (
+                      <Button type="button" variant="ghost" onClick={() => showWindow(earlier[earlier.length - 1], true)}>
+                        Días anteriores
+                      </Button>
+                    )}
+                    {nextFrom && (
+                      <Button type="button" variant="secondary" onClick={() => showWindow(nextFrom, false)}>
+                        Ver más días
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </Step>
         )}

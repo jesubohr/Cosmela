@@ -1,9 +1,12 @@
 /// <reference types="vite/client" />
 // Shared convex-test setup for the clients, appointments, and payments tests.
 // The double extension keeps Convex from deploying this file.
-import { convexTest } from "convex-test";
+import rateLimiter from "@convex-dev/rate-limiter/test";
+import { convexTest, type TestConvex } from "convex-test";
 import { ConvexError } from "convex/values";
+import { afterEach, beforeEach, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
+import type { UploadKind } from "./validators";
 import schema from "../schema";
 import { bogotaToEpoch } from "./time";
 
@@ -14,6 +17,7 @@ const SCHEDULE = [1, 2, 3, 4, 5, 6].map((day) => ({ day, start: "08:00", end: "1
 /** Two orgs: A (admin Ana, staff Sofi) and B (admin Bea), each with a treatment and a client. */
 export async function setupOrgs() {
   const t = convexTest(schema, modules);
+  rateLimiter.register(t);
   const ids = await t.run(async (ctx) => {
     async function org(name: string, ownerId: string) {
       return ctx.db.insert("orgs", {
@@ -98,9 +102,30 @@ export async function setupOrgs() {
   };
 }
 
+/** An unclaimed upload, as `files.generateUploadUrl` records it (without calling R2). Returns the key. */
+export async function upload(t: TestConvex<typeof schema>, orgId: Id<"orgs">, uploadedBy: Id<"members">, kind: UploadKind) {
+  const key = `orgs/${orgId}/${kind}/${crypto.randomUUID()}`;
+  await t.run((ctx) => ctx.db.insert("uploads", { orgId, key, kind, uploadedBy }));
+  return key;
+}
+
 /** A Monday far in the future, so "now" never interferes. */
 export const MONDAY = "2030-01-07";
 export const at = (time: string, date = MONDAY) => bogotaToEpoch(date, time);
+
+/**
+ * Fake timers at Sunday 07:00 before `MONDAY`, so reminders scheduled for test
+ * appointments stay within timer range. Call it at the top of a test file.
+ */
+export function withTestClock() {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(at("07:00", "2030-01-06"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+}
 
 /** The `code` of a ConvexError thrown by `promise`. */
 export async function errorCode(promise: Promise<unknown>) {

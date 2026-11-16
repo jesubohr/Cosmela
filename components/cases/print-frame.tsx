@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Printer } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { useFileUrls } from "@/components/attention/step-parts";
+import { useSignedUrls } from "@/components/shared/use-signed-urls";
 import { Button } from "@/components/ui/button";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { consentDate } from "@/convex/lib/consent";
@@ -15,7 +15,7 @@ type OrgHeader = Pick<Doc<"orgs">, "name" | "legalName" | "taxId" | "city" | "ad
 export function PrintFrame({ org, title, children }: { org: OrgHeader; title: string; children: ReactNode }) {
   const router = useRouter();
   const [printedAt] = useState(() => Date.now());
-  const logo = useFileUrls([org.logoKey])[org.logoKey ?? ""];
+  const logo = useSignedUrls([org.logoKey])[org.logoKey ?? ""];
   const legal = [org.legalName && org.legalName !== org.name ? org.legalName : null, org.taxId].filter(Boolean).join(", ");
   const place = [org.address, org.city].filter(Boolean).join(", ");
 

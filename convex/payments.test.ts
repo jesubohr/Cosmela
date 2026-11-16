@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
-import { at, errorCode, errorMessage, setupOrgs } from "./lib/fixtures.testing";
+import { api, internal } from "./_generated/api";
+import { at, errorCode, errorMessage, setupOrgs, withTestClock } from "./lib/fixtures.testing";
+
+withTestClock();
 
 async function setup() {
   const s = await setupOrgs();
@@ -47,23 +49,87 @@ describe("payments", () => {
     expect(await errorCode(pay(10000))).toBe("INVALID");
   });
 
-  test("client payments list shows payments and what is still owed", async () => {
-    const { pay, asAna, ids } = await setup();
-    await pay(30000);
-    const { payments, owing } = await asAna.query(api.payments.listByClient, { clientId: ids.clientA });
-    expect(payments.map((p) => [p.amount, p.treatmentName])).toEqual([[30000, "Limpieza facial"]]);
-    expect(owing.map((a) => a.price - a.paidTotal)).toEqual([70000]);
-  });
-
-  test("balance counts completed appointments only", async () => {
+  test("Pagos and Resumen agree: an abono for an upcoming appointment is credit, not debt", async () => {
     const { pay, asAna, ids, t, appointmentId } = await setup();
     await pay(30000);
-    expect((await asAna.query(api.clients.summary, { clientId: ids.clientA })).balance).toBe(0);
+    let list = await asAna.query(api.payments.listByClient, { clientId: ids.clientA });
+    expect(list.payments.map((p) => [p.amount, p.treatmentName])).toEqual([[30000, "Limpieza facial"]]);
+    expect(list.owing).toEqual([]);
+    expect(await asAna.query(api.clients.summary, { clientId: ids.clientA })).toMatchObject({ balance: 0, credit: 30000 });
+
     await t.run((ctx) => ctx.db.patch(appointmentId, { status: "completed" }));
-    const summary = await asAna.query(api.clients.summary, { clientId: ids.clientA });
-    expect(summary.balance).toBe(70000);
-    const withBalance = await asAna.query(api.clients.listWithBalance, {});
-    expect(withBalance.map((c) => [c._id, c.balance])).toEqual([[ids.clientA, 70000]]);
+    list = await asAna.query(api.payments.listByClient, { clientId: ids.clientA });
+    expect(list.owing.map((a) => a.price - a.paidTotal)).toEqual([70000]);
+    expect(await asAna.query(api.clients.summary, { clientId: ids.clientA })).toMatchObject({ balance: 70000, credit: 0 });
+  });
+
+  test("an abono on a cancelled appointment stays visible as credit", async () => {
+    const { pay, asAna, ids, appointmentId } = await setup();
+    await pay(40000);
+    await asAna.mutation(api.appointments.cancel, { appointmentId });
+    expect(await asAna.query(api.clients.summary, { clientId: ids.clientA })).toMatchObject({ balance: 0, credit: 40000 });
+  });
+
+  test("changing the appointment's client moves its payments", async () => {
+    const { pay, asAna, ids, t, appointmentId } = await setup();
+    await pay(30000);
+    const other = await t.run((ctx) =>
+      ctx.db.insert("clients", {
+        orgId: ids.orgA,
+        firstName: "Sara",
+        lastName: "Prueba",
+        searchText: "sara prueba",
+        phone: "+573001112233",
+        health: { conditions: [], allergies: [], skinConditions: [], none: { conditions: false, allergies: false, skin: false } },
+        habits: {},
+        skin: {},
+        createdBy: ids.ana,
+        isArchived: false,
+      }),
+    );
+    await asAna.mutation(api.appointments.update, {
+      appointmentId,
+      clientId: other,
+      treatmentId: ids.treatmentA,
+      memberId: ids.ana,
+      start: at("09:00"),
+      durationMin: 60,
+      price: 100000,
+    });
+    expect((await asAna.query(api.payments.listByClient, { clientId: ids.clientA })).payments).toEqual([]);
+    expect((await asAna.query(api.payments.listByClient, { clientId: other })).payments.map((p) => p.amount)).toEqual([30000]);
+    expect((await asAna.query(api.clients.summary, { clientId: other })).credit).toBe(30000);
+  });
+
+  test("hasBalance follows status, price, and payments (Con saldo pendiente, Hoy, Reportes)", async () => {
+    const { pay, asAna, ids, t, appointmentId } = await setup();
+    const hasBalance = async () => (await t.run((ctx) => ctx.db.get(appointmentId)))!.hasBalance ?? false;
+    const owing = async () => (await asAna.query(api.clients.listWithBalance, {})).map((c) => [c._id, c.balance]);
+    await pay(30000);
+    expect(await hasBalance()).toBe(false);
+    expect(await owing()).toEqual([]);
+
+    // Closing the attention marks it; paying the rest clears it; removing a payment marks it again.
+    await t.run((ctx) => ctx.db.patch(appointmentId, { status: "completed" }));
+    await t.run((ctx) => ctx.db.patch(appointmentId, { hasBalance: true }));
+    expect(await owing()).toEqual([[ids.clientA, 70000]]);
+    const last = await pay(70000);
+    expect(await hasBalance()).toBe(false);
+    expect(await owing()).toEqual([]);
+    await asAna.mutation(api.payments.remove, { paymentId: last });
+    expect(await hasBalance()).toBe(true);
+    expect(await owing()).toEqual([[ids.clientA, 70000]]);
+    const today = await asAna.query(api.dashboard.today, { date: "2030-01-07" });
+    expect(today.pendingPayments.total).toBe(70000);
+    expect((await asAna.query(api.reports.month, { month: "2030-01" })).balance).toBe(70000);
+  });
+
+  test("the migration backfills hasBalance for older appointments", async () => {
+    const { pay, t, appointmentId } = await setup();
+    await pay(30000);
+    await t.run((ctx) => ctx.db.patch(appointmentId, { status: "completed", hasBalance: undefined }));
+    await t.mutation(internal.migrations.backfill, {});
+    expect((await t.run((ctx) => ctx.db.get(appointmentId)))?.hasBalance).toBe(true);
   });
 });
 

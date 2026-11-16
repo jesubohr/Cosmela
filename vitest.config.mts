@@ -4,7 +4,8 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: "edge-runtime",
-    server: { deps: { inline: ["convex-test"] } },
+    // The rate limiter's test helper ships as TypeScript source.
+    server: { deps: { inline: ["convex-test", "@convex-dev/rate-limiter", "@convex-dev/batch-worker"] } },
     include: ["convex/**/*.test.ts", "lib/**/*.test.ts"],
   },
 });

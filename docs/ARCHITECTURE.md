@@ -118,7 +118,7 @@ clients: {
   skin: { type?: SkinType, fitzpatrick?: 1|2|3|4|5|6 },
   lastMedications?: string, lastPregnancy?: { pregnant: boolean, lactating: boolean, at: number },
   fichaCompletedAt?: number, healthReviewedAt?: number,
-  dataAuthorization?: { at: number, signatureKey?: string, method: "signature"|"online_checkbox", policyText: string },
+  dataAuthorization?: { at: number, signatureKey?: string, method: "signature"|"online_checkbox", policyId?: Id<"policies">, policyText?: string },  // policyText: older records only
   notes?: string,
   createdBy: Id<"members">, archivedAt?: number,
 }  index by_org, by_org_phone, by_org_birthday (orgId, birthdayKey), searchIndex search_text (searchField searchText, filterFields orgId, archived flag as `isArchived` boolean)
@@ -143,10 +143,12 @@ appointments: {
   status: "requested"|"scheduled"|"in_progress"|"completed"|"cancelled"|"no_show",
   source: "staff"|"online",
   price: number, paidTotal: number,          // paidTotal maintained by payment mutations
+  hasBalance?: boolean,                      // completed && price > paidTotal; kept by syncBalance (payments.ts)
+  contactEmail?: string,                     // email of an online request for an existing client; used only when the client has none
   notes?, caseId?, sessionId?,
   cancelReason?, reminderJobId?: Id<"_scheduled_functions">, reminderSentAt?,
   createdBy?: Id<"members">,
-}  index by_org_start (orgId, start), by_member_start (memberId, start), by_client (clientId, start), by_org_status (orgId, status), by_org_balance? (use filter: completed & paidTotal < price; volume is small per org)
+}  index by_org_start (orgId, start), by_member_start (memberId, start), by_client (clientId, start), by_org_status (orgId, status), by_org_balance (orgId, hasBalance)
 
 timeBlocks: { orgId, memberId, start, end, allDay: boolean, kind: "personal"|"professional", title? }
   index by_org_start, by_member_start
@@ -156,12 +158,14 @@ cases: {
   reasons: ReasonKey[], reasonOther?: string,  // motivo de consulta
   plannedSessions?: number, status: "open"|"closed",
   openedAt, closedAt?, summary?, sessionCount: number, lastSessionAt?,
+  memberIds?: Id<"members">[],               // professionals with a closed or postponed session (Casos filter)
 }  index by_org_status, by_client
 
 sessions: {
   orgId, caseId, clientId, appointmentId, memberId, treatmentId,
-  number: number,                            // 1-based within case
+  number?: number,                           // 1-based within case, assigned at close
   status: "draft"|"closed"|"postponed",
+  reason?: string,                           // postponed: "Pospuesta por contraindicación" or "Atención no realizada"
   step: number,                              // last completed step, for resume
   startedAt, closedAt?,
   intake?: { healthChanged: boolean, medications: string, pregnant?: boolean, lactating?: boolean, evolution?: string },
@@ -172,6 +176,7 @@ sessions: {
     photoUse: "clinical"|"clinical_and_marketing"|"none",
     clientSignatureKey: string, professionalSignatureKey?: string,
     signedAt: number, userAgent: string,
+    documentText: string, guardian?, hash: string, hashVersion?: number,   // v2 hash covers photoUse
   },
   procedure?: { fields: FormField[], answers: Record<string, string | number | boolean | string[] | null>, notes? },
   photos: { key: string, kind: "before"|"after", at: number }[],
@@ -185,6 +190,12 @@ followUps: { orgId, clientId, caseId?, sessionId?, memberId, dueDate: "YYYY-MM-D
 
 payments: { orgId, appointmentId, clientId, amount, method: "cash"|"nequi"|"daviplata"|"breb"|"transfer"|"card"|"other", paidAt, note?, recordedBy: Id<"members"> }
   index by_org_paidAt, by_appointment, by_client
+
+uploads: { orgId, key, kind: "photo"|"signature"|"logo", uploadedBy: Id<"members">, attachedTo?: string }  // "session:<id>", "consent:<id>", "member:<id>", "org"
+  index by_key, by_attached
+
+policies: { orgId, hash, text }              // accepted privacy policy texts, stored once each
+  index by_org_hash
 ```
 
 Use shared validators in `convex/lib/validators.ts` so the UI imports the same enum lists (with Spanish labels in `lib/constants.ts`). Keep documents small: photos are R2 keys, never bytes.
@@ -196,7 +207,8 @@ Use shared validators in `convex/lib/validators.ts` so the UI imports the same e
   - `adminQuery` / `adminMutation`: same + `role === "admin"`.
   - Helper `getOwned(ctx, table, id)` loads a doc and throws unless `doc.orgId === ctx.orgId`. Use it for **every** id received from the client.
 - Public functions for the booking page (`booking.ts`) take a `slug`, never return health data, and only return: business public profile, bookable treatments (name, duration, price, description), bookable members (name, color), and free slots.
-- Files: `files.getUrl` returns short-lived signed URLs only for keys referenced by a document of the caller's org. Upload keys are prefixed `orgs/{orgId}/…`.
+- Files: keys are `orgs/{orgId}/{kind}/{uuid}`. `files.getUrls({ keys, bucket })` signs 1-hour URLs for keys of the caller's org; clients use `useSignedUrls` (components/shared), which advances `bucket` every 45 minutes so a cached result never serves an expired URL. `generateUploadUrl` records each key in `uploads`; a record can claim only an unclaimed upload of its org and kind, and deletes only files it owns. Consent signatures are never deleted.
+- Public booking: per-org limits (10 requests an hour, 30 a day) with `@convex-dev/rate-limiter`, a honeypot field, 2 open requests per phone, and availability read in windows of up to 14 days. An anonymous request never changes an existing client.
 - Write tests that a member of org A cannot read or write org B (clients, sessions, files) and that staff cannot call admin mutations.
 
 ## 5. Auth flow
@@ -205,7 +217,7 @@ Use shared validators in `convex/lib/validators.ts` so the UI imports the same e
 2. `proxy.ts` redirects unauthenticated requests on app routes to `/ingresar` (public: `/ingresar`, `/reservar/*`, `/invitacion/*`, `/terminos`, `/privacidad`, `/api/auth/*`, static).
 3. After login: if no membership → `/bienvenida` (onboarding creates the org + admin member + userSettings + selected treatments). If an invitation token is pending → accept it.
 4. OTP email: Spanish subject "Tu código de acceso a Cosmela: 123456". Without `RESEND_API_KEY`, log the code to the Convex logs (dev).
-5. Rate limit OTP sends (Better Auth built-in rate limiting or a simple per-email counter).
+5. Rate limits: 5 codes per email per 15 minutes (rate-limiter component, Better Auth `before` hook), plus Better Auth's per-IP limit. The Next.js auth route passes the platform's client IP as `x-cosmela-client-ip`, the only IP header Better Auth reads.
 
 Spike this first (research §3d): OTP send, identity inside a mutation, proxy blocking.
 
@@ -213,8 +225,9 @@ Spike this first (research §3d): OTP send, identity inside a mutation, proxy bl
 
 - **Free slots** (`convex/lib/slots.ts`, pure and unit-tested): input = member schedule ranges for the day, existing busy intervals (appointments with status requested/scheduled/in_progress + time blocks), treatment duration, slot step, min notice, now. Output = start times where `[start, start+duration)` fits fully inside a schedule range and overlaps no busy interval. All in Bogotá local time converted to epoch ms with `@date-fns/tz`. "Cualquiera disponible" = union over bookable members; on submit, assign the first free member.
 - **Case suggestion** when starting an attention: the client's open case with the same treatment, else new case.
-- **Session number** = `case.sessionCount + 1` at creation.
-- **Balance** = `appointment.price - appointment.paidTotal`. Pending payments = completed appointments with balance > 0.
+- **Session number** = `case.sessionCount + 1` at close. Drafts and postponed sessions have no number.
+- **Balance** = `appointment.price - appointment.paidTotal`. Pending payments ("saldo pendiente") = completed appointments with balance > 0 (`hasBalance`). Abonos on appointments not attended (upcoming, cancelled, no-show) are credit.
+- **Discarding an attention** (`sessions.discard`): before the consent, the draft (its photos, and a case only it used) is deleted and the appointment returns to `scheduled`; after the consent, the session becomes postponed ("Atención no realizada") and the appointment is cancelled with that reason.
 - **Reminders**: on schedule/confirm, `ctx.scheduler.runAt(start - 24h)` (clamped to ≥ now + 5 min; if that lands between 20:00 and 07:00 Bogotá, move to 19:00 the day before or 07:00 same day if later than now) and store `reminderJobId`; cancel/reschedule on change. A cron every 30 min sends missed reminders for appointments in the next 26 h without `reminderSentAt`. The send action re-checks status, org setting, and client email.
 
 ## 7. Files (R2)

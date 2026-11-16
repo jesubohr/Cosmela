@@ -170,6 +170,16 @@ export function toClientInput(value: FichaValue, { includeHealth = true } = {}):
   };
 }
 
+/** Drops the errors of fields the user just changed into a valid value. Other errors stay. */
+export function withoutFixedErrors(errors: FichaErrors, previous: FichaValue, next: FichaValue): FichaErrors {
+  const stillInvalid = validateFicha(next);
+  const kept = { ...errors };
+  for (const field of Object.keys(errors) as FichaField[]) {
+    if (field !== "form" && next[field] !== previous[field] && !stillInvalid[field]) delete kept[field];
+  }
+  return kept;
+}
+
 export type SaveFichaResult = { ok: true; clientId: Id<"clients"> } | { ok: false; errors: FichaErrors };
 
 /**

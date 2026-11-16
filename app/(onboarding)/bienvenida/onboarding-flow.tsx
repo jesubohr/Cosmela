@@ -25,6 +25,9 @@ import { MEMBER_TITLES, ORG_KIND_LABELS } from "@/lib/constants";
 import { isValidPhone } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+/** DOM ids of the fields that can show an error. */
+type FieldId = "kind-solo" | "business-name" | "whatsapp" | "name";
+
 const STEPS = ["¿Cómo trabajas?", "Tu perfil", "Tus tratamientos", "Tu horario"];
 
 export function OnboardingFlow() {
@@ -77,26 +80,31 @@ function Wizard({ initialName }: { initialName: string }) {
   const [picks, setPicks] = useState<TemplatePicks>(() => picksFor(TREATMENT_TEMPLATES.filter((t) => t.popular)));
   const [schedule, setSchedule] = useState<ScheduleRange[]>(DEFAULT_SCHEDULE);
 
-  function stepError(): string | null {
-    switch (step) {
-      case 0:
-        if (!kind) return "Elige cómo trabajas.";
-        if (!businessName.trim()) return "Escribe el nombre de tu negocio.";
-        if (whatsapp && !isValidPhone(whatsapp)) return "Escribe un WhatsApp de 10 dígitos.";
-        return null;
-      case 1:
-        return name.trim() ? null : "Escribe tu nombre.";
-      case 2:
-        return picksError(picks);
-      default:
-        return scheduleError(schedule);
+  /** Errors of the fields in steps 1 and 2, in page order. They derive from the values, so they clear once the field is valid. */
+  function fieldErrors(): Partial<Record<FieldId, string>> {
+    const errors: Partial<Record<FieldId, string>> = {};
+    if (step === 0) {
+      if (!kind) errors["kind-solo"] = "Elige cómo trabajas.";
+      else if (!businessName.trim()) errors["business-name"] = "Escribe el nombre de tu negocio.";
+      if (whatsapp && !isValidPhone(whatsapp)) errors.whatsapp = "Escribe un WhatsApp de 10 dígitos.";
+    } else if (step === 1 && !name.trim()) {
+      errors.name = "Escribe tu nombre.";
     }
+    return errors;
+  }
+
+  function stepError(): string | null {
+    if (step === 2) return picksError(picks);
+    if (step === 3) return scheduleError(schedule);
+    return Object.values(fieldErrors())[0] ?? null;
   }
 
   async function next() {
     setServerError(null);
     if (stepError()) {
       setAttempted(true);
+      const [firstInvalid] = Object.keys(fieldErrors());
+      if (firstInvalid) document.getElementById(firstInvalid)?.focus();
       return;
     }
     if (step < STEPS.length - 1) {
@@ -132,7 +140,8 @@ function Wizard({ initialName }: { initialName: string }) {
   }
 
   const pickCount = Object.keys(picks).length;
-  const error = (attempted ? stepError() : null) ?? serverError;
+  const errors = attempted ? fieldErrors() : {};
+  const bottomError = (attempted && step >= 2 ? stepError() : null) ?? serverError;
 
   return (
     <Frame
@@ -179,13 +188,21 @@ function Wizard({ initialName }: { initialName: string }) {
                 </Button>
               </div>
             ))}
-            <div role="radiogroup" aria-label="¿Cómo trabajas?" className="grid gap-3 sm:grid-cols-2">
-              <KindOption icon={UserRound} selected={kind === "solo"} onSelect={() => setKind("solo")}>
-                {ORG_KIND_LABELS.solo}
-              </KindOption>
-              <KindOption icon={Store} selected={kind === "salon"} onSelect={() => setKind("salon")}>
-                {ORG_KIND_LABELS.salon}
-              </KindOption>
+            <div className="flex flex-col gap-2">
+              <div
+                role="radiogroup"
+                aria-label="¿Cómo trabajas?"
+                aria-describedby={errors["kind-solo"] ? "kind-error" : undefined}
+                className="grid gap-3 sm:grid-cols-2"
+              >
+                <KindOption id="kind-solo" icon={UserRound} selected={kind === "solo"} onSelect={() => setKind("solo")}>
+                  {ORG_KIND_LABELS.solo}
+                </KindOption>
+                <KindOption icon={Store} selected={kind === "salon"} onSelect={() => setKind("salon")}>
+                  {ORG_KIND_LABELS.salon}
+                </KindOption>
+              </div>
+              <FieldError id="kind-error">{errors["kind-solo"]}</FieldError>
             </div>
             {kind && (
               <div className="flex flex-col gap-5">
@@ -196,13 +213,21 @@ function Wizard({ initialName }: { initialName: string }) {
                   value={businessName}
                   onChange={setBusinessName}
                   autoComplete="organization"
+                  error={errors["business-name"]}
                 />
                 <TextField id="city" label="Ciudad" value={city} onChange={setCity} autoComplete="address-level2" />
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="whatsapp" className="text-base">
                     WhatsApp del negocio
                   </Label>
-                  <PhoneInput id="whatsapp" value={whatsapp} onChange={setWhatsapp} />
+                  <PhoneInput
+                    id="whatsapp"
+                    value={whatsapp}
+                    onChange={setWhatsapp}
+                    aria-invalid={errors.whatsapp ? true : undefined}
+                    aria-describedby={errors.whatsapp ? "whatsapp-error" : undefined}
+                  />
+                  <FieldError id="whatsapp-error">{errors.whatsapp}</FieldError>
                 </div>
               </div>
             )}
@@ -211,7 +236,7 @@ function Wizard({ initialName }: { initialName: string }) {
 
         {step === 1 && (
           <div className="flex flex-col gap-6">
-            <TextField id="name" label="Tu nombre" value={name} onChange={setName} autoComplete="name" />
+            <TextField id="name" label="Tu nombre" value={name} onChange={setName} autoComplete="name" error={errors.name} />
             <div className="flex flex-col gap-2">
               <span id="title-label" className="font-medium">
                 ¿Cuál es tu título?
@@ -246,9 +271,9 @@ function Wizard({ initialName }: { initialName: string }) {
 
         {step === 3 && <ScheduleEditor value={schedule} onChange={setSchedule} />}
 
-        {error && (
+        {bottomError && (
           <p role="alert" className="text-rose">
-            {error}
+            {bottomError}
           </p>
         )}
 
@@ -301,11 +326,13 @@ function ProgressDots({ step }: { step: number }) {
 }
 
 function KindOption({
+  id,
   icon: Icon,
   selected,
   onSelect,
   children,
 }: {
+  id?: string;
   icon: typeof Store;
   selected: boolean;
   onSelect: () => void;
@@ -313,6 +340,7 @@ function KindOption({
 }) {
   return (
     <button
+      id={id}
       type="button"
       role="radio"
       aria-checked={selected}
@@ -342,6 +370,7 @@ function TextField({
   value,
   onChange,
   autoComplete,
+  error,
 }: {
   id: string;
   label: string;
@@ -349,6 +378,7 @@ function TextField({
   value: string;
   onChange: (value: string) => void;
   autoComplete?: string;
+  error?: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -360,14 +390,25 @@ function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
-        aria-describedby={hint ? `${id}-hint` : undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={[hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined}
       />
       {hint && (
         <p id={`${id}-hint`} className="text-sm text-ink-soft">
           {hint}
         </p>
       )}
+      <FieldError id={`${id}-error`}>{error}</FieldError>
     </div>
+  );
+}
+
+function FieldError({ id, children }: { id: string; children?: string }) {
+  if (!children) return null;
+  return (
+    <p id={id} role="alert" className="text-sm text-rose">
+      {children}
+    </p>
   );
 }
 

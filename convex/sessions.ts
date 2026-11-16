@@ -3,9 +3,9 @@ import { formatNumber, isEmptyAnswer, validateAnswers } from "../components/form
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { assertOrgKey, r2 } from "./files";
+import { claimUpload, deleteOwnedFiles, owners } from "./files";
 import { fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
-import { consentHash, isMinor, renderConsentText, renderDocument } from "./lib/consent";
+import { CONSENT_HASH_VERSION, consentHash, isMinor, renderConsentText, renderDocument } from "./lib/consent";
 import { clientSearchText } from "./lib/text";
 import { addDaysToDateKey, bogotaDateKey } from "./lib/time";
 import {
@@ -21,8 +21,8 @@ import {
   type FormAnswer,
   type FormField,
 } from "./lib/validators";
-import { privacyPolicyText } from "./orgs";
-import { addPayment } from "./payments";
+import { currentPolicyId, privacyPolicyText } from "./orgs";
+import { addPayment, syncBalance } from "./payments";
 import { invalid } from "./treatments";
 
 type OrgCtx = QueryCtx & { orgId: Id<"orgs"> };
@@ -30,6 +30,13 @@ type MemberCtx = MutationCtx & { orgId: Id<"orgs">; member: Doc<"members"> };
 
 /** Steps of the attention flow; `session.step` is the last one completed. */
 export const STEPS = { ficha: 1, assessment: 2, contraindications: 3, consent: 4, procedure: 5, closing: 6 } as const;
+
+export const POSTPONED_REASON = "Pospuesta por contraindicación";
+export const NOT_PERFORMED_REASON = "Atención no realizada";
+
+// Same labels as GENERAL_CONTRAINDICATION_LABELS in lib/constants.ts.
+const PREGNANCY = "Embarazo";
+const LACTATION = "Lactancia";
 
 function clean(value: string | undefined) {
   const trimmed = value?.trim();
@@ -84,14 +91,51 @@ async function insertCase(ctx: MemberCtx, clientId: Id<"clients">, treatmentId: 
   return (await ctx.db.get(caseId))!;
 }
 
+async function sessionsOfCase(ctx: OrgCtx, caseId: Id<"cases">) {
+  return await ctx.db
+    .query("sessions")
+    .withIndex("by_case", (q) => q.eq("caseId", caseId))
+    .collect();
+}
+
+/** True when anything besides the given session and appointment points at the case, so it must stay. */
+async function caseIsReferenced(
+  ctx: OrgCtx,
+  caseDoc: Doc<"cases">,
+  except: { sessionId: Id<"sessions">; appointmentId: Id<"appointments"> },
+) {
+  if (caseDoc.sessionCount > 0) return true;
+  const [sessions, appointments, followUps] = await Promise.all([
+    sessionsOfCase(ctx, caseDoc._id),
+    ctx.db.query("appointments").withIndex("by_client", (q) => q.eq("clientId", caseDoc.clientId)).collect(),
+    ctx.db.query("followUps").withIndex("by_client", (q) => q.eq("clientId", caseDoc.clientId)).collect(),
+  ]);
+  return (
+    sessions.some((s) => s._id !== except.sessionId) ||
+    appointments.some((a) => a.caseId === caseDoc._id && a._id !== except.appointmentId) ||
+    followUps.some((f) => f.caseId === caseDoc._id)
+  );
+}
+
+function withMember(caseDoc: Doc<"cases">, memberId: Id<"members">) {
+  const memberIds = caseDoc.memberIds ?? [];
+  return memberIds.includes(memberId) ? memberIds : [...memberIds, memberId];
+}
+
 /**
- * Case suggestion: the case the appointment was booked for, else the client's open
- * case for the same treatment, else a new case.
+ * Case suggestion: the case the appointment was booked for (same client and treatment,
+ * still open), else the client's open case for the same treatment, else a new case.
  */
 async function suggestCase(ctx: MemberCtx, appointment: Doc<"appointments">) {
   if (appointment.caseId) {
     const linked = await ctx.db.get(appointment.caseId);
-    if (linked && linked.orgId === ctx.orgId && linked.status === "open" && linked.clientId === appointment.clientId) {
+    if (
+      linked &&
+      linked.orgId === ctx.orgId &&
+      linked.status === "open" &&
+      linked.clientId === appointment.clientId &&
+      linked.treatmentId === appointment.treatmentId
+    ) {
       return linked;
     }
   }
@@ -121,7 +165,6 @@ export const start = memberMutation({
       appointmentId,
       memberId: appointment.memberId,
       treatmentId: appointment.treatmentId,
-      number: caseDoc.sessionCount + 1,
       status: "draft",
       step: 0,
       startedAt: Date.now(),
@@ -133,18 +176,51 @@ export const start = memberMutation({
   },
 });
 
+/**
+ * "Descartar atención". Before the consent: deletes the draft (and its photos, and a
+ * case that only it used) and the appointment goes back to scheduled. After the consent:
+ * keeps the signed record as a postponed session ("Atención no realizada") and cancels
+ * the appointment with that reason.
+ */
+export const discard = memberMutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, { sessionId }) => {
+    const session = await getDraft(ctx, sessionId);
+    const appointment = await getOwned(ctx, "appointments", session.appointmentId);
+
+    if (session.consent) {
+      await ctx.db.patch(sessionId, { status: "postponed", closedAt: Date.now(), reason: NOT_PERFORMED_REASON });
+      const caseDoc = await ctx.db.get(session.caseId);
+      if (caseDoc) await ctx.db.patch(caseDoc._id, { memberIds: withMember(caseDoc, session.memberId) });
+      await ctx.db.patch(appointment._id, { status: "cancelled", cancelReason: NOT_PERFORMED_REASON });
+      await ctx.runMutation(internal.notifications.cancelReminder, { appointmentId: appointment._id });
+      return;
+    }
+
+    await deleteOwnedFiles(ctx, owners.session(sessionId), session.photos.map((p) => p.key));
+    await ctx.db.delete(sessionId);
+    const caseDoc = await ctx.db.get(session.caseId);
+    const keepCase = caseDoc ? await caseIsReferenced(ctx, caseDoc, { sessionId, appointmentId: appointment._id }) : false;
+    if (caseDoc && !keepCase) await ctx.db.delete(caseDoc._id);
+    await ctx.db.patch(appointment._id, { status: "scheduled", sessionId: undefined, caseId: keepCase ? appointment.caseId : undefined });
+    if (!appointment.reminderSentAt) await ctx.runMutation(internal.notifications.scheduleReminder, { appointmentId: appointment._id });
+  },
+});
+
 /** Everything the attention flow needs for one appointment. `session` is null until `start`. */
 export const attention = memberQuery({
   args: { appointmentId: v.id("appointments") },
   handler: async (ctx, { appointmentId }) => {
     const appointment = await getOwned(ctx, "appointments", appointmentId);
-    const [session, client, treatment, member, org, payments] = await Promise.all([
-      sessionOf(ctx, appointmentId),
+    const session = await sessionOf(ctx, appointmentId);
+    const [client, treatment, member, org, payments, clientSessions] = await Promise.all([
       ctx.db.get(appointment.clientId),
       ctx.db.get(appointment.treatmentId),
-      ctx.db.get(appointment.memberId),
+      // The professional responsible for the session: whoever signed the consent, else the appointment's.
+      ctx.db.get(session?.memberId ?? appointment.memberId),
       ctx.db.get(ctx.orgId),
       ctx.db.query("payments").withIndex("by_appointment", (q) => q.eq("appointmentId", appointmentId)).collect(),
+      ctx.db.query("sessions").withIndex("by_client", (q) => q.eq("clientId", appointment.clientId)).collect(),
     ]);
     if (!client || !treatment || !member || !org) fail("NOT_FOUND");
 
@@ -165,9 +241,12 @@ export const attention = memberQuery({
         paidTotal: appointment.paidTotal,
         memberId: appointment.memberId,
         cancelReason: appointment.cancelReason,
+        contactEmail: appointment.contactEmail,
       },
       session,
       client,
+      // The first visit is the first attention that closes, whatever the ficha holds.
+      firstVisit: !clientSessions.some((s) => s.status === "closed" && s._id !== session?._id),
       treatment: {
         _id: treatment._id,
         name: treatment.name,
@@ -178,7 +257,9 @@ export const attention = memberQuery({
         suggestedSessions: treatment.suggestedSessions,
         formFields: treatment.formFields,
       },
-      member: { _id: member._id, name: member.name, signatureKey: member.signatureKey },
+      member: { _id: member._id, name: member.name },
+      // The member running the attention signs the consent as the professional.
+      signer: { _id: ctx.member._id, name: ctx.member.name, signatureKey: ctx.member.signatureKey },
       org: { name: org.name, kind: org.kind, privacyPolicy: await privacyPolicyText(ctx, ctx.orgId) },
       case: caseDoc,
       openCases: cases.map((c) => ({
@@ -207,6 +288,7 @@ export const saveIntake = memberMutation({
   },
   handler: async (ctx, { sessionId, ...intake }) => {
     const session = await getDraft(ctx, sessionId);
+    if (session.consent) invalid("El consentimiento ya está firmado. Las respuestas de salud de hoy no se pueden cambiar.");
     const client = await getOwned(ctx, "clients", session.clientId);
     const asked = client.sex !== "male";
     if (asked && (intake.pregnant === undefined || intake.lactating === undefined)) {
@@ -225,13 +307,6 @@ export const saveIntake = memberMutation({
   },
 });
 
-async function sessionsOfCase(ctx: OrgCtx, caseId: Id<"cases">) {
-  return await ctx.db
-    .query("sessions")
-    .withIndex("by_case", (q) => q.eq("caseId", caseId))
-    .collect();
-}
-
 /** Moves a draft session to another open case of the client, or to a new one. */
 async function moveToCase(ctx: MemberCtx, session: Doc<"sessions">, target: Id<"cases"> | "new") {
   const current = (await ctx.db.get(session.caseId))!;
@@ -240,7 +315,7 @@ async function moveToCase(ctx: MemberCtx, session: Doc<"sessions">, target: Id<"
   let next: Doc<"cases">;
   if (target === "new") {
     // A case that only holds this session is already the new case.
-    if (others.length === 0) return current;
+    if (others.length === 0 && current.sessionCount === 0) return current;
     next = await insertCase(ctx, session.clientId, session.treatmentId);
   } else {
     if (target === current._id) return current;
@@ -249,9 +324,11 @@ async function moveToCase(ctx: MemberCtx, session: Doc<"sessions">, target: Id<"
       invalid("Ese caso no corresponde a este cliente y tratamiento.");
     }
   }
-  await ctx.db.patch(session._id, { caseId: next._id, number: next.sessionCount + 1 });
+  await ctx.db.patch(session._id, { caseId: next._id });
   await ctx.db.patch(session.appointmentId, { caseId: next._id });
-  if (others.length === 0) await ctx.db.delete(current._id);
+  if (!(await caseIsReferenced(ctx, current, { sessionId: session._id, appointmentId: session.appointmentId }))) {
+    await ctx.db.delete(current._id);
+  }
   return next;
 }
 
@@ -286,7 +363,8 @@ export const saveAssessment = memberMutation({
         skinType: args.assessment.skinType,
         notes: clean(args.assessment.notes),
       },
-      intake: moved.intake && { ...moved.intake, evolution: moved.number > 1 ? clean(args.evolution) : undefined },
+      // Evolution only applies when the case already has sessions.
+      intake: moved.intake && { ...moved.intake, evolution: caseDoc.sessionCount > 0 ? clean(args.evolution) : undefined },
       step: completed(moved, STEPS.assessment),
     });
   },
@@ -298,6 +376,13 @@ export const saveContraindications = memberMutation({
   handler: async (ctx, { sessionId, present, justification }) => {
     const session = await getDraft(ctx, sessionId);
     if (session.consent) invalid("El consentimiento ya está firmado. Las contraindicaciones no se pueden cambiar.");
+    // Today's answers mark these; the only way past them is "Continuar bajo mi criterio".
+    if (session.intake?.pregnant && !present.includes(PREGNANCY)) {
+      invalid("Hoy respondió que hay embarazo. Márcalo, y pospón el tratamiento o continúa bajo tu criterio.");
+    }
+    if (session.intake?.lactating && !present.includes(LACTATION)) {
+      invalid("Hoy respondió que hay lactancia. Márcala, y pospón el tratamiento o continúa bajo tu criterio.");
+    }
     const reason = clean(justification);
     if (present.length > 0 && !reason) invalid("Escribe por qué continúas a pesar de las contraindicaciones.");
     await ctx.db.patch(sessionId, {
@@ -319,8 +404,6 @@ function intakeOnClient({ intake }: Doc<"sessions">, now: number) {
   };
 }
 
-export const POSTPONED_REASON = "Pospuesta por contraindicación";
-
 /** "Posponer tratamiento": keeps the session as postponed and cancels the appointment. */
 export const postpone = memberMutation({
   args: { sessionId: v.id("sessions"), present: v.array(v.string()) },
@@ -331,10 +414,13 @@ export const postpone = memberMutation({
     const now = Date.now();
     await ctx.db.patch(sessionId, {
       status: "postponed",
+      reason: POSTPONED_REASON,
       closedAt: now,
       contraindications: { present, proceed: false },
       step: completed(session, STEPS.contraindications),
     });
+    const caseDoc = await ctx.db.get(session.caseId);
+    if (caseDoc) await ctx.db.patch(caseDoc._id, { memberIds: withMember(caseDoc, session.memberId) });
     await ctx.db.patch(session.clientId, intakeOnClient(session, now));
     await ctx.db.patch(session.appointmentId, { status: "cancelled", cancelReason: POSTPONED_REASON });
     await ctx.runMutation(internal.notifications.cancelReminder, { appointmentId: session.appointmentId });
@@ -344,6 +430,7 @@ export const postpone = memberMutation({
 /**
  * Paso 4: stores the immutable consent snapshot. The server renders the text, so the
  * stored text is exactly what the treatment and client data said at signing time.
+ * The member who signs as the professional becomes the session's professional.
  * First visit: also stores the Habeas Data authorization signed with the same signature.
  */
 export const signConsent = memberMutation({
@@ -351,7 +438,7 @@ export const signConsent = memberMutation({
     sessionId: v.id("sessions"),
     photoUse: vPhotoUse,
     clientSignatureKey: v.string(),
-    /** Drawn now; omitted to use the professional's saved signature. */
+    /** Drawn now; omitted to use the caller's saved signature. */
     professionalSignatureKey: v.optional(v.string()),
     userAgent: v.string(),
     /** Document typed in the consent step when the ficha had none. */
@@ -365,10 +452,9 @@ export const signConsent = memberMutation({
     if (session.consent) invalid("Este consentimiento ya está firmado.");
     if (!session.contraindications?.proceed) invalid("Primero revisa las contraindicaciones.");
 
-    const [client, treatment, member, org] = await Promise.all([
+    const [client, treatment, org] = await Promise.all([
       getOwned(ctx, "clients", session.clientId),
       getOwned(ctx, "treatments", session.treatmentId),
-      getOwned(ctx, "members", session.memberId),
       ctx.db.get(ctx.orgId),
     ]);
     const now = Date.now();
@@ -382,10 +468,12 @@ export const signConsent = memberMutation({
       guardian = { name, document, relationship };
     }
 
-    const professionalSignatureKey = args.professionalSignatureKey ?? member.signatureKey;
+    const professionalSignatureKey = args.professionalSignatureKey ?? ctx.member.signatureKey;
     if (!professionalSignatureKey) invalid("Falta la firma del profesional.");
-    assertOrgKey(ctx.orgId, args.clientSignatureKey);
-    assertOrgKey(ctx.orgId, professionalSignatureKey);
+    await claimUpload(ctx, args.clientSignatureKey, "signature", owners.consent(session._id));
+    if (args.professionalSignatureKey && args.professionalSignatureKey !== ctx.member.signatureKey) {
+      await claimUpload(ctx, args.professionalSignatureKey, "signature", owners.consent(session._id));
+    }
 
     const typed = clean(args.document?.number);
     if (typed && !client.documentNumber) {
@@ -404,7 +492,7 @@ export const signConsent = memberMutation({
           at: now,
           signatureKey: args.clientSignatureKey,
           method: "signature",
-          policyText: await privacyPolicyText(ctx, ctx.orgId),
+          policyId: await currentPolicyId(ctx, ctx.orgId),
         },
       });
     }
@@ -420,15 +508,17 @@ export const signConsent = memberMutation({
 
     // "No autorizo fotos": photos taken before signing are removed.
     if (args.photoUse === "none") {
-      for (const photo of session.photos) await r2.deleteObject(ctx, photo.key);
+      await deleteOwnedFiles(ctx, owners.session(session._id), session.photos.map((p) => p.key));
     }
     await ctx.db.patch(session._id, {
+      memberId: ctx.member._id,
       consent: {
         ...evidence,
         photoUse: args.photoUse,
         userAgent: args.userAgent.slice(0, 500),
         documentText,
-        hash: await consentHash(evidence),
+        hash: await consentHash({ ...evidence, photoUse: args.photoUse }),
+        hashVersion: CONSENT_HASH_VERSION,
       },
       photos: args.photoUse === "none" ? [] : session.photos,
       step: completed(session, STEPS.consent),
@@ -461,7 +551,7 @@ export const deletePhoto = memberMutation({
     const session = await getDraft(ctx, sessionId);
     if (!session.photos.some((p) => p.key === key)) fail("NOT_FOUND");
     await ctx.db.patch(sessionId, { photos: session.photos.filter((p) => p.key !== key) });
-    await r2.deleteObject(ctx, key);
+    await deleteOwnedFiles(ctx, owners.session(sessionId), [key]);
   },
 });
 
@@ -490,7 +580,10 @@ export const saveClosing = memberMutation({
   },
 });
 
-/** "Finalizar atención": validates the gates, records the payment, and makes the session read-only. */
+/**
+ * "Finalizar atención": validates the gates, records the payment, numbers the session
+ * within its case, and makes it read-only.
+ */
 export const close = memberMutation({
   args: {
     sessionId: v.id("sessions"),
@@ -520,14 +613,17 @@ export const close = memberMutation({
     if (args.price < appointment.paidTotal) invalid("El precio no puede ser menor a lo que ya se pagó.");
     const followUp = cleanFollowUp(args.followUp);
     const now = Date.now();
+    const number = caseDoc.sessionCount + 1;
 
     await ctx.db.patch(appointment._id, { price: args.price, status: "completed" });
     if (args.payment) {
-      await addPayment(ctx, { ...appointment, price: args.price }, { ...args.payment, paidAt: now });
+      await addPayment(ctx, { ...appointment, price: args.price, status: "completed" }, { ...args.payment, paidAt: now });
     }
+    await syncBalance(ctx, appointment._id);
 
     await ctx.db.patch(session._id, {
       status: "closed",
+      number,
       closedAt: now,
       procedure,
       aftercare: cleanAftercare(args.aftercare),
@@ -535,8 +631,14 @@ export const close = memberMutation({
       step: STEPS.closing,
     });
 
-    await ctx.db.patch(client._id, { lastVisitAt: now, ...intakeOnClient(session, now) });
-    await ctx.db.patch(caseDoc._id, { sessionCount: caseDoc.sessionCount + 1, lastSessionAt: now });
+    // The skin type assessed today is the client's current one.
+    const skinType = session.assessment?.skinType;
+    await ctx.db.patch(client._id, {
+      lastVisitAt: now,
+      ...intakeOnClient(session, now),
+      ...(skinType && { skin: { ...client.skin, type: skinType } }),
+    });
+    await ctx.db.patch(caseDoc._id, { sessionCount: number, lastSessionAt: now, memberIds: withMember(caseDoc, session.memberId) });
 
     // The client came back, so earlier pending follow-ups of this case are fulfilled.
     const pending = await ctx.db
@@ -545,7 +647,7 @@ export const close = memberMutation({
       .collect();
     for (const f of pending) {
       if (f.caseId === caseDoc._id && f.status === "pending") {
-        await ctx.db.patch(f._id, { status: "done", outcome: `Volvió a la sesión ${session.number}.`, doneAt: now });
+        await ctx.db.patch(f._id, { status: "done", outcome: `Volvió a la sesión ${number}.`, doneAt: now });
       }
     }
 
@@ -571,8 +673,11 @@ export const sendAftercare = memberMutation({
   handler: async (ctx, { sessionId }) => {
     const session = await getOwned(ctx, "sessions", sessionId);
     if (session.status !== "closed") invalid("Finaliza la atención antes de enviar las indicaciones.");
-    const client = await getOwned(ctx, "clients", session.clientId);
-    if (!client.email) invalid("Este cliente no tiene correo. Agrégalo en su ficha.");
+    const [client, appointment] = await Promise.all([
+      getOwned(ctx, "clients", session.clientId),
+      ctx.db.get(session.appointmentId),
+    ]);
+    if (!client.email && !appointment?.contactEmail) invalid("Este cliente no tiene correo. Agrégalo en su ficha.");
     await ctx.runMutation(internal.notifications.sendAftercare, { sessionId });
   },
 });
@@ -648,6 +753,7 @@ export const detail = memberQuery({
         appointmentId: session.appointmentId,
         number: session.number,
         status: session.status,
+        reason: session.reason,
         startedAt: session.startedAt,
         closedAt: session.closedAt,
         intake: session.intake,
@@ -711,6 +817,7 @@ export const listByClient = memberQuery({
         appointmentId: s.appointmentId,
         number: s.number,
         status: s.status,
+        reason: s.reason,
         startedAt: s.startedAt,
         treatmentName: await nameOf(s.treatmentId),
         memberName: await nameOf(s.memberId),
@@ -742,6 +849,8 @@ export const listInProgress = memberQuery({
         treatmentName: treatment?.name ?? "",
         step: s.step,
         startedAt: s.startedAt,
+        /** Discarding after the consent keeps the record ("Atención no realizada"). */
+        consentSigned: s.consent !== undefined,
       });
     }
     return rows.sort((a, b) => b.startedAt - a.startedAt);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { AppointmentStatus, StaffColor, TimeBlockKind } from "@/convex/lib/validators";
 import { APPOINTMENT_STATUS_LABELS, STAFF_COLORS } from "@/lib/constants";
@@ -39,6 +39,7 @@ export type GridColumn = {
   date: string;
   /** Set when the column belongs to one professional (new appointments go to them). */
   memberId?: Id<"members">;
+  /** Column title; the header row is left out when no column has one. */
   header: ReactNode;
   /** Working ranges ("HH:mm") shown on white; the rest is porcelain. */
   working: { start: string; end: string }[];
@@ -66,20 +67,37 @@ export function TimeGrid({ columns, startHour, endHour, now, compact, onSlot, on
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
   const height = (endHour - startHour) * HOUR_PX;
   const template = { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` };
+  const hasHeader = columns.some((column) => column.header != null);
+  const body = useRef<HTMLDivElement>(null);
+  const todayShown = columns.some((column) => column.isToday);
+  const days = columns.map((column) => column.date).join();
+
+  // Opening a range with today scrolls to an hour before now, so the rest of the day is in view.
+  useEffect(() => {
+    if (!todayShown || !body.current) return;
+    const target = minutesOfDay(Date.now()) - 60 - startHour * 60;
+    if (target <= 0) return;
+    const headers = hasHeader ? 112 : 72;
+    window.scrollTo({ top: body.current.getBoundingClientRect().top + window.scrollY + target * PX_PER_MIN - headers });
+    // Only when the shown days change, not on every data update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days]);
 
   return (
     <div className="border-y border-line bg-surface sm:rounded-xl sm:border">
-      <div className="sticky top-14 z-10 flex border-b border-line bg-surface sm:rounded-t-xl lg:top-16">
-        <div className="w-14 shrink-0 sm:w-16" />
-        <div className="grid flex-1" style={template}>
-          {columns.map((column) => (
-            <div key={column.key} className="min-w-0 border-l border-line px-1 py-2 sm:px-2">
-              {column.header}
-            </div>
-          ))}
+      {hasHeader && (
+        <div className="sticky top-14 z-10 flex border-b border-line bg-surface sm:rounded-t-xl lg:top-16">
+          <div className="w-14 shrink-0 sm:w-16" />
+          <div className="grid flex-1" style={template}>
+            {columns.map((column) => (
+              <div key={column.key} className="min-w-0 border-l border-line px-1 py-2 sm:px-2">
+                {column.header}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="flex">
+      )}
+      <div ref={body} className="flex">
         <div className="relative w-14 shrink-0 sm:w-16" style={{ height }} aria-hidden>
           {hours.slice(1).map((hour) => (
             <span
@@ -125,7 +143,12 @@ function Column({
   const pointerType = useRef<string>("mouse");
   const [drag, setDrag] = useState<{ anchor: number; current: number } | null>(null);
   const top = (minutes: number) => (minutes - startHour * 60) * PX_PER_MIN;
-  const lanes = layoutLanes(column.appointments);
+  // Blocks share lanes with appointments, so an overlapping appointment never hides a block's title.
+  const lanes = layoutLanes([...column.appointments, ...column.blocks]);
+  const laneStyle = (id: string) => {
+    const { lane, count } = lanes.get(id)!;
+    return { left: `calc(${(lane / count) * 100}% + 2px)`, width: `calc(${100 / count}% - 4px)` };
+  };
 
   function minuteAt(clientY: number) {
     const rect = ref.current!.getBoundingClientRect();
@@ -192,8 +215,9 @@ function Column({
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onBlock(block)}
-            className="absolute inset-x-0.5 overflow-hidden rounded-md border border-line px-1.5 py-1 text-left text-sm text-ink-soft"
+            className="absolute flex flex-col items-start overflow-hidden rounded-md border border-line px-1.5 py-1 text-left text-sm text-ink-soft"
             style={{
+              ...laneStyle(block._id),
               top: top(start),
               height: Math.max((Math.min(end, 24 * 60) - start) * PX_PER_MIN, 20),
               backgroundImage: "repeating-linear-gradient(135deg, var(--line) 0 2px, var(--porcelain) 2px 9px)",
@@ -207,7 +231,6 @@ function Column({
       })}
 
       {column.appointments.map((appointment) => {
-        const { lane, count } = lanes.get(appointment._id)!;
         const start = minutesOfDay(appointment.start);
         const minutes = Math.max(Math.round((appointment.end - appointment.start) / 60_000), 15);
         return (
@@ -219,8 +242,7 @@ function Column({
             style={{
               top: top(start),
               height: Math.max(minutes * PX_PER_MIN - 2, 20),
-              left: `calc(${(lane / count) * 100}% + 2px)`,
-              width: `calc(${100 / count}% - 4px)`,
+              ...laneStyle(appointment._id),
             }}
             onClick={() => onAppointment(appointment._id)}
           />
