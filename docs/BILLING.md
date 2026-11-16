@@ -51,7 +51,7 @@ Businesses pay Cosmela a monthly subscription through [Polar](https://polar.sh) 
 1. **Products** (already in the production Polar org, read on 2026-11-15):
    - "Solo": `c71b7b47-541a-4222-9dff-f992b67fb9e2`, monthly, COP 90.000 and USD 24.
    - "Practice": `ca91878f-0026-4ea8-97f2-808d0312518f`, monthly, COP 220.000 and USD 58.
-   - Both products have a **1-month Polar trial** configured. Checkout applies it, so a business that subscribes after Cosmela's 14-day trial gets one more month before the first charge (card required, state `active`). Remove the product trials in Polar if that is not intended.
+   - The products have no Polar trial. Cosmela's 14-day trial is the only free period; checkout charges right away.
 2. **Organization access token** with the scopes listed above. `pnpm exec convex env set POLAR_ORGANIZATION_TOKEN` (omit the value to paste it) on the production deployment, plus `POLAR_SERVER=production` and the two product ids.
 3. **Webhook** in Polar (Settings, then Webhooks, then Add Endpoint):
    - URL: `https://<production-convex-site>/polar/events` (the `.convex.site` host, not the app domain).
