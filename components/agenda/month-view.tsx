@@ -55,7 +55,7 @@ export function MonthView({
               <span
                 className={cn(
                   "flex size-7 items-center justify-center rounded-full text-sm tabular-nums",
-                  isToday ? "bg-plum font-medium text-white" : inMonth ? "text-ink" : "text-ink-soft",
+                  isToday ? "bg-plum font-medium text-on-solid" : inMonth ? "text-ink" : "text-ink-soft",
                 )}
               >
                 {formatShortDay(date).day}

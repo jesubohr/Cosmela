@@ -1,5 +1,6 @@
 "use client"
 
+import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
@@ -8,10 +9,11 @@ import { useIsMobile } from "@/hooks/use-mobile"
 // Bottom-center above the tab bar on phones, bottom-right on desktop (DESIGN.md §6).
 const Toaster = ({ ...props }: ToasterProps) => {
   const isMobile = useIsMobile()
+  const { resolvedTheme } = useTheme()
 
   return (
     <Sonner
-      theme="light"
+      theme={resolvedTheme === "dark" ? "dark" : "light"}
       position={isMobile ? "bottom-center" : "bottom-right"}
       mobileOffset={{ bottom: "calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 12px)" }}
       className="toaster group"

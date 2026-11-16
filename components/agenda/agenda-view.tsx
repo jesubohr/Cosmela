@@ -259,7 +259,7 @@ function GridForView({
                 <span
                   className={cn(
                     "flex size-7 items-center justify-center rounded-full text-sm font-medium tabular-nums",
-                    date === today && "bg-plum text-white",
+                    date === today && "bg-plum text-on-solid",
                   )}
                 >
                   {short.day}

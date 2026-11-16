@@ -111,7 +111,7 @@ function TemplateItem({
           aria-hidden
           className={cn(
             "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-            selected ? "border-plum bg-plum text-white" : "border-ink-soft/40 bg-surface",
+            selected ? "border-plum bg-plum text-on-solid" : "border-ink-soft/40 bg-surface",
           )}
         >
           {selected && <Check className="size-4" strokeWidth={2.5} />}

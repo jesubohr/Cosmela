@@ -85,7 +85,7 @@ function AuthorizationDialog({
         </p>
         {url && (
           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-          <img src={url} alt="Firma de la autorización" className="h-24 w-auto self-start object-contain" />
+          <img src={url} alt="Firma de la autorización" className="signature-ink h-24 w-auto self-start object-contain" />
         )}
         <p className="whitespace-pre-line">{authorization.policyText}</p>
       </div>

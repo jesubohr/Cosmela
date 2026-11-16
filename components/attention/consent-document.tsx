@@ -69,7 +69,7 @@ function Signature({ url, name, role }: { url?: string; name: string; role: stri
       <div className="flex h-28 items-end border-b border-ink/40 pb-1">
         {url && (
           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-          <img src={url} alt={`${role}: ${name}`} className="max-h-full max-w-full object-contain" />
+          <img src={url} alt={`${role}: ${name}`} className="signature-ink max-h-full max-w-full object-contain" />
         )}
       </div>
       <figcaption className="flex flex-col">

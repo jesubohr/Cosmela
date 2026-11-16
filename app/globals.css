@@ -2,13 +2,15 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Light theme only in v1; tokens stay variables so a dark theme can be added later. */
 @custom-variant dark (&:is(.dark *));
 
-:root {
+/* Light tokens. [data-light] re-applies them inside a dark page (print views stay on paper colors). */
+:root,
+[data-light] {
   /* DESIGN.md §2 */
   --porcelain: #f6f4f8;
   --surface: #ffffff;
+  --surface-raised: #ffffff;
   --ink: #2a2131;
   --ink-soft: #6b6273;
   --line: #e6e0eb;
@@ -21,16 +23,38 @@
   --amber-soft: #fbf0dc;
   --rose: #b0303c;
   --rose-soft: #fbe7e9;
+  /* Text and icons on solid plum, sage, or rose fills. */
+  --on-solid: #ffffff;
+  --scrim: rgb(42 33 49 / 0.3);
+  --float-shadow: 0 8px 30px rgb(42 33 49 / 0.12);
+
+  /* Staff colors (lib/constants.ts): soft fill, strong accent. */
+  --staff-plum-soft: #ede3f7;
+  --staff-plum-strong: #5b2a86;
+  --staff-teal-soft: #ddf0ee;
+  --staff-teal-strong: #1f6b66;
+  --staff-coral-soft: #fbe4dc;
+  --staff-coral-strong: #a2452a;
+  --staff-olive-soft: #eaf0da;
+  --staff-olive-strong: #56661f;
+  --staff-blue-soft: #e0e9f8;
+  --staff-blue-strong: #2d548f;
+  --staff-rose-soft: #f8e1ea;
+  --staff-rose-strong: #9b2f5b;
+  --staff-sand-soft: #f3ead8;
+  --staff-sand-strong: #7a5a1f;
+  --staff-slate-soft: #e5e8ec;
+  --staff-slate-strong: #46505c;
 
   /* shadcn variables mapped to the tokens */
   --background: var(--porcelain);
   --foreground: var(--ink);
   --card: var(--surface);
   --card-foreground: var(--ink);
-  --popover: var(--surface);
+  --popover: var(--surface-raised);
   --popover-foreground: var(--ink);
   --primary: var(--plum);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--on-solid);
   --secondary: var(--surface);
   --secondary-foreground: var(--ink);
   --muted: var(--porcelain);
@@ -45,7 +69,7 @@
   --sidebar: var(--surface);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--plum);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: var(--on-solid);
   --sidebar-accent: var(--lilac);
   --sidebar-accent-foreground: var(--plum);
   --sidebar-border: var(--line);
@@ -58,6 +82,48 @@
 
   --header-height: 3.5rem;
   --tabbar-height: 4rem;
+  color-scheme: light;
+}
+
+/* Dark: plum-tinted neutrals, elevation by lighter surfaces, desaturated accents with dark text on solid fills. */
+.dark {
+  --porcelain: #151118;
+  --surface: #1f1a23;
+  --surface-raised: #29232e;
+  --ink: #ede8f1;
+  --ink-soft: #a89eb1;
+  --line: #372f3d;
+  --plum: #c5a3ea;
+  --plum-hover: #d6bdf1;
+  --lilac: #31263f;
+  --sage: #84c8a4;
+  --sage-soft: #1b3027;
+  --amber: #e5b566;
+  --amber-soft: #362914;
+  --rose: #f2959e;
+  --rose-soft: #3d1e24;
+  --on-solid: #1a1320;
+  --scrim: rgb(0 0 0 / 0.6);
+  --float-shadow: 0 8px 30px rgb(0 0 0 / 0.45);
+
+  --staff-plum-soft: #30253f;
+  --staff-plum-strong: #c5a3ea;
+  --staff-teal-soft: #17302d;
+  --staff-teal-strong: #7ccfc5;
+  --staff-coral-soft: #3a231b;
+  --staff-coral-strong: #f0a389;
+  --staff-olive-soft: #282e18;
+  --staff-olive-strong: #bccb7d;
+  --staff-blue-soft: #1c2639;
+  --staff-blue-strong: #95b5e8;
+  --staff-rose-soft: #3a1f2b;
+  --staff-rose-strong: #ee9dbf;
+  --staff-sand-soft: #33291a;
+  --staff-sand-strong: #ddc085;
+  --staff-slate-soft: #262a31;
+  --staff-slate-strong: #b0b9c5;
+
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -66,6 +132,9 @@
 
   --color-porcelain: var(--porcelain);
   --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-on-solid: var(--on-solid);
+  --color-scrim: var(--scrim);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
@@ -123,7 +192,7 @@
   --radius-sheet: 1.25rem;
 
   /* Only floating layers (sheets, popovers, menus) get a shadow. */
-  --shadow-float: 0 8px 30px rgb(42 33 49 / 0.12);
+  --shadow-float: var(--float-shadow);
 }
 
 @layer base {
@@ -155,6 +224,10 @@
     font-family: var(--font-newsreader), Georgia, serif;
     font-optical-sizing: auto;
     font-weight: 500;
+  }
+  /* Signatures are dark ink on transparent PNGs; show them light on dark surfaces (never inside [data-light]). */
+  .dark .signature-ink:not([data-light] *) {
+    filter: invert(1) hue-rotate(180deg);
   }
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);

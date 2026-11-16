@@ -10,7 +10,7 @@ The skin-tone Fitzpatrick swatches (I–VI) are the only "illustration" in the p
 
 ## 2. Color tokens
 
-Light theme only in v1 (keep tokens so dark can be added later). Define as CSS variables in `app/globals.css` under Tailwind v4 `@theme` and map shadcn variables to them.
+Light and dark themes. The user picks Como el dispositivo, Claro, or Oscuro in Mi perfil (stored per device by next-themes, class `dark` on <html>). Dark uses plum-tinted neutrals: background #151118, cards #1F1A23, floating layers #29232E (lighter means higher), text #EDE8F1, and desaturated light accents (plum #C5A3EA) with dark text on solid fills (`on-solid`). Never hardcode colors; use the tokens, including the staff color variables. Print views and emails stay light (`data-light`). Define as CSS variables in `app/globals.css` under Tailwind v4 `@theme` and map shadcn variables to them.
 
 | Token | Hex | Use |
 |---|---|---|

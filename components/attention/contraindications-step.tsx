@@ -142,7 +142,7 @@ function Checklist({ data, onBack, onDone }: StepProps) {
                       aria-hidden
                       className={cn(
                         "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-                        checked ? "border-rose bg-rose text-white" : "border-ink-soft/50 bg-surface",
+                        checked ? "border-rose bg-rose text-on-solid" : "border-ink-soft/50 bg-surface",
                       )}
                     >
                       {checked && <Check className="size-4" strokeWidth={2.5} />}

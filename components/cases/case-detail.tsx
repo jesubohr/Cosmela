@@ -140,7 +140,7 @@ function Body({ data }: { data: CaseData }) {
                   aria-hidden
                   className={cn(
                     "z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-medium tabular-nums",
-                    s.status === "closed" ? "bg-plum text-white" : s.status === "postponed" ? "bg-rose-soft text-rose" : "bg-lilac text-plum",
+                    s.status === "closed" ? "bg-plum text-on-solid" : s.status === "postponed" ? "bg-rose-soft text-rose" : "bg-lilac text-plum",
                   )}
                 >
                   {s.number ?? "·"}

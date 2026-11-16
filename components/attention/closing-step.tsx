@@ -121,7 +121,7 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
                     aria-hidden
                     className={cn(
                       "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-                      item.included ? "border-plum bg-plum text-white" : "border-ink-soft/50 bg-surface",
+                      item.included ? "border-plum bg-plum text-on-solid" : "border-ink-soft/50 bg-surface",
                     )}
                   >
                     {item.included && <Check className="size-4" strokeWidth={2.5} />}

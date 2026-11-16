@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { ScheduleRange } from "@/convex/lib/validators";
 import { MEMBER_TITLES } from "@/lib/constants";
+import { AppearanceSection } from "./appearance-section";
 import { rangesOf, scheduleError, WEEK_DAYS } from "./schedule";
 import { ScheduleEditor } from "./schedule-editor";
 import { SettingsSection } from "./settings-page";
@@ -59,6 +60,7 @@ export function ProfileSettings() {
       <ProfileForm key={me._id} me={me} reportDirty={reportDirty} />
       <SignatureSection signatureKey={me.signatureKey} reportDirty={reportDirty} />
       <ScheduleSection key={JSON.stringify(me.schedule)} schedule={me.schedule} reportDirty={reportDirty} />
+      <AppearanceSection />
       {leaveDialog}
     </div>
   );
@@ -190,7 +192,7 @@ function SignatureSection({ signatureKey, reportDirty }: { signatureKey?: string
           <div className="flex h-40 items-center justify-center rounded-card border border-line bg-surface p-4">
             {url ? (
               // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-              <img src={url} alt="Tu firma guardada" className="max-h-full max-w-full object-contain" />
+              <img src={url} alt="Tu firma guardada" className="signature-ink max-h-full max-w-full object-contain" />
             ) : (
               <Skeleton className="h-16 w-48" />
             )}

@@ -62,7 +62,7 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
                     <img src={urls[photo.key]} alt="" className="size-full object-cover" />
                   )}
                   {index >= 0 && (
-                    <span className="absolute bottom-0.5 left-0.5 rounded bg-plum px-1 text-xs font-medium text-white">{index + 1}</span>
+                    <span className="absolute bottom-0.5 left-0.5 rounded bg-plum px-1 text-xs font-medium text-on-solid">{index + 1}</span>
                   )}
                 </button>
               </li>

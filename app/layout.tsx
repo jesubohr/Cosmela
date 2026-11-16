@@ -20,7 +20,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#5B2A86",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#5B2A86" },
+    { media: "(prefers-color-scheme: dark)", color: "#151118" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -28,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es-CO" className={`${onest.variable} ${newsreader.variable}`}>
+    <html lang="es-CO" suppressHydrationWarning className={`${onest.variable} ${newsreader.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

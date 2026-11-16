@@ -257,7 +257,7 @@ function SignForm({ data, onBack, onDone }: StepProps) {
               <div className="flex h-28 items-center rounded-xl border border-line bg-surface px-4">
                 {savedSignatureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-                  <img src={savedSignatureUrl} alt={`Firma guardada de ${signer.name}`} className="max-h-24 max-w-full object-contain" />
+                  <img src={savedSignatureUrl} alt={`Firma guardada de ${signer.name}`} className="signature-ink max-h-24 max-w-full object-contain" />
                 )}
               </div>
               <p className="text-sm text-ink-soft">Se usa la firma guardada en el perfil.</p>

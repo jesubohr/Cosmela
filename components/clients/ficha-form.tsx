@@ -664,7 +664,7 @@ export function FitzpatrickPicker({
               )}
               style={{ backgroundColor: swatch }}
             >
-              {selected && <Check className={cn("size-4", type >= 4 ? "text-white" : "text-ink")} strokeWidth={2.25} />}
+              {selected && <Check className={cn("size-4", type >= 4 ? "text-white" : "text-[#2a2131]")} strokeWidth={2.25} />}
             </span>
             {label}
           </button>

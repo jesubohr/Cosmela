@@ -2,6 +2,7 @@
 
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexReactClient } from "convex/react";
+import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,11 +12,13 @@ const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <TooltipProvider delayDuration={400}>
-        {children}
-        <Toaster />
-      </TooltipProvider>
-    </ConvexBetterAuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+        <TooltipProvider delayDuration={400}>
+          {children}
+          <Toaster />
+        </TooltipProvider>
+      </ConvexBetterAuthProvider>
+    </ThemeProvider>
   );
 }

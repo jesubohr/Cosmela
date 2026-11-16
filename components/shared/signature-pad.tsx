@@ -97,7 +97,7 @@ export function SignaturePad({ ref, onChange, label, disabled, className }: Sign
           ref={canvasRef}
           role="img"
           aria-label={label}
-          className={cn("absolute inset-0 size-full touch-none", disabled && "opacity-60")}
+          className={cn("signature-ink absolute inset-0 size-full touch-none", disabled && "opacity-60")}
         />
         <div aria-hidden className="pointer-events-none absolute inset-x-6 bottom-12 border-b border-line" />
       </div>

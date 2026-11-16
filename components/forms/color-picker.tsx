@@ -34,12 +34,12 @@ export function ColorPicker({
             onClick={() => onChange(color)}
             className={cn(
               "flex size-11 items-center justify-center rounded-full border-2 transition-shadow disabled:cursor-not-allowed disabled:opacity-50",
-              selected ? "ring-2 ring-offset-2" : "border-transparent",
+              selected ? "ring-2 ring-offset-2 ring-offset-background" : "border-transparent",
             )}
             style={{ backgroundColor: soft, borderColor: selected ? strong : soft, ["--tw-ring-color" as string]: strong }}
           >
             <span className="flex size-5 items-center justify-center rounded-full" style={{ backgroundColor: strong }}>
-              {selected && <Check aria-hidden className="size-3.5 text-white" strokeWidth={2.5} />}
+              {selected && <Check aria-hidden className="size-3.5 text-on-solid" strokeWidth={2.5} />}
             </span>
           </button>
         );

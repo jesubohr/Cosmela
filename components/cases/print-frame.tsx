@@ -20,7 +20,7 @@ export function PrintFrame({ org, title, children }: { org: OrgHeader; title: st
   const place = [org.address, org.city].filter(Boolean).join(", ");
 
   return (
-    <div className="min-h-dvh bg-white text-ink">
+    <div data-light className="min-h-dvh bg-white text-ink">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-line bg-white px-4 py-3 print:hidden">
         <Button variant="ghost" onClick={() => router.back()}>
           Volver

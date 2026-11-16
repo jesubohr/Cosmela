@@ -242,13 +242,13 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 /** Calendar and avatar colors: `soft` is the background, `strong` the text or bar. */
 export const STAFF_COLORS: Record<StaffColor, { label: string; soft: string; strong: string }> = {
-  plum: { label: "Ciruela", soft: "#EDE3F7", strong: "#5B2A86" },
-  teal: { label: "Turquesa", soft: "#DDF0EE", strong: "#1F6B66" },
-  coral: { label: "Coral", soft: "#FBE4DC", strong: "#A2452A" },
-  olive: { label: "Oliva", soft: "#EAF0DA", strong: "#56661F" },
-  blue: { label: "Azul", soft: "#E0E9F8", strong: "#2D548F" },
-  rose: { label: "Rosa", soft: "#F8E1EA", strong: "#9B2F5B" },
-  sand: { label: "Arena", soft: "#F3EAD8", strong: "#7A5A1F" },
-  slate: { label: "Pizarra", soft: "#E5E8EC", strong: "#46505C" },
+  plum: { label: "Ciruela", soft: "var(--staff-plum-soft)", strong: "var(--staff-plum-strong)" },
+  teal: { label: "Turquesa", soft: "var(--staff-teal-soft)", strong: "var(--staff-teal-strong)" },
+  coral: { label: "Coral", soft: "var(--staff-coral-soft)", strong: "var(--staff-coral-strong)" },
+  olive: { label: "Oliva", soft: "var(--staff-olive-soft)", strong: "var(--staff-olive-strong)" },
+  blue: { label: "Azul", soft: "var(--staff-blue-soft)", strong: "var(--staff-blue-strong)" },
+  rose: { label: "Rosa", soft: "var(--staff-rose-soft)", strong: "var(--staff-rose-strong)" },
+  sand: { label: "Arena", soft: "var(--staff-sand-soft)", strong: "var(--staff-sand-strong)" },
+  slate: { label: "Pizarra", soft: "var(--staff-slate-soft)", strong: "var(--staff-slate-strong)" },
 };
 

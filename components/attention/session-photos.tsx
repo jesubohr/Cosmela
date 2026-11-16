@@ -59,7 +59,7 @@ export function PhotoThumbs({
                 type="button"
                 onClick={() => onDelete(photo)}
                 aria-label={`Eliminar ${label.toLowerCase()}`}
-                className="absolute top-1 right-1 flex size-9 items-center justify-center rounded-full bg-ink/70 text-white hover:bg-ink"
+                className="absolute top-1 right-1 flex size-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
               >
                 <X className="size-4" strokeWidth={2} />
               </button>

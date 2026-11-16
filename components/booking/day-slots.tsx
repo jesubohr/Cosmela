@@ -55,7 +55,7 @@ export function DaySlots({
               className={cn(
                 "flex h-[76px] w-16 shrink-0 snap-start sm:w-auto flex-col items-center justify-center gap-0.5 rounded-lg border transition-colors",
                 selected
-                  ? "border-plum bg-plum text-white"
+                  ? "border-plum bg-plum text-on-solid"
                   : "border-line bg-surface hover:border-plum/40 hover:bg-porcelain",
               )}
             >

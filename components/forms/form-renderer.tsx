@@ -313,7 +313,7 @@ function ScaleInput({ field, value, onChange, labelId, describedBy, invalid, dis
               onClick={() => onChange(selected ? null : step)}
               className={cn(
                 "h-11 rounded-lg border text-base tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                selected ? "border-plum bg-plum font-medium text-white" : "border-line bg-surface hover:bg-porcelain",
+                selected ? "border-plum bg-plum font-medium text-on-solid" : "border-line bg-surface hover:bg-porcelain",
               )}
             >
               {step}
