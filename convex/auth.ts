@@ -3,11 +3,13 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { emailOTP } from "better-auth/plugins/email-otp";
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Resend } from "resend";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
+import { LEGAL_VERSION } from "../lib/legal-documents";
+import { hasAccountAcceptance, hasProcessingAcceptance } from "./lib/legal";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import authConfig from "./auth.config";
 import { rateLimiter } from "./rateLimits";
 
@@ -22,6 +24,11 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
     baseURL: siteUrl,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
+    databaseHooks: {
+      user: { create: { after: async user => {
+        if ("runMutation" in ctx) await ctx.runMutation(internal.auth.schedulePendingCleanup, { userId: user.id });
+      } } },
+    },
     // Persist counters across function runs; the emailOTP plugin limits sends to 3 per minute per IP.
     rateLimit: { enabled: true, storage: "database" },
     // Set by the Next.js auth route (app/api/auth) from the platform's client IP. Requests
@@ -29,10 +36,22 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
     advanced: { ipAddress: { ipAddressHeaders: ["x-cosmela-client-ip"] } },
     hooks: {
       before: createAuthMiddleware(async (auth) => {
+        if (auth.path === "/email-otp/send-verification-otp" || auth.path === "/sign-in/email-otp") {
+          const headers = auth.headers;
+          if (headers?.get("x-cosmela-legal-version") !== LEGAL_VERSION || headers.get("x-cosmela-terms") !== "true" || headers.get("x-cosmela-privacy") !== "true" || headers.get("x-cosmela-adult") !== "true") {
+            throw new APIError("BAD_REQUEST", { message: "Revisa y acepta los documentos legales y confirma que eres mayor de edad." });
+          }
+        }
         if (auth.path !== "/email-otp/send-verification-otp" || !("runMutation" in ctx)) return;
         const email = String(auth.body?.email ?? "").trim().toLowerCase();
         const { ok } = await rateLimiter.limit(ctx, "loginCodePerEmail", { key: email });
         if (!ok) throw new APIError("TOO_MANY_REQUESTS", { message: "Pediste varios códigos seguidos. Espera unos minutos e intenta de nuevo." });
+      }),
+      after: createAuthMiddleware(async auth => {
+        if (auth.path !== "/sign-in/email-otp" || !auth.context.newSession || !("runMutation" in ctx)) return;
+        await ctx.runMutation(internal.legal.activateVerifiedAccount, {
+          userId: auth.context.newSession.user.id, version: LEGAL_VERSION,
+        });
       }),
     },
     plugins: [
@@ -50,6 +69,44 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   }) satisfies BetterAuthOptions;
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => betterAuth(createAuthOptions(ctx));
+
+export const schedulePendingCleanup = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(24 * 60 * 60_000, internal.auth.cleanupPendingAuth, args);
+  },
+});
+
+export const cleanupPendingAuth = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const accepted = await ctx.db.query("accountLegalAcceptances").withIndex("by_user", q => q.eq("userId", userId)).first();
+    if (!accepted) await ctx.scheduler.runAfter(0, internal.auth.eraseUnlinkedAuth, { userId });
+  },
+});
+
+export const eraseUnlinkedAuth = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const memberships = await ctx.db.query("members").withIndex("by_user", q => q.eq("userId", userId)).collect();
+    if (memberships.some(member => member.active)) return;
+    for (const model of ["session", "account"] as const) {
+      const result = await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+        input: { model, where: [{ field: "userId", value: userId }] }, paginationOpts: { numItems: 100, cursor: null },
+      });
+      if (!result.isDone) {
+        await ctx.scheduler.runAfter(0, internal.auth.eraseUnlinkedAuth, { userId });
+        return;
+      }
+    }
+    await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "user", where: [{ field: "_id", value: userId }] } });
+    const existing = await ctx.db.query("accountEvidenceExpiry").withIndex("by_user", q => q.eq("userId", userId)).first();
+    if (!existing) {
+      const retention = new Date(); retention.setUTCFullYear(retention.getUTCFullYear() + 5);
+      await ctx.db.insert("accountEvidenceExpiry", { userId, retainUntil: retention.getTime() });
+    }
+  },
+});
 
 async function sendOtpEmail(email: string, otp: string) {
   // Development only: log the code so local sign-in works with any address
@@ -119,14 +176,15 @@ export const viewer = query({
           .unique()
       : null;
     const org = member?.active ? await ctx.db.get(member.orgId) : null;
+    const legalReady = await hasAccountAcceptance(ctx, userId) && (!org || await hasProcessingAcceptance(ctx, org._id));
 
     return {
       user: { id: userId, email: user.email, name: user.name },
       member:
-        member && member.active
+        legalReady && member && member.active && org?.closureConfirmedAt === undefined
           ? { _id: member._id, name: member.name, role: member.role, color: member.color, title: member.title }
           : null,
-      org: org ? { _id: org._id, name: org.name, kind: org.kind, slug: org.slug } : null,
+      org: legalReady && org && org.closureConfirmedAt === undefined ? { _id: org._id, name: org.name, kind: org.kind, slug: org.slug } : null,
     };
   },
 });

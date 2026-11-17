@@ -126,6 +126,7 @@ export const get = query({
       .unique();
     if (!invitation) return null;
     const org = await ctx.db.get(invitation.orgId);
+    if (!org || org.closureConfirmedAt !== undefined) return null;
     return { orgName: org?.name ?? "", email: invitation.email, role: invitation.role, status: statusOf(invitation) };
   },
 });

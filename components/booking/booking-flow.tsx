@@ -135,6 +135,9 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
         email: details.email,
         note: details.note || undefined,
         authorized: details.authorized,
+        adult: details.adult,
+        policyHash: page.policyHash,
+        requestKey: crypto.randomUUID(),
         website: details.website || undefined,
       });
       setSent({
@@ -303,7 +306,7 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
 
         {step === "details" && (
           <Step title="Tus datos">
-            <DetailsForm orgName={page.name} slug={slug} onSubmit={submit} />
+            <DetailsForm bookingNotice={page.bookingNotice} bookingLabel={page.bookingLabel} slug={slug} onSubmit={submit} />
           </Step>
         )}
       </div>

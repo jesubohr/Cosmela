@@ -7,6 +7,8 @@ import { findTemplate } from "../data/treatment-templates";
 import { api } from "./_generated/api";
 import { slugify } from "./orgs";
 import schema from "./schema";
+import { recordAccountAcceptance } from "./lib/legal";
+import { LEGAL_VERSION } from "../lib/legal-documents";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -36,9 +38,11 @@ async function errorCode(promise: Promise<unknown>) {
 describe("onboarding", () => {
   test("creates the org, the admin member, userSettings, and the chosen treatments", async () => {
     const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
     const ana = t.withIdentity({ subject: "ana", email: "Ana@Example.com" });
     const orgId = await ana.mutation(api.orgs.create, ONBOARDING);
 
+    await ana.mutation(api.legal.acceptProcessing, { version: LEGAL_VERSION, authorized: true });
     const docs = await t.run(async (ctx) => ({
       org: await ctx.db.get(orgId),
       members: await ctx.db.query("members").collect(),
@@ -88,6 +92,7 @@ describe("onboarding", () => {
 
   test("gives every business a unique slug", async () => {
     const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
     const first = await t.withIdentity({ subject: "ana" }).mutation(api.orgs.create, ONBOARDING);
     const second = await t.withIdentity({ subject: "bea" }).mutation(api.orgs.create, ONBOARDING);
     const third = await t.withIdentity({ subject: "caro" }).mutation(api.orgs.create, { ...ONBOARDING, name: "  " + ONBOARDING.name.toUpperCase() });
@@ -102,6 +107,7 @@ describe("onboarding", () => {
 
   test("a user with an active business cannot create another one", async () => {
     const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
     const ana = t.withIdentity({ subject: "ana" });
     await ana.mutation(api.orgs.create, ONBOARDING);
     expect(await errorCode(ana.mutation(api.orgs.create, ONBOARDING))).toBe("FORBIDDEN");
@@ -109,6 +115,7 @@ describe("onboarding", () => {
 
   test("rejects an invalid schedule or name", async () => {
     const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
     const ana = t.withIdentity({ subject: "ana" });
     expect(
       await errorCode(ana.mutation(api.orgs.create, { ...ONBOARDING, schedule: [{ day: 1, start: "18:00", end: "08:00" }] })),
@@ -118,6 +125,7 @@ describe("onboarding", () => {
 
   test("requires a signed-in user", async () => {
     const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
     expect(await errorCode(t.mutation(api.orgs.create, ONBOARDING))).toBe("UNAUTHENTICATED");
   });
 });
@@ -125,8 +133,10 @@ describe("onboarding", () => {
 describe("settings", () => {
   async function salon() {
     const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
     const ana = t.withIdentity({ subject: "ana", email: "ana@example.com" });
     const orgId = await ana.mutation(api.orgs.create, { ...ONBOARDING, kind: "salon" });
+    await ana.mutation(api.legal.acceptProcessing, { version: LEGAL_VERSION, authorized: true });
     const sofiId = await t.run(async (ctx) => {
       const id = await ctx.db.insert("members", {
         orgId,
@@ -163,7 +173,7 @@ describe("settings", () => {
     expect(await errorCode(sofi.action(api.orgs.exportClients, {}))).toBe("FORBIDDEN");
     expect(await ana.action(api.orgs.exportClients, {})).toEqual([]);
     const org = await t.run((ctx) => ctx.db.get(orgId));
-    expect(org).toMatchObject({ name: ONBOARDING.name, booking: { enabled: true }, reminders: { email: true } });
+    expect(org).toMatchObject({ name: ONBOARDING.name, booking: { enabled: false }, reminders: { email: true } });
   });
 
   test("staff cannot change team members but can edit their own profile and schedule", async () => {
@@ -183,6 +193,7 @@ describe("settings", () => {
 
   test("admins update booking settings and who accepts online bookings", async () => {
     const { ana, t, orgId, sofiId } = await salon();
+    await ana.mutation(api.orgs.update, { name: ONBOARDING.name, kind: "salon", legalName: "Ana", taxId: "123", address: "Calle 1", city: "Medellín", whatsapp: "+573001234567" });
     await ana.mutation(api.orgs.updateBooking, {
       enabled: true,
       minNoticeHours: 4,

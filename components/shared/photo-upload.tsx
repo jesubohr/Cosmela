@@ -3,6 +3,7 @@
 import { useMutation } from "convex/react";
 import { Camera, ImagePlus } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,8 +18,8 @@ export type UploadKind = "photo" | "signature" | "logo";
 export function useUploadFile() {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   return useCallback(
-    async (blob: Blob, kind: UploadKind, onProgress?: (fraction: number) => void) => {
-      const { key, url } = await generateUploadUrl({ kind });
+    async (blob: Blob, kind: UploadKind, onProgress?: (fraction: number) => void, sessionId?: Id<"sessions">) => {
+      const { key, url } = await generateUploadUrl({ kind, sessionId });
       await put(url, blob, onProgress);
       return key;
     },
@@ -35,12 +36,13 @@ export type PhotoUploadProps = {
   capture?: boolean;
   /** Button label. Defaults to "Tomar foto" (or "Elegir imagen" without capture). */
   label?: string;
+  sessionId?: Id<"sessions">;
   disabled?: boolean;
   className?: string;
 };
 
 /** Button that captures or picks an image, compresses it (1600 px, JPEG 0.82), and uploads it with progress. */
-export function PhotoUpload({ onUploaded, kind = "photo", capture = true, label, disabled, className }: PhotoUploadProps) {
+export function PhotoUpload({ onUploaded, kind = "photo", capture = true, label, disabled, className, sessionId }: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadFile();
   const [progress, setProgress] = useState<number | null>(null);
@@ -51,7 +53,7 @@ export function PhotoUpload({ onUploaded, kind = "photo", capture = true, label,
     setProgress(0);
     try {
       const blob = await compressImage(file, kind === "logo" ? "image/png" : "image/jpeg");
-      const key = await upload(blob, kind, setProgress);
+      const key = await upload(blob, kind, setProgress, sessionId);
       onUploaded(key, blob);
     } catch (err) {
       setError(err instanceof ImageError ? err.message : "No pudimos subir la imagen. Revisa tu conexión e intenta de nuevo.");

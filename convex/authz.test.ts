@@ -7,6 +7,8 @@ import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { adminMutation, getOwned, memberMutation, memberQuery } from "./lib/authz";
 import schema from "./schema";
+import { currentDocument, recordAccountAcceptance } from "./lib/legal";
+import { LEGAL_VERSION, PROCESSING_LABEL } from "../lib/legal-documents";
 
 // Probe functions built with the real wrappers, mounted as a virtual module.
 const probe = {
@@ -52,6 +54,8 @@ const HEALTH = {
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
+    await recordAccountAcceptance(ctx, "nuevo", "account_checkbox");
+    await recordAccountAcceptance(ctx, "intrusa", "account_checkbox");
     async function org(name: string, ownerId: string) {
       return ctx.db.insert("orgs", {
         name,
@@ -63,6 +67,9 @@ async function setup() {
       });
     }
     async function member(orgId: Id<"orgs">, userId: string, role: "admin" | "staff", active = true) {
+      await recordAccountAcceptance(ctx, userId, "account_checkbox");
+      if (role === "admin") await ctx.db.insert("processingAcceptances", { orgId, userId,
+        version: LEGAL_VERSION, documentId: await currentDocument(ctx, "processing"), label: PROCESSING_LABEL, at: Date.now() });
       const memberId = await ctx.db.insert("members", {
         orgId,
         userId,

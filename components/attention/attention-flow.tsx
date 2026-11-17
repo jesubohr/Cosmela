@@ -67,7 +67,39 @@ export function AttentionFlow({ appointmentId }: { appointmentId: Id<"appointmen
   const draft = data as DraftData;
   if (draft.session.status === "closed") return <SuccessScreen data={draft} />;
   if (draft.session.status === "postponed") return <PostponedScreen data={draft} />;
-  return <Stepper data={draft} onLeave={() => setLeaving(true)} />;
+  return <AuthorizationGate data={draft} onLeave={() => setLeaving(true)} />;
+}
+
+function AuthorizationGate({ data, onLeave }: { data: DraftData; onLeave: () => void }) {
+  const router = useRouter();
+  const status = useQuery(api.clientAuthorizations.status, { clientId: data.client._id });
+  const notice = useQuery(api.clientAuthorizations.notice, { clientId: data.client._id });
+  const record = useMutation(api.clientAuthorizations.record);
+  const [evidence, setEvidence] = useState("");
+  const [adult, setAdult] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  if (!status || !notice) return <FlowSkeleton />;
+  if (status.health) return <Stepper data={data} onLeave={onLeave} />;
+  async function decide(action: "accepted" | "rejected") {
+    setPending(true);
+    try {
+      await record({ clientId: data.client._id, purpose: "health", action, policyHash: notice!.policyHash, evidence, adult, requestKey: crypto.randomUUID() });
+      if (action === "rejected") router.push("/hoy");
+    } catch (err) { setError(errorText(err)); } finally { setPending(false); }
+  }
+  return <div className="mx-auto flex max-w-xl flex-col gap-4 p-4">
+    <h1 className="text-xl font-semibold">Autorización para datos de salud</h1>
+    <p>Esta información es sensible. El cliente puede negarse a responder o autorizar su tratamiento. La reserva no depende de esta decisión.</p>
+    <p>{notice.labels.health}</p>
+    <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details>
+    <label className="flex flex-col gap-2">Cómo recibiste la decisión del cliente
+      <textarea className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} placeholder="Describe la autorización o negativa recibida" />
+    </label>
+    <label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
+    {error && <p role="alert">{error}</p>}
+    <div className="flex gap-2"><Button disabled={pending} onClick={() => void decide("accepted")}>Registrar autorización</Button><Button variant="secondary" disabled={pending} onClick={() => void decide("rejected")}>Registrar negativa y salir</Button></div>
+  </div>;
 }
 
 function Stepper({ data, onLeave }: { data: DraftData; onLeave: () => void }) {

@@ -9,6 +9,10 @@ import type { Id } from "../_generated/dataModel";
 import type { UploadKind } from "./validators";
 import schema from "../schema";
 import { bogotaToEpoch } from "./time";
+import { currentPolicyId } from "../orgs";
+import { LABELS } from "./clientAuthorization";
+import { currentDocument, recordAccountAcceptance } from "./legal";
+import { LEGAL_VERSION, PROCESSING_LABEL } from "../../lib/legal-documents";
 
 export const modules = import.meta.glob("../**/*.ts");
 
@@ -25,11 +29,21 @@ export async function setupOrgs() {
         slug: name.toLowerCase(),
         kind: "salon",
         ownerId,
+        legalName: name,
+        taxId: "900000000-0",
+        address: "Calle de prueba 1",
+        city: "Bogotá",
+        whatsapp: "+573001234567",
         booking: { enabled: false, minNoticeHours: 2, maxDaysAhead: 30, slotMinutes: 30 },
         reminders: { email: true },
       });
     }
     async function member(orgId: Id<"orgs">, userId: string, role: "admin" | "staff") {
+      await recordAccountAcceptance(ctx, userId, "account_checkbox");
+      if (role === "admin") await ctx.db.insert("processingAcceptances", {
+        orgId, userId, version: LEGAL_VERSION, documentId: await currentDocument(ctx, "processing"),
+        label: PROCESSING_LABEL, at: Date.now(),
+      });
       const memberId = await ctx.db.insert("members", {
         orgId,
         userId,
@@ -61,7 +75,7 @@ export async function setupOrgs() {
       });
     }
     async function client(orgId: Id<"orgs">, createdBy: Id<"members">, firstName: string, phone: string) {
-      return ctx.db.insert("clients", {
+      const clientId = await ctx.db.insert("clients", {
         orgId,
         firstName,
         lastName: "Prueba",
@@ -73,6 +87,13 @@ export async function setupOrgs() {
         createdBy,
         isArchived: false,
       });
+      const policyId = await currentPolicyId(ctx, orgId);
+      const policy = (await ctx.db.get(policyId))!;
+      for (const purpose of ["health", "record_photos"] as const) await ctx.db.insert("clientAuthorizations", {
+        orgId, clientId, purpose, action: "accepted", policyId, policyHash: policy.hash, label: LABELS[purpose],
+        method: "external_evidence", evidence: "Fixture authorization", recordedBy: createdBy, requestKey: `${clientId}:${purpose}`, at: Date.now(), sequence: 1,
+      });
+      return clientId;
     }
 
     const orgA = await org("Alba", "ana");
@@ -103,9 +124,9 @@ export async function setupOrgs() {
 }
 
 /** An unclaimed upload, as `files.generateUploadUrl` records it (without calling R2). Returns the key. */
-export async function upload(t: TestConvex<typeof schema>, orgId: Id<"orgs">, uploadedBy: Id<"members">, kind: UploadKind) {
+export async function upload(t: TestConvex<typeof schema>, orgId: Id<"orgs">, uploadedBy: Id<"members">, kind: UploadKind, sessionId?: Id<"sessions">) {
   const key = `orgs/${orgId}/${kind}/${crypto.randomUUID()}`;
-  await t.run((ctx) => ctx.db.insert("uploads", { orgId, key, kind, uploadedBy }));
+  await t.run((ctx) => ctx.db.insert("uploads", { orgId, key, kind, uploadedBy, sessionId }));
   return key;
 }
 

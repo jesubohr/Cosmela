@@ -1,6 +1,7 @@
 import { Resend } from "@convex-dev/resend";
 import { v } from "convex/values";
 import { whatsappLink } from "../lib/whatsapp";
+import { hasPurpose } from "./lib/clientAuthorization";
 import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, type MutationCtx } from "./_generated/server";
@@ -114,7 +115,7 @@ async function loadAppointment(ctx: MutationCtx, appointmentId: Id<"appointments
     ctx.db.get(appointment.treatmentId),
     ctx.db.get(appointment.memberId),
   ]);
-  if (!org || !client || !treatment || !member) return null;
+  if (!org || org.closureConfirmedAt !== undefined || !client || !treatment || !member) return null;
   return { appointment, org, client, treatment, member };
 }
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadAppointment>>>;
@@ -221,7 +222,7 @@ export const sweepReminders = internalMutation({
     const now = Date.now();
     let scheduled = 0;
     for (const org of await ctx.db.query("orgs").collect()) {
-      if (!org.reminders.email) continue;
+      if (org.closureConfirmedAt !== undefined || !org.reminders.email) continue;
       const upcoming = await ctx.db
         .query("appointments")
         .withIndex("by_org_start", (q) => q.eq("orgId", org._id).gt("start", now).lt("start", now + 26 * HOUR))
@@ -325,7 +326,7 @@ export const sendAftercare = internalMutation({
       ctx.db.get(session.appointmentId),
     ]);
     const to = client && recipient(client, appointment);
-    if (!org || !client || !to || !treatment) return null;
+    if (!org || org.closureConfirmedAt !== undefined || !client || !to || !treatment || !await hasPurpose(ctx, org._id, client._id, "health")) return null;
     const email = aftercareEmail({
       orgName: org.name,
       clientFirstName: client.firstName,

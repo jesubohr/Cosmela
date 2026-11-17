@@ -53,7 +53,7 @@ async function setup() {
     await s.asAna.mutation(api.sessions.saveContraindications, { sessionId, present: [] });
     await s.asAna.mutation(api.sessions.signConsent, {
       sessionId,
-      photoUse: "clinical",
+      signatureAccepted: true, photoUse: "clinical",
       clientSignatureKey: await key(),
       professionalSignatureKey: await key(),
       userAgent: "test",
@@ -98,8 +98,9 @@ describe("attention lifecycle", () => {
     expect(consent.documentText).toBe("documento no registrado");
     expect(consent.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(verificationCode(consent.hash)).toMatch(/^[0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4}$/);
-    expect(consent.hashVersion).toBe(2);
-    expect((await get(ids.clientA))?.dataAuthorization).toMatchObject({ method: "signature", signatureKey: consent.clientSignatureKey });
+    expect(consent.hashVersion).toBe(3);
+    expect(consent.signatureAgreement).toMatchObject({ version: 1, acceptedAt: consent.signedAt });
+    expect((await get(ids.clientA))?.dataAuthorization).toBeUndefined();
 
     const { caseId } = await closeSession(sessionId);
     const closed = await get(sessionId);
@@ -147,7 +148,7 @@ describe("server-side gates", () => {
     const sign = async () =>
       asAna.mutation(api.sessions.signConsent, {
         sessionId,
-        photoUse: "clinical",
+        signatureAccepted: true, photoUse: "clinical",
         clientSignatureKey: await key(),
         professionalSignatureKey: await key(),
         userAgent: "test",
@@ -170,12 +171,12 @@ describe("server-side gates", () => {
     expect(await errorCode(asAna.mutation(api.sessions.saveContraindications, { sessionId, present: [] }))).toBe("INVALID");
   });
 
-  test("the first consent requires the data authorization and a foreign signature key is rejected", async () => {
+  test("signature acknowledgement is required and a foreign signature key is rejected", async () => {
     const { asAna, book, key, ids, t } = await setup();
     const sessionId = await asAna.mutation(api.sessions.start, { appointmentId: await book() });
     await asAna.mutation(api.sessions.saveContraindications, { sessionId, present: [] });
-    const args = { sessionId, photoUse: "clinical" as const, clientSignatureKey: await key(), professionalSignatureKey: await key(), userAgent: "test" };
-    expect(await errorMessage(asAna.mutation(api.sessions.signConsent, args))).toBe("Falta la autorización de tratamiento de datos.");
+    const args = { sessionId, signatureAccepted: true, photoUse: "clinical" as const, clientSignatureKey: await key(), professionalSignatureKey: await key(), userAgent: "test" };
+    expect(await errorCode(asAna.mutation(api.sessions.signConsent, { ...args, signatureAccepted: false }))).toBe("INVALID");
     const foreign = await upload(t, ids.orgB, ids.bea, "signature");
     expect(await errorCode(asAna.mutation(api.sessions.signConsent, { ...args, authorizeData: true, clientSignatureKey: foreign }))).toBe("NOT_FOUND");
     // A photo upload cannot stand in for a signature.
@@ -193,21 +194,12 @@ describe("server-side gates", () => {
     expect(message).toBe("Completa el procedimiento antes de finalizar: Producto.");
   });
 
-  test("minors need a guardian, who is stored with the consent", async () => {
-    const { asAna, book, key, ids, t, get } = await setup();
+  test("minor records cannot receive new health processing", async () => {
+    const { asAna, book, ids, t } = await setup();
     const birthYear = Number(bogotaDateKey(Date.now()).slice(0, 4)) - 15;
-    await t.run((ctx) => ctx.db.patch(ids.clientA, { birthDate: `${birthYear}-01-01`, documentType: "TI", documentNumber: "1012345678" }));
     const sessionId = await asAna.mutation(api.sessions.start, { appointmentId: await book() });
-    await asAna.mutation(api.sessions.saveContraindications, { sessionId, present: [] });
-    const args = { sessionId, photoUse: "none" as const, userAgent: "test", authorizeData: true };
-    expect(
-      await errorMessage(asAna.mutation(api.sessions.signConsent, { ...args, clientSignatureKey: await key(), professionalSignatureKey: await key() })),
-    ).toBe("Escribe el nombre, el documento y el parentesco del acudiente.");
-    const guardian = { name: "Marta Prueba", document: "CC 52.000.111", relationship: "Madre" };
-    await asAna.mutation(api.sessions.signConsent, { ...args, clientSignatureKey: await key(), professionalSignatureKey: await key(), guardian });
-    const consent = (await get(sessionId))!.consent!;
-    expect(consent.guardian).toEqual(guardian);
-    expect(consent.documentText).toBe("tarjeta de identidad 1.012.345.678");
+    await t.run((ctx) => ctx.db.patch(ids.clientA, { birthDate: `${birthYear}-01-01`, documentType: "TI", documentNumber: "1012345678" }));
+    expect(await errorCode(asAna.mutation(api.sessions.saveContraindications, { sessionId, present: [] }))).toBe("AUTHORIZATION_REQUIRED");
   });
 
   test("postponing cancels the appointment and keeps the session as postponed", async () => {
@@ -237,7 +229,7 @@ describe("closed sessions", () => {
     const attempts = [
       asAna.mutation(api.sessions.saveIntake, { sessionId, healthChanged: true, medications: "", pregnant: false, lactating: false }),
       asAna.mutation(api.sessions.saveProcedure, { sessionId, answers: { producto: "Otro" } }),
-      asAna.mutation(api.sessions.signConsent, { sessionId, photoUse: "clinical", clientSignatureKey: await key(), userAgent: "x" }),
+      asAna.mutation(api.sessions.signConsent, { sessionId, signatureAccepted: true, photoUse: "clinical", clientSignatureKey: await key(), userAgent: "x" }),
       asAna.mutation(api.sessions.close, { sessionId, aftercare: { items: [] }, followUp: { recommended: false }, reminder: false, price: 0 }),
       asAna.mutation(api.sessions.saveClosing, { sessionId, aftercare: { items: [] }, followUp: { recommended: false } }),
       asAna.mutation(api.files.attach, { key: await upload(t, ids.orgA, ids.ana, "photo"), target: { kind: "sessionPhoto", sessionId, photoKind: "after" } }),
@@ -274,7 +266,7 @@ describe("cases", () => {
     // Closing the second session fulfills the first session's follow-up.
     await asAna.mutation(api.sessions.saveIntake, { sessionId: second, healthChanged: false, medications: "", pregnant: false, lactating: false });
     await asAna.mutation(api.sessions.saveContraindications, { sessionId: second, present: [] });
-    await asAna.mutation(api.sessions.signConsent, { sessionId: second, photoUse: "clinical", clientSignatureKey: await key(), professionalSignatureKey: await key(), userAgent: "test" });
+    await asAna.mutation(api.sessions.signConsent, { sessionId: second, signatureAccepted: true, photoUse: "clinical", clientSignatureKey: await key(), professionalSignatureKey: await key(), userAgent: "test" });
     await closeSession(second);
     expect((await get(second))?.number).toBe(2);
     const followUps = await t.run((ctx) => ctx.db.query("followUps").collect());
@@ -338,7 +330,7 @@ describe("discarding an attention", () => {
     const appointmentId = await book();
     const sessionId = await asAna.mutation(api.sessions.start, { appointmentId });
     const caseId = (await get(sessionId))!.caseId;
-    const photo = await upload(t, ids.orgA, ids.ana, "photo");
+    const photo = await upload(t, ids.orgA, ids.ana, "photo", sessionId);
     await asAna.mutation(api.files.attach, { key: photo, target: { kind: "sessionPhoto", sessionId, photoKind: "before" } });
 
     await asAna.mutation(api.sessions.discard, { sessionId });
@@ -451,7 +443,7 @@ describe("gates on today's answers and the signer", () => {
     // Ana's appointment, attended by Sofi.
     const sessionId = await asSofi.mutation(api.sessions.start, { appointmentId: await book() });
     await asSofi.mutation(api.sessions.saveContraindications, { sessionId, present: [] });
-    await asSofi.mutation(api.sessions.signConsent, { sessionId, photoUse: "clinical", clientSignatureKey: await key(), userAgent: "test", authorizeData: true });
+    await asSofi.mutation(api.sessions.signConsent, { sessionId, signatureAccepted: true, photoUse: "clinical", clientSignatureKey: await key(), userAgent: "test", authorizeData: true });
     const session = await get(sessionId);
     expect(session?.memberId).toBe(ids.sofi);
     expect(session?.consent?.professionalSignatureKey).toBe(saved);
@@ -480,19 +472,30 @@ describe("gates on today's answers and the signer", () => {
     };
     const { consentHash } = await import("./lib/consent");
     const sessionId = await sign("clinical");
-    await asAna.mutation(api.sessions.signConsent, { sessionId, photoUse: "clinical", clientSignatureKey: await key(), professionalSignatureKey: await key(), userAgent: "t", authorizeData: true });
+    await asAna.mutation(api.sessions.signConsent, { sessionId, signatureAccepted: true, photoUse: "clinical", clientSignatureKey: await key(), professionalSignatureKey: await key(), userAgent: "t", authorizeData: true });
     const consent = (await get(sessionId))!.consent!;
     const evidence = { ...consent, guardian: consent.guardian };
     expect(await consentHash({ ...evidence, photoUse: "clinical" })).toBe(consent.hash);
+    expect(await consentHash({ ...evidence, signatureAgreement: { ...consent.signatureAgreement!, label: "Changed agreement" } })).not.toBe(consent.hash);
     expect(await consentHash({ ...evidence, photoUse: "clinical_and_marketing" })).not.toBe(consent.hash);
   });
 });
 
 describe("uploads", () => {
+  test("withdrawn photo authorization blocks upload URLs and attachment", async () => {
+    const { asAna, book, ids, t } = await setup();
+    const sessionId = await asAna.mutation(api.sessions.start, { appointmentId: await book() });
+    const notice = await asAna.query(api.clientAuthorizations.notice, { clientId: ids.clientA });
+    await asAna.mutation(api.clientAuthorizations.record, { clientId: ids.clientA, purpose: "record_photos", action: "withdrawn", policyHash: notice.policyHash, evidence: "Client requested withdrawal", requestKey: "photo-withdraw" });
+    expect(await errorCode(asAna.mutation(api.files.generateUploadUrl, { kind: "photo", sessionId }))).toBe("AUTHORIZATION_REQUIRED");
+    const key = await upload(t, ids.orgA, ids.ana, "photo");
+    expect(await errorCode(asAna.mutation(api.files.attach, { key, target: { kind: "sessionPhoto", sessionId, photoKind: "before" } }))).toBe("AUTHORIZATION_REQUIRED");
+  });
+
   test("a key is attached once, only for its kind, and only its owner deletes it", async () => {
     const { asAna, book, throughConsent, get, t, ids } = await setup();
     const sessionId = await asAna.mutation(api.sessions.start, { appointmentId: await book() });
-    const photo = await upload(t, ids.orgA, ids.ana, "photo");
+    const photo = await upload(t, ids.orgA, ids.ana, "photo", sessionId);
     const attach = (key: string, id = sessionId) => asAna.mutation(api.files.attach, { key, target: { kind: "sessionPhoto", sessionId: id, photoKind: "before" } });
     await attach(photo);
     expect(await errorCode(attach(photo))).toBe("FORBIDDEN");
@@ -544,14 +547,13 @@ describe("follow-ups", () => {
     expect(await asAna.query(api.followUps.listDue, {})).toEqual([]);
   });
 
-  test("listDue keeps missing clients with an empty name and phone", async () => {
+  test("listDue omits follow-ups whose client is missing", async () => {
     const { asAna, ids, t } = await setup();
-    const followUpId = await asAna.mutation(api.followUps.create, { clientId: ids.clientA, dueDate: bogotaDateKey(Date.now()) });
+    await asAna.mutation(api.followUps.create, { clientId: ids.clientA, dueDate: bogotaDateKey(Date.now()) });
     await t.run((ctx) => ctx.db.delete(ids.clientA));
 
     const due = await asAna.query(api.followUps.listDue, {});
-    expect(due).toHaveLength(1);
-    expect(due[0]).toMatchObject({ _id: followUpId, client: { _id: ids.clientA, name: "", phone: "" } });
+    expect(due).toHaveLength(0);
   });
 
   test("listDue returns pending follow-ups due today or before; done, dismissed, and rescheduled leave the list", async () => {

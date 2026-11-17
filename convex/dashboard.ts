@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { memberQuery, unguardedAdminMutation, unguardedMemberMutation } from "./lib/authz";
+import { hasPurpose } from "./lib/clientAuthorization";
 import { addDaysToDateKey, bogotaDateKey, bogotaToEpoch } from "./lib/time";
 import { owesBalance } from "./payments";
 import { invalid } from "./treatments";
@@ -58,6 +59,7 @@ export const today = memberQuery({
       if (a.status === "cancelled") continue;
       const { client, treatment } = await parts(a);
       if (!client) continue;
+      const healthAllowed = await hasPurpose(ctx, ctx.orgId, client._id, "health");
       appointments.push({
         _id: a._id,
         memberId: a.memberId,
@@ -70,9 +72,9 @@ export const today = memberQuery({
           _id: client._id,
           name: fullName(client),
           phone: client.phone,
-          health: client.health,
+          health: healthAllowed ? client.health : { conditions: [], allergies: [], skinConditions: [], none: { conditions: false, allergies: false, skin: false } },
           sex: client.sex,
-          lastPregnancy: client.lastPregnancy,
+          lastPregnancy: healthAllowed ? client.lastPregnancy : undefined,
         },
       });
     }

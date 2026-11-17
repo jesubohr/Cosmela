@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
 import { billingEnforced, countActiveMembers, isReadOnly, limitMessage, loadBilling, readOnlyMessage } from "./billing";
+import { hasProcessingAcceptance, requireAccountAcceptance, legalRequired } from "./legal";
 
 export type AuthzErrorCode = "UNAUTHENTICATED" | "NO_ORG" | "FORBIDDEN" | "NOT_FOUND" | "READ_ONLY" | "PLAN_LIMIT";
 
@@ -24,6 +25,7 @@ export function fail(code: AuthzErrorCode, message = MESSAGES[code]): never {
 export async function requireUserId(ctx: QueryCtx): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) fail("UNAUTHENTICATED");
+  await requireAccountAcceptance(ctx, identity.subject);
   return identity.subject;
 }
 
@@ -41,6 +43,9 @@ export async function requireMember(ctx: QueryCtx) {
     .unique();
   if (!member) fail("NO_ORG");
   if (!member.active) fail("FORBIDDEN", "Tu acceso a este negocio está desactivado.");
+  const org = await ctx.db.get(member.orgId);
+  if (!org || org.closureConfirmedAt !== undefined) fail("FORBIDDEN", "El negocio está en proceso de cierre. Puedes exportar tus datos desde Configuración o contactar a ayuda@cosmela.app.");
+  if (!await hasProcessingAcceptance(ctx, member.orgId)) legalRequired("Un administrador debe aceptar el acuerdo de tratamiento de datos del negocio.");
   return { userId, member, orgId: member.orgId };
 }
 
@@ -55,6 +60,8 @@ export async function requireAdmin(ctx: QueryCtx) {
  * lapsed. Does nothing while `BILLING_ENFORCED` is off.
  */
 export async function requireWritable(ctx: QueryCtx, orgId: Id<"orgs">) {
+  const org = await ctx.db.get(orgId);
+  if (!org || org.closureConfirmedAt !== undefined) fail("FORBIDDEN", "Este negocio está cerrado.");
   if (!billingEnforced()) return;
   const billing = await loadBilling(ctx, orgId);
   if (isReadOnly(billing.state)) fail("READ_ONLY", readOnlyMessage(billing));

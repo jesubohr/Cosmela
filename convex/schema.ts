@@ -37,6 +37,41 @@ import {
 // Times are epoch ms (UTC). Calendar-only dates are "YYYY-MM-DD" in Bogotá time.
 // Money is integer COP. User ids are Better Auth user ids (`identity.subject`).
 export default defineSchema({
+  legalDocuments: defineTable({
+    type: v.string(), version: v.string(), language: v.literal("es-CO"),
+    content: v.string(), hash: v.string(), effectiveAt: v.number(), material: v.boolean(),
+  }).index("by_type_version", ["type", "version"]),
+
+  accountLegalAcceptances: defineTable({
+    userId: v.string(), type: v.string(), version: v.string(), documentId: v.id("legalDocuments"),
+    action: v.union(v.literal("accepted"), v.literal("withdrawn")),
+    label: v.string(), adultLabel: v.string(), at: v.number(), method: v.string(),
+  }).index("by_user_type_version", ["userId", "type", "version"]).index("by_user", ["userId"]),
+
+  accountEvidenceExpiry: defineTable({
+    userId: v.string(), retainUntil: v.number(),
+  }).index("by_user", ["userId"]).index("by_retention", ["retainUntil"]),
+
+  processingAcceptances: defineTable({
+    orgId: v.id("orgs"), userId: v.string(), version: v.string(), documentId: v.id("legalDocuments"),
+    label: v.string(), at: v.number(),
+  }).index("by_org_version", ["orgId", "version"]).index("by_org", ["orgId"]),
+
+  cookieChoices: defineTable({
+    receiptId: v.string(), version: v.string(),
+    choice: v.union(v.literal("accepted"), v.literal("rejected"), v.literal("withdrawn")),
+    documentId: v.id("legalDocuments"), at: v.number(),
+  }).index("by_receipt", ["receiptId"]).index("by_at", ["at"]),
+
+  checkoutAcceptances: defineTable({
+    orgId: v.id("orgs"), userId: v.string(), version: v.string(), plan: v.string(),
+    amount: v.number(), currency: v.literal("COP"), interval: v.literal("month"),
+    termsId: v.id("legalDocuments"), refundsId: v.id("legalDocuments"),
+    label: v.string(), at: v.number(),
+    polarCheckoutId: v.optional(v.string()),
+    checkoutState: v.optional(v.union(v.literal("requested"), v.literal("created"), v.literal("failed"))),
+  }).index("by_org", ["orgId"]),
+
   orgs: defineTable({
     name: v.string(),
     slug: v.string(),
@@ -57,10 +92,20 @@ export default defineSchema({
     bookingSharedAt: v.optional(v.number()),
     // End of the free trial; it counts only when BILLING_ENFORCED is on (docs/BILLING.md).
     trialEndsAt: v.optional(v.number()),
+    closureConfirmedAt: v.optional(v.number()),
+    closureRequestedAt: v.optional(v.number()),
+    exportUntil: v.optional(v.number()),
+    activeDeletionDueAt: v.optional(v.number()),
+    lifecycleStage: v.optional(v.string()),
+    lifecycleNextRunAt: v.optional(v.number()),
+    evidenceNextRunAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_owner", ["ownerId"])
-    .index("by_trial_end", ["trialEndsAt"]),
+    .index("by_trial_end", ["trialEndsAt"])
+    .index("by_deletion_due", ["activeDeletionDueAt"])
+    .index("by_lifecycle_next", ["lifecycleNextRunAt"])
+    .index("by_evidence_next", ["evidenceNextRunAt"]),
 
   members: defineTable({
     orgId: v.id("orgs"),
@@ -184,7 +229,7 @@ export default defineSchema({
     reminderJobId: v.optional(v.id("_scheduled_functions")),
     reminderSentAt: v.optional(v.number()),
     createdBy: v.optional(v.id("members")),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_org_start", ["orgId", "start"])
     .index("by_member_start", ["memberId", "start"])
     .index("by_client", ["clientId", "start"])
@@ -201,7 +246,7 @@ export default defineSchema({
     allDay: v.boolean(),
     kind: vTimeBlockKind,
     title: v.optional(v.string()),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_org_start", ["orgId", "start"])
     .index("by_member_start", ["memberId", "start"]),
 
@@ -220,7 +265,7 @@ export default defineSchema({
     lastSessionAt: v.optional(v.number()),
     // Professionals with a closed or postponed session in the case (Casos filter).
     memberIds: v.optional(v.array(v.id("members"))),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_org_status", ["orgId", "status"])
     .index("by_client", ["clientId"]),
 
@@ -249,7 +294,7 @@ export default defineSchema({
     aftercare: v.optional(vSessionAftercare),
     followUp: v.optional(vSessionFollowUp),
     addenda: v.array(v.object({ at: v.number(), memberId: v.id("members"), text: v.string() })),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_case", ["caseId"])
     .index("by_client", ["clientId"])
     .index("by_appointment", ["appointmentId"])
@@ -266,7 +311,7 @@ export default defineSchema({
     status: vFollowUpStatus,
     outcome: v.optional(v.string()),
     doneAt: v.optional(v.number()),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_org_status_due", ["orgId", "status", "dueDate"])
     .index("by_client", ["clientId"]),
 
@@ -279,7 +324,7 @@ export default defineSchema({
     paidAt: v.number(),
     note: v.optional(v.string()),
     recordedBy: v.id("members"),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_org_paidAt", ["orgId", "paidAt"])
     .index("by_appointment", ["appointmentId"])
     .index("by_client", ["clientId"]),
@@ -291,18 +336,67 @@ export default defineSchema({
     key: v.string(),
     kind: vUploadKind,
     uploadedBy: v.id("members"),
+    sessionId: v.optional(v.id("sessions")),
     // "session:<id>", "consent:<sessionId>", "member:<id>", or "org".
     attachedTo: v.optional(v.string()),
-  })
+  }).index("by_org", ["orgId"])
     .index("by_key", ["key"])
     .index("by_attached", ["attachedTo"]),
+
+  clientAuthorizations: defineTable({
+    orgId: v.id("orgs"), clientId: v.id("clients"),
+    purpose: v.union(v.literal("basic"), v.literal("booking"), v.literal("health"), v.literal("record_photos")),
+    action: v.union(v.literal("accepted"), v.literal("rejected"), v.literal("withdrawn")),
+    policyId: v.id("policies"), policyHash: v.string(), label: v.string(),
+    method: v.union(v.literal("online_checkbox"), v.literal("external_evidence")),
+    evidence: v.optional(v.string()), recordedBy: v.optional(v.id("members")),
+    requestKey: v.string(), at: v.number(), sequence: v.optional(v.number()), adult: v.optional(v.boolean()), appointmentId: v.optional(v.id("appointments")),
+  }).index("by_org", ["orgId"]).index("by_client_purpose", ["clientId", "purpose"]).index("by_client_purpose_sequence", ["clientId", "purpose", "sequence"]).index("by_org_request", ["orgId", "requestKey"]),
 
   // Privacy policy texts that clients accepted, stored once per distinct text.
   policies: defineTable({
     orgId: v.id("orgs"),
     hash: v.string(),
     text: v.string(),
-  }).index("by_org_hash", ["orgId", "hash"]),
+  }).index("by_org", ["orgId"]).index("by_org_hash", ["orgId", "hash"]),
+
+  retainedSessionConsents: defineTable({
+    orgId: v.id("orgs"),
+    sessionId: v.id("sessions"),
+    clientId: v.id("clients"),
+    consent: vSessionConsent,
+    retainUntil: v.number(),
+  }).index("by_org_session", ["orgId", "sessionId"]).index("by_retention", ["retainUntil"])
+    .index("by_client_signature", ["orgId", "consent.clientSignatureKey"])
+    .index("by_professional_signature", ["orgId", "consent.professionalSignatureKey"]),
+
+  lifecycleHolds: defineTable({
+    orgId: v.id("orgs"),
+    table: v.string(),
+    recordId: v.string(),
+    reason: v.string(),
+    owner: v.string(),
+    reviewAt: v.number(),
+    releasedAt: v.optional(v.number()),
+  }).index("by_org_record", ["orgId", "table", "recordId"]),
+
+  fileDeletionRequests: defineTable({
+    orgId: v.id("orgs"),
+    key: v.string(),
+    requestedAt: v.number(),
+    verifiedAt: v.optional(v.number()),
+      nextAttemptAt: v.optional(v.number()),
+      attempts: v.optional(v.number()),
+      lastError: v.optional(v.string()),
+    }).index("by_org_key", ["orgId", "key"]).index("by_org_verified", ["orgId", "verifiedAt"]).index("by_next_attempt", ["nextAttemptAt"]),
+
+  deletionLedger: defineTable({
+    orgId: v.id("orgs"),
+    closureConfirmedAt: v.number(),
+    activeDeletionDueAt: v.number(),
+    completedAt: v.optional(v.number()),
+    note: v.optional(v.string()),
+  }).index("by_org", ["orgId"]),
 
   // Polar subscriptions of each org (the org is the Polar customer), kept by the
   // webhook and by `billing.sync`. Times are epoch ms.

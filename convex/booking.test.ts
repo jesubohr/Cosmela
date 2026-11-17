@@ -18,12 +18,13 @@ async function setup() {
   const s = await setupOrgs();
   await s.t.run(async (ctx) => {
     const org = (await ctx.db.get(s.ids.orgA))!;
-    await ctx.db.patch(s.ids.orgA, { booking: { ...org.booking, enabled: true }, city: "Medellín" });
+    await ctx.db.patch(s.ids.orgA, { booking: { ...org.booking, enabled: true }, city: "Medellín", legalName: "Alba SAS", taxId: "123", address: "Calle 1", whatsapp: "+573001234567" });
     await ctx.db.patch(s.ids.clientA, {
       health: { conditions: ["herpes"], allergies: ["medication"], allergiesDetail: "Penicilina", skinConditions: [], none: { conditions: false, allergies: false, skin: false } },
     });
   });
-  const request = (extra: Partial<{ start: number; phone: string; memberId: Id<"members">; firstName: string; authorized: boolean; slug: string; website: string }> = {}) =>
+  const bookingPage = (await s.t.query(api.booking.page, { slug: "alba" }))!;
+  const request = (extra: Partial<{ start: number; phone: string; memberId: Id<"members">; firstName: string; authorized: boolean; adult: boolean; policyHash: string; requestKey: string; slug: string; website: string }> = {}) =>
     s.t.mutation(api.booking.create, {
       slug: "alba",
       treatmentId: s.ids.treatmentA,
@@ -32,7 +33,7 @@ async function setup() {
       lastName: "Ríos",
       phone: "+573110000000",
       email: "Vale@Example.com",
-      authorized: true,
+      authorized: true, adult: true, policyHash: bookingPage.policyHash, requestKey: crypto.randomUUID(),
       ...extra,
     });
   const deliveries = () =>
@@ -68,8 +69,11 @@ describe("booking page", () => {
     const page = await t.query(api.booking.page, { slug: "alba" });
     expect(page).toEqual({
       name: "Alba",
+      bookingLabel: expect.any(String),
+      bookingNotice: expect.any(String),
+      policyHash: expect.any(String),
       city: "Medellín",
-      whatsapp: undefined,
+      whatsapp: "+573001234567",
       hasLogo: false,
       enabled: true,
       welcome: undefined,
@@ -77,7 +81,7 @@ describe("booking page", () => {
       members: [{ _id: ids.ana, name: "ana", color: "plum" }],
     });
     const json = JSON.stringify(page);
-    for (const secret of ["Penicilina", "+573001234567", "example.com", "consentText", "schedule"]) {
+    for (const secret of ["Penicilina", "example.com", "consentText", "schedule"]) {
       expect(json).not.toContain(secret);
     }
     expect(await t.query(api.booking.page, { slug: "nadie" })).toBeNull();
@@ -178,7 +182,7 @@ describe("booking.create", () => {
     const policy = await t.run((ctx) => ctx.db.get(client!.dataAuthorization!.policyId!));
     expect(policy?.text).toContain("Alba");
     await request({ phone: "+573110000001", start: at("11:00") });
-    expect(await t.run(async (ctx) => (await ctx.db.query("policies").collect()).length)).toBe(1);
+    expect(await t.run(async (ctx) => (await ctx.db.query("policies").collect()).filter(p => p.orgId === policy?.orgId && p.text === policy?.text).length)).toBe(1);
   });
 
   test("never changes an existing client: the request email stays on the appointment", async () => {
@@ -289,12 +293,22 @@ describe("booking.create", () => {
           lastName: "",
           phone: "+573110000000",
           email: "vale@example.com",
-          authorized: true,
+          authorized: true, adult: true, policyHash: (await t.query(api.booking.page, { slug: "alba" }))!.policyHash, requestKey: crypto.randomUUID(),
         }),
       ),
     ).toBe("INVALID");
     expect(await errorCode(request({ memberId: ids.bea }))).toBe("SLOT_TAKEN");
     expect(await t.run(async (ctx) => (await ctx.db.query("appointments").collect()).length)).toBe(0);
+  });
+
+  test("requires the displayed policy and adult confirmation, and retries only once", async () => {
+    const { t, request } = await setup();
+    expect(await errorCode(request({ adult: false }))).toBe("INVALID");
+    expect(await errorCode(request({ policyHash: "stale" }))).toBe("STALE_POLICY");
+    const first = await request({ requestKey: "same-request" });
+    const retry = await request({ requestKey: "same-request" });
+    expect(retry).toEqual(first);
+    expect(await t.run(async ctx => (await ctx.db.query("appointments").collect()).length)).toBe(1);
   });
 
   test("emails the admins and the professional, without health data", async () => {

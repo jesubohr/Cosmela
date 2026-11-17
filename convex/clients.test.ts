@@ -1,13 +1,19 @@
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
+import type { ClientInput } from "./clients";
 import { errorCode, errorMessage, setupOrgs } from "./lib/fixtures.testing";
 
 const PAGE = { numItems: 20, cursor: null };
 
+async function create(actor: Awaited<ReturnType<typeof setupOrgs>>["asAna"], args: { client: ClientInput }) {
+  const notice = await actor.query(api.clientAuthorizations.registrationNotice, {});
+  return actor.mutation(api.clients.create, { ...args, adult: true, evidence: "Signed paper", policyHash: notice.policyHash, requestKey: crypto.randomUUID() });
+}
+
 describe("clients", () => {
   test("quick create needs only name and phone", async () => {
     const { asAna, t } = await setupOrgs();
-    const id = await asAna.mutation(api.clients.create, {
+    const id = await create(asAna, {
       client: { firstName: " Sofía ", lastName: "Pérez", phone: "+573104445566" },
     });
     const client = await t.run((ctx) => ctx.db.get(id));
@@ -17,46 +23,33 @@ describe("clients", () => {
     expect(client?.fichaCompletedAt).toBeUndefined();
   });
 
-  test("a full ficha marks the ficha as completed", async () => {
-    const { asAna, t } = await setupOrgs();
-    const id = await asAna.mutation(api.clients.create, {
-      client: {
-        firstName: "Ana",
-        lastName: "Ruiz",
-        phone: "+573104445566",
-        birthDate: "1990-11-21",
-        health: { conditions: [], allergies: ["food"], allergiesDetail: "Maní", skinConditions: [], none: { conditions: true, allergies: false, skin: true } },
-        habits: { sunscreen: "daily" },
-        skin: { fitzpatrick: 3 },
-      },
-    });
-    const client = await t.run((ctx) => ctx.db.get(id));
-    expect(client?.birthdayKey).toBe("11-21");
-    expect(client?.fichaCompletedAt).toBeTypeOf("number");
-    expect(client?.health.allergiesDetail).toBe("Maní");
+  test("health data cannot be saved during registration", async () => {
+    const { asAna } = await setupOrgs();
+    const client = { firstName: "Ana", lastName: "Ruiz", phone: "+573104445566", health: { conditions: [], allergies: [], skinConditions: [], none: { conditions: false, allergies: false, skin: false } } };
+    expect(await errorCode(create(asAna, { client }))).toBe("INVALID");
   });
 
   test("duplicate phone names the existing client", async () => {
     const { asAna, asSofi } = await setupOrgs();
-    const create = asSofi.mutation(api.clients.create, {
+    const duplicate = create(asSofi, {
       client: { firstName: "Otra", lastName: "", phone: "+573001234567" },
     });
-    expect(await errorMessage(create)).toBe("Este teléfono ya pertenece a Laura Prueba. Abre su ficha o usa otro número.");
+    expect(await errorMessage(duplicate)).toBe("Este teléfono ya pertenece a Laura Prueba. Abre su ficha o usa otro número.");
     expect(
-      await errorCode(asAna.mutation(api.clients.create, { client: { firstName: "Otra", lastName: "", phone: "+573001234567" } })),
+      await errorCode(create(asAna, { client: { firstName: "Otra", lastName: "", phone: "+573001234567" } })),
     ).toBe("DUPLICATE_PHONE");
   });
 
   test("the same phone is fine in another org", async () => {
     const { asBea } = await setupOrgs();
     await expect(
-      asBea.mutation(api.clients.create, { client: { firstName: "Laura", lastName: "B", phone: "+573001234567" } }),
+      create(asBea, { client: { firstName: "Laura", lastName: "B", phone: "+573001234567" } }),
     ).resolves.toBeDefined();
   });
 
   test("update rejects a phone that belongs to another client", async () => {
     const { asAna, ids } = await setupOrgs();
-    const other = await asAna.mutation(api.clients.create, { client: { firstName: "Paula", lastName: "", phone: "+573111111111" } });
+    const other = await create(asAna, { client: { firstName: "Paula", lastName: "", phone: "+573111111111" } });
     const result = asAna.mutation(api.clients.update, {
       clientId: other,
       client: { firstName: "Paula", lastName: "", phone: "+573001234567" },
@@ -69,12 +62,12 @@ describe("clients", () => {
   test("validates phone, email, and birth date", async () => {
     const { asAna } = await setupOrgs();
     const base = { firstName: "Eva", lastName: "", phone: "+573120000000" };
-    expect(await errorMessage(asAna.mutation(api.clients.create, { client: { ...base, phone: "+57300" } }))).toBe(
+    expect(await errorMessage(create(asAna, { client: { ...base, phone: "+57300" } }))).toBe(
       "Escribe un teléfono de 10 dígitos.",
     );
-    expect(await errorCode(asAna.mutation(api.clients.create, { client: { ...base, email: "eva@" } }))).toBe("INVALID");
-    expect(await errorCode(asAna.mutation(api.clients.create, { client: { ...base, birthDate: "2999-01-01" } }))).toBe("INVALID");
-    expect(await errorCode(asAna.mutation(api.clients.create, { client: { ...base, firstName: " " } }))).toBe("INVALID");
+    expect(await errorCode(create(asAna, { client: { ...base, email: "eva@" } }))).toBe("INVALID");
+    expect(await errorCode(create(asAna, { client: { ...base, birthDate: "2999-01-01" } }))).toBe("INVALID");
+    expect(await errorCode(create(asAna, { client: { ...base, firstName: " " } }))).toBe("INVALID");
   });
 
   test("archived clients leave the list and search but keep their record", async () => {

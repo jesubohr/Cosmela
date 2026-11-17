@@ -1,5 +1,7 @@
 "use client";
 
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,10 +13,13 @@ import { SheetBar } from "./sheet-bar";
 /** Ficha tab: read view, and "Editar ficha" with the full `FichaForm`. */
 export function FichaTab({ client }: { client: ClientDoc }) {
   const [editing, setEditing] = useState(false);
-  if (!editing) {
+  const status = useQuery(api.clientAuthorizations.status, { clientId: client._id });
+  if (!status) return null;
+  if (!editing || !status.health) {
     return (
       <div className="flex max-w-3xl flex-col gap-6">
-        <Button variant="secondary" className="self-start" onClick={() => setEditing(true)}>
+        <Authorizations client={client} status={status} />
+        <Button variant="secondary" disabled={!status.health} className="self-start" onClick={() => setEditing(true)}>
           Editar ficha
         </Button>
         <FichaSummary client={client} />
@@ -22,6 +27,34 @@ export function FichaTab({ client }: { client: ClientDoc }) {
     );
   }
   return <FichaEditor client={client} onClose={() => setEditing(false)} />;
+}
+
+function Authorizations({ client, status }: { client: ClientDoc; status: { health: boolean; recordPhotos: boolean } }) {
+  const notice = useQuery(api.clientAuthorizations.notice, { clientId: client._id });
+  const record = useMutation(api.clientAuthorizations.record);
+  const [evidence, setEvidence] = useState("");
+  const [adult, setAdult] = useState(false);
+  const [pending, setPending] = useState(false);
+  async function decide(purpose: "health" | "record_photos", action: "accepted" | "rejected" | "withdrawn") {
+    if (!notice) return;
+    setPending(true);
+    try {
+      await record({ clientId: client._id, purpose, action, evidence, adult, policyHash: notice.policyHash, requestKey: crypto.randomUUID() });
+      setEvidence("");
+      toast.success("Decisión registrada");
+    } catch { toast.error("Describe cómo recibiste la decisión del cliente."); } finally { setPending(false); }
+  }
+  if (!notice) return null;
+  return <div className="flex flex-col gap-3 rounded-xl border p-4">
+    <p>Los datos de salud son sensibles. El cliente puede negarse a autorizarlos sin perder su reserva.</p>
+    <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details>
+    <label>Cómo recibiste la decisión <input className="rounded border p-2" value={evidence} onChange={event => setEvidence(event.target.value)} /></label>
+    <label><input type="checkbox" checked={adult} onChange={event => setAdult(event.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
+    <p>{notice.labels.health}</p>
+    <div className="flex flex-wrap gap-2">{status.health ? <Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("health", "withdrawn")}>Registrar retiro</Button> : <><Button type="button" disabled={pending} onClick={() => void decide("health", "accepted")}>Registrar autorización</Button><Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("health", "rejected")}>Registrar negativa</Button></>}</div>
+    <p>{notice.labels.record_photos}</p>
+    {status.recordPhotos && <Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("record_photos", "withdrawn")}>Registrar retiro de fotos</Button>}
+  </div>;
 }
 
 function FichaEditor({ client, onClose }: { client: ClientDoc; onClose: () => void }) {

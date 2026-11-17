@@ -17,6 +17,7 @@ export type Details = {
   email: string;
   note: string;
   authorized: boolean;
+  adult: boolean;
   /** Honeypot: hidden from people, so only bots fill it in. */
   website: string;
 };
@@ -30,17 +31,20 @@ function validate(details: Details): Errors {
   if (!details.firstName.trim()) errors.firstName = "Escribe tu nombre.";
   if (!isValidPhone(details.phone)) errors.phone = "Escribe un WhatsApp de 10 dígitos.";
   if (!EMAIL.test(details.email.trim())) errors.email = "Escribe un correo válido, como nombre@correo.com.";
+  if (!details.adult) errors.adult = "Confirma que eres mayor de edad.";
   if (!details.authorized) errors.authorized = "Marca la autorización para enviar tu solicitud.";
   return errors;
 }
 
 /** "Tus datos". `onSubmit` resolves to an error message to show, or null when it went through. */
 export function DetailsForm({
-  orgName,
+  bookingLabel,
+  bookingNotice,
   slug,
   onSubmit,
 }: {
-  orgName: string;
+  bookingLabel: string;
+  bookingNotice: string;
   slug: string;
   onSubmit: (details: Details) => Promise<string | null>;
 }) {
@@ -51,6 +55,7 @@ export function DetailsForm({
     email: "",
     note: "",
     authorized: false,
+    adult: false,
     website: "",
   });
   const [errors, setErrors] = useState<Errors>({});
@@ -120,7 +125,7 @@ export function DetailsForm({
           aria-describedby={errors.email ? "booking-email-error" : "booking-email-help"}
         />
       </Field>
-      <Field id="booking-note" label="Nota (opcional)">
+      <Field id="booking-note" label="Nota (opcional)" help="No incluyas datos de salud ni información de otras personas.">
         <Textarea
           id="booking-note"
           rows={3}
@@ -145,6 +150,7 @@ export function DetailsForm({
       </div>
 
       <div className="flex flex-col gap-1">
+        <p>{bookingNotice}</p>
         {/* The whole row toggles the box; the policy link sits apart so a tap on the sentence never leaves the page. */}
         <label htmlFor="booking-authorized" className="flex min-h-11 cursor-pointer items-start gap-3 py-2 text-base leading-normal">
           <Checkbox
@@ -155,7 +161,7 @@ export function DetailsForm({
             aria-describedby={errors.authorized ? "booking-authorized-error" : undefined}
             className="mt-0.5 size-6"
           />
-          <span>Autorizo a {orgName} a tratar mis datos personales según su política de privacidad.</span>
+          <span>{bookingLabel}</span>
         </label>
         {errors.authorized && (
           <p id="booking-authorized-error" className="pl-9 text-sm text-rose">
@@ -171,6 +177,11 @@ export function DetailsForm({
         </Link>
       </div>
 
+      <label htmlFor="booking-adult" className="flex items-start gap-3">
+        <Checkbox id="booking-adult" checked={details.adult} onCheckedChange={(checked) => set("adult", checked === true)} />
+        <span>Confirmo que la reserva es para mí y que tengo 18 años o más.</span>
+      </label>
+      {errors.adult && <p role="alert" className="text-sm text-rose">{errors.adult}</p>}
       {formError && (
         <p role="alert" className="rounded-lg bg-rose-soft px-4 py-3 text-rose">
           {formError}

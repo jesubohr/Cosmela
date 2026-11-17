@@ -1,3 +1,4 @@
+import { CookiePreferencesLink } from "@/components/cookie-preferences";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -14,7 +15,7 @@ import "@/components/landing/landing.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://cosmela.vercel.app",
+    process.env.NEXT_PUBLIC_SITE_URL || "https://cosmela.app",
   ),
   title: "Cosmela: agenda y fichas para profesionales de la estética",
   description:
@@ -349,6 +350,11 @@ export default function Home() {
             <p>Pensado para cuidar a tus clientes.</p>
             <nav aria-label="Información legal">
               <Link href="/privacidad">Privacidad</Link>
+              <Link href="/cookies">Cookies</Link>
+              <Link href="/reembolsos">Reembolsos</Link>
+              <Link href="/acuerdo-datos">Acuerdo de datos</Link>
+              <a href="mailto:ayuda@cosmela.app">Contacto</a>
+              <CookiePreferencesLink />
               <Link href="/terminos">Términos</Link>
               <a href="#main">Volver al inicio ↑</a>
             </nav>

@@ -4,6 +4,7 @@ import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { fail, getOwned, memberQuery, requireWritable, unguardedMemberMutation } from "./lib/authz";
+import { requirePurpose } from "./lib/clientAuthorization";
 import { vPhotoKind, vUploadKind, type UploadKind } from "./lib/validators";
 
 // Private bucket configured by the R2_* env vars on the Convex deployment.
@@ -86,12 +87,18 @@ export const sweepUploads = internalMutation({
 
 /** Returns `{ key, url }`. PUT the file body to `url`, then pass `key` to a mutation that stores it. */
 export const generateUploadUrl = unguardedMemberMutation({
-  args: { kind: vUploadKind },
-  handler: async (ctx, { kind }) => {
+  args: { kind: vUploadKind, sessionId: v.optional(v.id("sessions")) },
+  handler: async (ctx, { kind, sessionId }) => {
+    if (kind === "photo") {
+      if (!sessionId) fail("FORBIDDEN", "Selecciona una atención autorizada.");
+      const session = await getOwned(ctx, "sessions", sessionId);
+      if (session.status !== "draft") fail("FORBIDDEN");
+      await requirePurpose(ctx, ctx.orgId, session.clientId, "record_photos");
+    }
     // A signature can be the caller's own; consent signatures are guarded when claimed.
     if (kind !== "signature") await requireWritable(ctx, ctx.orgId);
     const key = `orgs/${ctx.orgId}/${kind}/${crypto.randomUUID()}`;
-    await ctx.db.insert("uploads", { orgId: ctx.orgId, key, kind, uploadedBy: ctx.member._id });
+    await ctx.db.insert("uploads", { orgId: ctx.orgId, key, kind, uploadedBy: ctx.member._id, sessionId });
     return await r2.generateUploadUrl(key);
   },
 });
@@ -104,6 +111,13 @@ export const getUrls = memberQuery({
     const urls: Record<string, string> = {};
     for (const key of keys) {
       assertOrgKey(ctx.orgId, key);
+      if (key.includes("/photo/")) {
+        const upload = await uploadOf(ctx, key);
+        const rawId = upload?.sessionId ?? (upload?.attachedTo?.startsWith("session:") ? ctx.db.normalizeId("sessions", upload.attachedTo.slice(8)) : null);
+        if (!rawId) fail("FORBIDDEN");
+        const session = await getOwned(ctx, "sessions", rawId);
+        await requirePurpose(ctx, ctx.orgId, session.clientId, "record_photos");
+      }
       urls[key] = await r2.getUrl(key, { expiresIn: URL_TTL_SECONDS });
     }
     return urls;
@@ -144,7 +158,11 @@ export const attach = unguardedMemberMutation({
       case "sessionPhoto": {
         const session = await getOwned(ctx, "sessions", target.sessionId);
         if (session.status !== "draft") fail("FORBIDDEN", "Esta atención ya está cerrada.");
-        if (session.consent?.photoUse === "none") fail("FORBIDDEN", "El cliente no autorizó fotos.");
+        await requirePurpose(ctx, ctx.orgId, session.clientId, "record_photos");
+        const upload = await uploadOf(ctx, key);
+        if (!upload || upload.orgId !== ctx.orgId || upload.kind !== "photo") fail("NOT_FOUND");
+        if (upload.sessionId !== session._id) fail("FORBIDDEN");
+        if (session.consent?.photoUse === "none") fail("FORBIDDEN", "El cliente no autorizo fotos.");
         await claimUpload(ctx, key, "photo", owners.session(session._id));
         await ctx.db.patch(session._id, {
           photos: [...session.photos, { key, kind: target.photoKind, at: Date.now() }],

@@ -1,6 +1,6 @@
-# Cosmela legal compliance draft
+# Cosmela legal compliance
 
-Status: DRAFT for business, developer, and Colombian lawyer review. These files do not change application behavior or publish policies. Prepared and sources checked November 16, 2026. Proposed document version: `2026-11-16-draft.1`; effective date remains pending approval and deployment.
+Status: implementation approved by the operator and implemented locally on November 16, 2026. No production deployment or legal certification was performed. Sources checked November 16, 2026. Runtime document version: `2026-11-16`, effective-date text November 16, 2026. The `documents/` files preserve the review drafts; `content/legal/es-CO/2026-11-16/` contains the exact runtime Spanish documents and the server stores their hashes/snapshots upon acceptance. Lawyer review and the provider checklist below remain launch requirements.
 
 Start with [the implementation plan](implementation-plan.md). Spanish drafts: [terms](documents/terms-and-conditions.md), [privacy](documents/privacy-policy.md), [cookies](documents/cookies-policy.md), [refunds](documents/refund-policy.md), [processing agreement](documents/data-processing-agreement.md), and [collection notices](documents/collection-notices.md). Supporting audits: [data inventory](data-inventory.md) and [media inventory](media-inventory.md).
 
@@ -16,7 +16,7 @@ Start with [the implementation plan](implementation-plan.md). Spanish drafts: [t
 - Professional scope: cosmetology-related professionals, including regulated professionals where applicable. The operator permits this audience; that does not establish suitability for every regulated clinical-record use. Professionals/establishments must meet the requirements of their actual activity. Cosmela does not provide treatments or manage their clinical relationship with clients; public booking, reminders, and records still involve processing client data.
 - Credential responsibility confirmed by the operator: professionals hold the qualifications their work requires; businesses check their teams. Cosmela does not verify or certify credentials. Account creation, booking listings, and templates must not imply endorsement. Preserve Cosmela's own nonwaivable responsibilities; this is not a blanket liability exclusion.
 
-## Current findings
+## Baseline findings addressed by this implementation
 
 1. `convex/clients.ts` accepts health fields before authorization. `convex/sessions.ts` records authorization only at treatment signing and treats an existing booking checkbox authorization as sufficient. `convex/files.ts` can attach photos before consent exists. These are priority gaps.
 2. Account login has a combined implied-acceptance notice; it does not store acceptance of exact Cosmela terms and privacy versions.
@@ -49,21 +49,21 @@ All links below were checked through official sources on November 16, 2026. `(ve
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Terms, privacy, cookies, refunds | Draft ready | Spanish drafts in `documents/`; not published or effective. |
-| Data-processing agreement and short notices | Draft ready | Separate purposes and tenant obligations. |
-| Account acceptance and versioned evidence | Missing | Cover OTP, invitations, existing users, and backend calls. |
-| Prior sensitive-data/photo authorization | Missing | Booking consent must not grant health/photo purposes. |
-| Analytics opt-in and withdrawal | Missing | Gate initialization, identification, and capture. |
-| No minors | Needs implementation | Server checks, adult attestation, legacy-record review. |
-| Closure, export, deletion | Missing | Existing CSV is incomplete; proposed periods below. |
+| Terms, privacy, cookies, refunds | Implemented locally | Five public legal routes; complete operator identity, subscriptions and credential responsibilities. |
+| Data-processing agreement and short notices | Implemented locally | Admin agreement; purpose-specific account, booking, health and photo notices. |
+| Account acceptance and versioned evidence | Implemented locally | Verified OTP hook, pending-identity cleanup, invitations, existing-user gate and backend enforcement. |
+| Prior sensitive-data/photo authorization | Implemented locally | Append-only purpose ledger; withdrawal limits future reads/writes; session-bound upload permission; procedure signing records the electronic-signature agreement under hash version 3. Legacy snapshots remain unchanged. |
+| Analytics opt-in and withdrawal | Implemented locally | Lazy SDK initialization, equal accept/reject, expiring preferences and anonymous receipts. No product events are approved: the event filter currently discards all events. |
+| No minors | Implemented locally | Actual date/age checks, adult attestations, blocked new guardian flow and admin legacy-minor inventory; lawful custody review remains operational. |
+| Closure, export, deletion | Implemented locally | Paginated full tenant export and signed file links; live Polar verification and checkout freeze; export window, bounded purges, holds, evidence expiry, unlinked identity cleanup and verified/retried R2 deletion. |
 | Provider contracts/regions | Needs decision | US hosting confirmed only at a high level. |
 | Media rights | Needs evidence | See media inventory. |
-| RNBD, privacy requests, incidents | Needs operational setup | Named owner must run procedures. |
+| RNBD, privacy requests, incidents | Runbook ready; operator action required | Named owner must run procedures and assess RNBD against real assets. |
 | Healthcare scope | Audience and credential responsibility confirmed; suitability needs review | Professionals hold required qualifications; Cosmela does not certify them. Review medical-record duties and software capability before claiming clinical-record compliance. |
 
 ## Proposed retention decisions
 
-These are business proposals, not a universal Colombian SaaS standard. Obtain legal review and verify provider configuration before publishing them.
+The operator approved these business periods; they are not a universal Colombian SaaS standard. Obtain legal review and verify provider configuration before production publication. Provider settings remain external launch checks even where the application implements a scheduled period.
 
 | Data | Proposed period / trigger |
 | --- | --- |
@@ -81,11 +81,17 @@ Legal holds must identify the record, legal reason, owner, scope, and review/exp
 
 ## Open questions and launch blockers
 
-- [TODO: approved effective date; verify supplied operator details before publication. NIT, telephone, and domain are supplied.]
+- [TODO: verify supplied operator details before production publication; the operator approved implementation with the supplied NIT, telephone and domain.]
 - [TODO: lawyer review of credential-responsibility wording, regulated-record suitability, and scope-specific custody and retention.]
 - [TODO: provider DPAs, independent-controller roles, regions, backups/deletion limits, and Polar refund workflow.]
 - [TODO: assets for RNBD determination; media licenses/ownership evidence.]
-- [TODO: business and lawyer approval of proposed periods and statutory refund applicability.]
+- [TODO: lawyer review of approved retention periods and statutory refund applicability; accountant review of commercial-record classification.]
+
+## Verification and external launch checks
+
+Local tests cover account activation, exact document snapshots, authorization withdrawal, tenant isolation, adult checks, idempotent booking, checkout consent/price changes, closure locks and live-provider response handling, legal holds and durable file-deletion state. See `verification.md` for final commands and browser checks.
+
+Before production launch, verify vendor DPAs/regions/subprocessors; configure real log, analytics, mailbox and backup retention; test a sandbox cancellation/refund and provider deletion against disposable records; validate production auth cookies; and review media rights. No real refund, production deletion, or provider dashboard change was performed by this implementation. Never mark these completed from mocked tests.
 
 ## Ongoing duties
 

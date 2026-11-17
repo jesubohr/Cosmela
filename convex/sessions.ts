@@ -5,7 +5,8 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { claimUpload, deleteOwnedFiles, owners } from "./files";
 import { fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
-import { CONSENT_HASH_VERSION, consentHash, isMinor, renderConsentText, renderDocument } from "./lib/consent";
+import { CONSENT_HASH_VERSION, SIGNATURE_AGREEMENT_LABEL, consentHash, isMinor, renderConsentText, renderDocument } from "./lib/consent";
+import { hasPurpose, requirePurpose } from "./lib/clientAuthorization";
 import { clientSearchText } from "./lib/text";
 import { addDaysToDateKey, bogotaDateKey } from "./lib/time";
 import {
@@ -21,7 +22,7 @@ import {
   type FormAnswer,
   type FormField,
 } from "./lib/validators";
-import { currentPolicyId, privacyPolicyText } from "./orgs";
+import { privacyPolicyText } from "./orgs";
 import { addPayment, syncBalance } from "./payments";
 import { invalid } from "./treatments";
 
@@ -155,6 +156,7 @@ export const start = memberMutation({
       invalid("Esta cita ya no admite una atención. Revisa su estado en la agenda.");
     }
     const client = await getOwned(ctx, "clients", appointment.clientId);
+    if (isMinor(client.birthDate) || client.documentType === "TI") invalid("Solo se pueden atender personas mayores de edad.");
     if (client.isArchived) invalid("Este cliente está archivado. Restáuralo para atenderlo.");
 
     const caseDoc = await suggestCase(ctx, appointment);
@@ -223,6 +225,8 @@ export const attention = memberQuery({
       ctx.db.query("sessions").withIndex("by_client", (q) => q.eq("clientId", appointment.clientId)).collect(),
     ]);
     if (!client || !treatment || !member || !org) fail("NOT_FOUND");
+    const healthAllowed = await hasPurpose(ctx, ctx.orgId, client._id, "health");
+    const photosAllowed = await hasPurpose(ctx, ctx.orgId, client._id, "record_photos");
 
     const caseDoc = session ? await ctx.db.get(session.caseId) : null;
     const cases = await openCases(ctx, client._id, treatment._id);
@@ -243,8 +247,8 @@ export const attention = memberQuery({
         cancelReason: appointment.cancelReason,
         contactEmail: appointment.contactEmail,
       },
-      session,
-      client,
+      session: session && !healthAllowed ? { ...session, intake: undefined, assessment: undefined, contraindications: undefined, procedure: undefined, aftercare: undefined, followUp: undefined, photos: [] } : session ? { ...session, photos: photosAllowed ? session.photos : [] } : session,
+      client: healthAllowed ? client : { ...client, health: { conditions: [], allergies: [], skinConditions: [], none: { conditions: false, allergies: false, skin: false } }, habits: {}, skin: {}, notes: undefined, lastMedications: undefined, lastPregnancy: undefined },
       // The first visit is the first attention that closes, whatever the ficha holds.
       firstVisit: !clientSessions.some((s) => s.status === "closed" && s._id !== session?._id),
       treatment: {
@@ -261,8 +265,8 @@ export const attention = memberQuery({
       // The member running the attention signs the consent as the professional.
       signer: { _id: ctx.member._id, name: ctx.member.name, signatureKey: ctx.member.signatureKey },
       org: { name: org.name, kind: org.kind, privacyPolicy: await privacyPolicyText(ctx, ctx.orgId) },
-      case: caseDoc,
-      openCases: cases.map((c) => ({
+      case: healthAllowed ? caseDoc : null,
+      openCases: (healthAllowed ? cases : []).map((c) => ({
         _id: c._id,
         reasons: c.reasons,
         reasonOther: c.reasonOther,
@@ -288,6 +292,7 @@ export const saveIntake = memberMutation({
   },
   handler: async (ctx, { sessionId, ...intake }) => {
     const session = await getDraft(ctx, sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     if (session.consent) invalid("El consentimiento ya está firmado. Las respuestas de salud de hoy no se pueden cambiar.");
     const client = await getOwned(ctx, "clients", session.clientId);
     const asked = client.sex !== "male";
@@ -345,6 +350,7 @@ export const saveAssessment = memberMutation({
   },
   handler: async (ctx, args) => {
     const session = await getDraft(ctx, args.sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     const { plannedSessions } = args;
     if (plannedSessions !== undefined && (!Number.isInteger(plannedSessions) || plannedSessions < 1 || plannedSessions > 50)) {
       invalid("Escribe un número de sesiones entre 1 y 50.");
@@ -375,6 +381,7 @@ export const saveContraindications = memberMutation({
   args: { sessionId: v.id("sessions"), present: v.array(v.string()), justification: v.optional(v.string()) },
   handler: async (ctx, { sessionId, present, justification }) => {
     const session = await getDraft(ctx, sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     if (session.consent) invalid("El consentimiento ya está firmado. Las contraindicaciones no se pueden cambiar.");
     // Today's answers mark these; the only way past them is "Continuar bajo mi criterio".
     if (session.intake?.pregnant && !present.includes(PREGNANCY)) {
@@ -409,6 +416,7 @@ export const postpone = memberMutation({
   args: { sessionId: v.id("sessions"), present: v.array(v.string()) },
   handler: async (ctx, { sessionId, present }) => {
     const session = await getDraft(ctx, sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     if (session.consent) invalid("El consentimiento ya está firmado. Esta atención no se puede posponer.");
     if (present.length === 0) invalid("Marca la contraindicación que impide el tratamiento.");
     const now = Date.now();
@@ -431,12 +439,13 @@ export const postpone = memberMutation({
  * Paso 4: stores the immutable consent snapshot. The server renders the text, so the
  * stored text is exactly what the treatment and client data said at signing time.
  * The member who signs as the professional becomes the session's professional.
- * First visit: also stores the Habeas Data authorization signed with the same signature.
+ * Data authorization is recorded separately before health collection.
  */
 export const signConsent = memberMutation({
   args: {
     sessionId: v.id("sessions"),
     photoUse: vPhotoUse,
+    signatureAccepted: v.optional(v.boolean()),
     clientSignatureKey: v.string(),
     /** Drawn now; omitted to use the caller's saved signature. */
     professionalSignatureKey: v.optional(v.string()),
@@ -449,6 +458,8 @@ export const signConsent = memberMutation({
   },
   handler: async (ctx, args) => {
     const session = await getDraft(ctx, args.sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
+    if (!args.signatureAccepted) invalid("Acepta el uso de la firma en pantalla.");
     if (session.consent) invalid("Este consentimiento ya está firmado.");
     if (!session.contraindications?.proceed) invalid("Primero revisa las contraindicaciones.");
 
@@ -459,14 +470,9 @@ export const signConsent = memberMutation({
     ]);
     const now = Date.now();
 
-    let guardian;
-    if (isMinor(client.birthDate, now)) {
-      const name = clean(args.guardian?.name);
-      const document = clean(args.guardian?.document);
-      const relationship = clean(args.guardian?.relationship);
-      if (!name || !document || !relationship) invalid("Escribe el nombre, el documento y el parentesco del acudiente.");
-      guardian = { name, document, relationship };
-    }
+    if (args.guardian || isMinor(client.birthDate, now) || client.documentType === "TI" || args.document?.type === "TI") invalid("Solo se pueden atender personas mayores de edad.");
+    if (args.photoUse === "clinical_and_marketing") invalid("La autorización para promoción aún no está disponible.");
+    if (args.photoUse === "clinical") await requirePurpose(ctx, ctx.orgId, client._id, "record_photos");
 
     const professionalSignatureKey = args.professionalSignatureKey ?? ctx.member.signatureKey;
     if (!professionalSignatureKey) invalid("Falta la firma del profesional.");
@@ -485,18 +491,6 @@ export const signConsent = memberMutation({
     }
     const documentText = renderDocument(client.documentNumber ? client.documentType : args.document?.type, client.documentNumber ?? typed);
 
-    if (!client.dataAuthorization) {
-      if (!args.authorizeData) invalid("Falta la autorización de tratamiento de datos.");
-      await ctx.db.patch(client._id, {
-        dataAuthorization: {
-          at: now,
-          signatureKey: args.clientSignatureKey,
-          method: "signature",
-          policyId: await currentPolicyId(ctx, ctx.orgId),
-        },
-      });
-    }
-
     const text = renderConsentText(treatment.consentText, {
       clientName: fullName(client),
       documentText,
@@ -504,7 +498,8 @@ export const signConsent = memberMutation({
       orgName: org?.name ?? "",
       at: now,
     });
-    const evidence = { text, clientSignatureKey: args.clientSignatureKey, professionalSignatureKey, signedAt: now, guardian };
+    const signatureAgreement = { label: SIGNATURE_AGREEMENT_LABEL, version: 1, acceptedAt: now };
+    const evidence = { text, clientSignatureKey: args.clientSignatureKey, professionalSignatureKey, signedAt: now, signatureAgreement };
 
     // "No autorizo fotos": photos taken before signing are removed.
     if (args.photoUse === "none") {
@@ -535,6 +530,7 @@ export const saveProcedure = memberMutation({
   args: { sessionId: v.id("sessions"), answers: vFormAnswers, notes: v.optional(v.string()) },
   handler: async (ctx, { sessionId, answers, notes }) => {
     const session = await getDraft(ctx, sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     requireConsent(session);
     const fields = session.procedure?.fields ?? (await getOwned(ctx, "treatments", session.treatmentId)).formFields;
     await ctx.db.patch(sessionId, {
@@ -572,7 +568,8 @@ function cleanFollowUp(followUp: { recommended: boolean; inDays?: number; note?:
 export const saveClosing = memberMutation({
   args: { sessionId: v.id("sessions"), aftercare: vSessionAftercare, followUp: vSessionFollowUp },
   handler: async (ctx, { sessionId, aftercare, followUp }) => {
-    await getDraft(ctx, sessionId);
+    const session = await getDraft(ctx, sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     await ctx.db.patch(sessionId, {
       aftercare: cleanAftercare(aftercare),
       followUp: followUp.recommended ? { recommended: true, inDays: followUp.inDays, note: clean(followUp.note) } : { recommended: false },
@@ -596,6 +593,7 @@ export const close = memberMutation({
   },
   handler: async (ctx, args) => {
     const session = await getDraft(ctx, args.sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     requireConsent(session);
     const [appointment, client, treatment, caseDoc] = await Promise.all([
       getOwned(ctx, "appointments", session.appointmentId),
@@ -672,6 +670,7 @@ export const sendAftercare = memberMutation({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, { sessionId }) => {
     const session = await getOwned(ctx, "sessions", sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     if (session.status !== "closed") invalid("Finaliza la atención antes de enviar las indicaciones.");
     const [client, appointment] = await Promise.all([
       getOwned(ctx, "clients", session.clientId),
@@ -687,6 +686,7 @@ export const addAddendum = memberMutation({
   args: { sessionId: v.id("sessions"), text: v.string() },
   handler: async (ctx, { sessionId, text }) => {
     const session = await getOwned(ctx, "sessions", sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     if (session.status === "draft") invalid("Esta atención sigue en curso. Escribe en sus pasos.");
     const trimmed = text.trim();
     if (!trimmed) invalid("Escribe la nota.");
@@ -733,6 +733,7 @@ export const detail = memberQuery({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, { sessionId }) => {
     const session = await getOwned(ctx, "sessions", sessionId);
+    await requirePurpose(ctx, ctx.orgId, session.clientId, "health");
     const [client, treatment, member, caseDoc, appointment, org] = await Promise.all([
       ctx.db.get(session.clientId),
       ctx.db.get(session.treatmentId),
@@ -762,7 +763,7 @@ export const detail = memberQuery({
         consent: session.consent,
         procedureRows: session.procedure ? answerRows(session.procedure) : [],
         procedureNotes: session.procedure?.notes,
-        photos: session.photos,
+        photos: await hasPurpose(ctx, ctx.orgId, client._id, "record_photos") ? session.photos : [],
         aftercare: session.aftercare,
         followUp: session.followUp,
         addenda: session.addenda.map((a) => ({ ...a, author: authors.get(a.memberId) ?? "" })),
@@ -800,6 +801,7 @@ export const listByClient = memberQuery({
   args: { clientId: v.id("clients") },
   handler: async (ctx, { clientId }) => {
     await getOwned(ctx, "clients", clientId);
+    await requirePurpose(ctx, ctx.orgId, clientId, "health");
     const sessions = await ctx.db
       .query("sessions")
       .withIndex("by_client", (q) => q.eq("clientId", clientId))
@@ -821,7 +823,7 @@ export const listByClient = memberQuery({
         startedAt: s.startedAt,
         treatmentName: await nameOf(s.treatmentId),
         memberName: await nameOf(s.memberId),
-        photos: s.photos,
+        photos: await hasPurpose(ctx, ctx.orgId, clientId, "record_photos") ? s.photos : [],
         keyValues: keyValues(s.procedure),
         signedAt: s.consent?.signedAt,
       });
@@ -840,6 +842,7 @@ export const listInProgress = memberQuery({
       .collect();
     const rows = [];
     for (const s of drafts) {
+      if (!await hasPurpose(ctx, ctx.orgId, s.clientId, "health")) continue;
       const [client, treatment] = await Promise.all([ctx.db.get(s.clientId), ctx.db.get(s.treatmentId)]);
       rows.push({
         sessionId: s._id,

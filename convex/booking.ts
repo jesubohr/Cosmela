@@ -4,6 +4,10 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { r2, URL_TTL_SECONDS } from "./files";
 import { freeSlots, rangesForDate, type Interval } from "./lib/slots";
+import { LABELS, recordAuthorization } from "./lib/clientAuthorization";
+import { sha256Hex } from "./lib/consent";
+import { hasProcessingAcceptance } from "./lib/legal";
+import { organizationLegalReady, requireOrgLegalReady } from "./lib/orgLegal";
 import { clientSearchText } from "./lib/text";
 import { addDaysToDateKey, bogotaDateKey, bogotaToEpoch } from "./lib/time";
 import type { AppointmentStatus } from "./lib/validators";
@@ -84,7 +88,7 @@ export const page = query({
   handler: async (ctx, { slug }) => {
     const org = await orgBySlug(ctx, slug);
     if (!org) return null;
-    const enabled = org.booking.enabled;
+    const enabled = org.booking.enabled && !org.closureConfirmedAt && organizationLegalReady(org) && await hasProcessingAcceptance(ctx, org._id);
     const [treatments, members] = enabled
       ? await Promise.all([
           ctx.db
@@ -96,6 +100,9 @@ export const page = query({
       : [[], []];
     return {
       name: org.name,
+      policyHash: await sha256Hex(await privacyPolicyText(ctx, org._id)),
+      bookingLabel: LABELS.booking,
+      bookingNotice: `${org.legalName ?? org.name}, identificado con ${org.taxId ?? ""}, usa tus datos de contacto para gestionar la reserva y enviar confirmaciones y recordatorios. Puedes ejercer tus derechos en ${org.whatsapp ?? ""}. Cosmela procesa estos datos por cuenta del negocio.`,
       city: org.city,
       // Already public: the business's privacy policy shows it as its contact channel.
       whatsapp: org.whatsapp,
@@ -195,6 +202,9 @@ export const create = mutation({
     email: v.string(),
     note: v.optional(v.string()),
     authorized: v.boolean(),
+    adult: v.boolean(),
+    policyHash: v.string(),
+    requestKey: v.string(),
     /** Hidden field that people leave empty; bots fill it in. */
     website: v.optional(v.string()),
   },
@@ -202,14 +212,26 @@ export const create = mutation({
     if (args.website?.trim()) invalid("No pudimos enviar tu solicitud. Intenta de nuevo.");
     const org = await orgBySlug(ctx, args.slug);
     if (!org?.booking.enabled) invalid("Este negocio no está recibiendo reservas en línea en este momento.");
+    if (org.closureConfirmedAt) invalid("Este negocio no está recibiendo reservas.");
+    requireOrgLegalReady(org);
+    if (!await hasProcessingAcceptance(ctx, org._id)) invalid("Este negocio no está recibiendo reservas.");
     const firstName = clean(args.firstName, 60);
     const lastName = clean(args.lastName, 80) ?? "";
     const email = args.email.trim().toLowerCase();
     if (!firstName) invalid("Escribe tu nombre.");
     if (!PHONE.test(args.phone)) invalid("Escribe un WhatsApp de 10 dígitos.");
     if (!EMAIL.test(email) || email.length > 200) invalid("Escribe un correo válido, como nombre@correo.com.");
+    if (!args.requestKey || args.requestKey.length > 100) invalid("No pudimos enviar tu solicitud. Intenta de nuevo.");
+    if (!args.adult) invalid("Confirma que la reserva es para ti y que eres mayor de edad.");
     if (!args.authorized) invalid("Para enviar la solicitud, autoriza el tratamiento de tus datos.");
 
+    const prior = await ctx.db.query("clientAuthorizations").withIndex("by_org_request", q => q.eq("orgId", org._id).eq("requestKey", args.requestKey)).unique();
+    if (prior) {
+      const appointment = prior.appointmentId ? await ctx.db.get(prior.appointmentId) : null;
+      const client = appointment ? await ctx.db.get(appointment.clientId) : null;
+      if (prior.purpose !== "booking" || prior.policyHash !== args.policyHash || !appointment || appointment.start !== args.start || appointment.treatmentId !== args.treatmentId || client?.phone !== args.phone) invalid("Esta solicitud ya fue utilizada.");
+      return { memberName: (await ctx.db.get(appointment.memberId))?.name ?? "" };
+    }
     const treatment = await bookableTreatment(ctx, org, args.treatmentId);
     if (!treatment) invalid("Este tratamiento ya no está disponible. Elige otro.");
 
@@ -291,6 +313,7 @@ export const create = mutation({
       contactEmail: existing && existing.email !== email ? email : undefined,
       notes: clean(args.note, 500),
     });
+    await recordAuthorization(ctx, { orgId: org._id, clientId, purpose: "booking", action: "accepted", method: "online_checkbox", requestKey: args.requestKey, policyHash: args.policyHash, adult: args.adult, appointmentId });
     await ctx.runMutation(internal.notifications.notifyNewRequest, { appointmentId });
     return { memberName: member.name };
   },

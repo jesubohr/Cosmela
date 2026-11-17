@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
+import { hasPurpose, requirePurpose } from "./lib/clientAuthorization";
 import type { AppointmentStatus } from "./lib/validators";
 import { followUpsOfCase } from "./followUps";
 import { keyValues, NOT_PERFORMED_REASON } from "./sessions";
@@ -68,6 +69,7 @@ export const list = memberQuery({
     const rows = [];
     for (const c of cases) {
       if (memberId && !c.memberIds?.includes(memberId)) continue;
+      if (!await hasPurpose(ctx, ctx.orgId, c.clientId, "health")) continue;
       if (!clients.has(c.clientId)) clients.set(c.clientId, await ctx.db.get(c.clientId));
       if (!treatments.has(c.treatmentId)) treatments.set(c.treatmentId, await ctx.db.get(c.treatmentId));
       const client = clients.get(c.clientId);
@@ -105,6 +107,7 @@ export const get = memberQuery({
   args: { caseId: v.id("cases") },
   handler: async (ctx, { caseId }) => {
     const caseDoc = await getOwned(ctx, "cases", caseId);
+    await requirePurpose(ctx, ctx.orgId, caseDoc.clientId, "health");
     const [client, treatment, sessions, appointment, followUps] = await Promise.all([
       ctx.db.get(caseDoc.clientId),
       ctx.db.get(caseDoc.treatmentId),
@@ -135,7 +138,7 @@ export const get = memberQuery({
         notes: s.procedure?.notes,
         evolution: s.intake?.evolution,
         contraindications: s.status === "postponed" && s.reason !== NOT_PERFORMED_REASON ? s.contraindications?.present : undefined,
-        photos: s.photos,
+        photos: await hasPurpose(ctx, ctx.orgId, caseDoc.clientId, "record_photos") ? s.photos : [],
       });
     }
     const last = timeline.findLast((s) => s.status === "closed");
@@ -178,6 +181,7 @@ export const close = memberMutation({
   args: { caseId: v.id("cases"), summary: v.optional(v.string()) },
   handler: async (ctx, { caseId, summary }) => {
     const caseDoc = await getOwned(ctx, "cases", caseId);
+    await requirePurpose(ctx, ctx.orgId, caseDoc.clientId, "health");
     if (caseDoc.status === "closed") invalid("Este caso ya está cerrado.");
     const sessions = await sessionsOf(ctx, caseId);
     if (sessions.some((s) => s.status === "draft")) invalid("Este caso tiene una atención en curso. Finalízala antes de cerrar el caso.");
@@ -190,6 +194,7 @@ export const reopen = memberMutation({
   args: { caseId: v.id("cases") },
   handler: async (ctx, { caseId }) => {
     const caseDoc = await getOwned(ctx, "cases", caseId);
+    await requirePurpose(ctx, ctx.orgId, caseDoc.clientId, "health");
     if (caseDoc.status === "open") invalid("Este caso ya está abierto.");
     await ctx.db.patch(caseId, { status: "open", closedAt: undefined });
   },

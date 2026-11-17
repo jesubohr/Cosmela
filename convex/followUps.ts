@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { getOwned, memberMutation, memberQuery } from "./lib/authz";
+import { hasPurpose, requirePurpose } from "./lib/clientAuthorization";
 import { bogotaDateKey } from "./lib/time";
 import { invalid } from "./treatments";
 
@@ -19,6 +20,7 @@ function clean(value: string | undefined) {
 /** A pending follow-up of the caller's org. */
 async function getPending(ctx: QueryCtx & { orgId: Id<"orgs"> }, followUpId: Id<"followUps">) {
   const followUp = await getOwned(ctx, "followUps", followUpId);
+  await requirePurpose(ctx, ctx.orgId, followUp.clientId, "health");
   if (followUp.status !== "pending") invalid("Este seguimiento ya se resolvió.");
   return followUp;
 }
@@ -35,6 +37,7 @@ export const create = memberMutation({
   handler: async (ctx, args) => {
     checkDate(args.dueDate);
     const client = await getOwned(ctx, "clients", args.clientId);
+    await requirePurpose(ctx, ctx.orgId, client._id, "health");
     if (args.caseId) {
       const caseDoc = await getOwned(ctx, "cases", args.caseId);
       if (caseDoc.clientId !== client._id) invalid("Ese caso no es de este cliente.");
@@ -89,7 +92,7 @@ export const listDue = memberQuery({
     const rows = [];
     for (const followUp of due) {
       const client = await ctx.db.get(followUp.clientId);
-      if (client?.isArchived) continue;
+      if (client?.isArchived || !await hasPurpose(ctx, ctx.orgId, followUp.clientId, "health")) continue;
       rows.push(await toRow(ctx, followUp, today, client));
     }
     return rows;

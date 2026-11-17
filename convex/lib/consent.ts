@@ -68,11 +68,12 @@ export async function sha256Hex(text: string) {
 }
 
 /** Version of the `consentHash` payload, stored as `consent.hashVersion`. */
-export const CONSENT_HASH_VERSION = 2;
+export const CONSENT_HASH_VERSION = 3;
+export const SIGNATURE_AGREEMENT_LABEL = "Acepto usar la firma en pantalla para dejar constancia de mi decisión. Puedo leer el documento y pedir una copia.";
 
 /**
  * SHA-256 (hex) over the rendered text, the signature keys, the signing time, the
- * guardian, and the photo use, as a JSON array in a fixed order, so any later change
+ * guardian, photo use, and signature agreement in a fixed-order JSON array, so any later change
  * to the stored consent is detectable.
  */
 export async function consentHash(input: {
@@ -82,6 +83,7 @@ export async function consentHash(input: {
   signedAt: number;
   guardian?: Guardian;
   photoUse: PhotoUse;
+  signatureAgreement?: { label: string; version: number; acceptedAt: number };
 }) {
   const guardian = input.guardian ? [input.guardian.name, input.guardian.document, input.guardian.relationship] : null;
   return await sha256Hex(
@@ -93,6 +95,7 @@ export async function consentHash(input: {
       input.signedAt,
       guardian,
       input.photoUse,
+      input.signatureAgreement ? [input.signatureAgreement.version, input.signatureAgreement.label, input.signatureAgreement.acceptedAt] : null,
     ]),
   );
 }

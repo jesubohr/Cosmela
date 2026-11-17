@@ -9,6 +9,9 @@ const PUBLIC_PREFIXES = [
   "/invitacion",
   "/terminos",
   "/privacidad",
+  "/cookies",
+  "/reembolsos",
+  "/acuerdo-datos",
 ];
 
 export function proxy(request: NextRequest) {

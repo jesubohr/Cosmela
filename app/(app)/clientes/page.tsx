@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LegacyMinorsWarning } from "@/components/clients/legacy-minors-warning";
 import { ClientList } from "@/components/clients/client-list";
 import { PageBody, PageHeader } from "@/components/shell/page-header";
 import { QuickActions } from "@/components/shell/quick-actions";
@@ -10,6 +11,7 @@ export default function ClientesPage() {
     <>
       <PageHeader title="Clientes" actions={<QuickActions />} />
       <PageBody>
+        <LegacyMinorsWarning />
         <ClientList />
       </PageBody>
     </>

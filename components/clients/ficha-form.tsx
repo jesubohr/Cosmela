@@ -195,10 +195,12 @@ export function useSaveFicha() {
       clientId,
       value,
       includeHealth = true,
+      authorization,
     }: {
       clientId?: Id<"clients">;
       value: FichaValue;
       includeHealth?: boolean;
+      authorization?: { adult: boolean; evidence: string; policyHash: string; requestKey: string };
     }): Promise<SaveFichaResult> => {
       const errors = validateFicha(value);
       if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -208,7 +210,7 @@ export function useSaveFicha() {
           await update({ clientId, client });
           return { ok: true, clientId };
         }
-        return { ok: true, clientId: await create({ client }) };
+        return { ok: true, clientId: await create({ client, ...authorization }) };
       } catch (error) {
         return { ok: false, errors: fichaErrorsFrom(error) };
       }

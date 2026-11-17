@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -74,6 +74,10 @@ export function PhotoThumbs({
 /** Photos of one kind in a draft session: take a photo, see thumbnails, delete before closing. */
 export function SessionPhotos({ sessionId, photos, kind }: { sessionId: Id<"sessions">; photos: Photo[]; kind: PhotoKind }) {
   const attach = useMutation(api.files.attach);
+  const attention = useQuery(api.clientAuthorizations.photoSession, { sessionId });
+  const record = useMutation(api.clientAuthorizations.record);
+  const [evidence, setEvidence] = useState("");
+  const [adult, setAdult] = useState(false);
   const remove = useMutation(api.sessions.deletePhoto);
   const [deleting, setDeleting] = useState<Photo | null>(null);
   const [pending, setPending] = useState(false);
@@ -96,14 +100,22 @@ export function SessionPhotos({ sessionId, photos, kind }: { sessionId: Id<"sess
   return (
     <div className="flex flex-col gap-3">
       <PhotoThumbs photos={own} onDelete={setDeleting} />
-      <PhotoUpload
+      {attention && !attention.allowed && <div className="flex flex-col gap-2">
+        <p>{attention.label}</p>
+        <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{attention.policy}</p></details>
+        <label>Cómo recibiste la autorización <input className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} /></label>
+        <label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
+        <Button type="button" onClick={() => void record({ clientId: attention.clientId, purpose: "record_photos", action: "accepted", policyHash: attention.policyHash, evidence, adult, requestKey: crypto.randomUUID() }).catch(error => toast.error(errorText(error)))}>Registrar autorización</Button>
+      </div>}
+      {attention?.allowed && <PhotoUpload
+        sessionId={sessionId}
         label={own.length > 0 ? "Tomar otra foto" : "Tomar foto"}
         onUploaded={(key) =>
           void attach({ key, target: { kind: "sessionPhoto", sessionId, photoKind: kind } }).catch((error) =>
             toast.error(errorText(error)),
           )
         }
-      />
+      />}
       <ResponsiveDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}

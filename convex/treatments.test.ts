@@ -6,6 +6,8 @@ import { findTemplate } from "../data/treatment-templates";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { recordAccountAcceptance } from "./lib/legal";
+import { LEGAL_VERSION } from "../lib/legal-documents";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -21,6 +23,7 @@ async function errorCode(promise: Promise<unknown>) {
 
 async function setup() {
   const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
   const ana = t.withIdentity({ subject: "ana", email: "ana@example.com" });
   const orgId = await ana.mutation(api.orgs.create, {
     kind: "salon",
@@ -29,6 +32,7 @@ async function setup() {
     schedule: [],
     treatments: [{ key: "lifting-pestanas", price: 100000, durationMin: 60 }],
   });
+  await ana.mutation(api.legal.acceptProcessing, { version: LEGAL_VERSION, authorized: true });
   const { sofiId, clientId } = await t.run(async (ctx) => {
     const sofiId = await ctx.db.insert("members", {
       orgId,
@@ -156,6 +160,7 @@ describe("delete or deactivate", () => {
       schedule: [],
       treatments: [],
     });
+    await bea.mutation(api.legal.acceptProcessing, { version: LEGAL_VERSION, authorized: true });
     expect(await errorCode(bea.query(api.treatments.get, { id: liftingId }))).toBe("NOT_FOUND");
     expect(await errorCode(bea.mutation(api.treatments.remove, { id: liftingId }))).toBe("NOT_FOUND");
   });

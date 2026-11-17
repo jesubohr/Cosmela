@@ -4,6 +4,8 @@ import { ConvexError } from "convex/values";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { recordAccountAcceptance } from "./lib/legal";
+import { LEGAL_VERSION } from "../lib/legal-documents";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -19,6 +21,7 @@ async function errorCode(promise: Promise<unknown>) {
 
 async function setup() {
   const t = convexTest(schema, modules);
+    await t.run(async (ctx) => { for (const id of ["ana", "bea", "caro", "sofi", "otra", "intrusa"]) await recordAccountAcceptance(ctx, id, "account_checkbox"); });
   const ana = t.withIdentity({ subject: "ana", email: "ana@example.com" });
   const orgId = await ana.mutation(api.orgs.create, {
     kind: "salon",
@@ -27,6 +30,7 @@ async function setup() {
     schedule: [],
     treatments: [],
   });
+  await ana.mutation(api.legal.acceptProcessing, { version: LEGAL_VERSION, authorized: true });
   const invitationId = await ana.mutation(api.invitations.create, { email: " Sofi@Example.com ", role: "staff" });
   const invitation = (await t.run((ctx) => ctx.db.get(invitationId)))!;
   return {

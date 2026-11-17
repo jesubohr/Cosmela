@@ -1,3 +1,4 @@
+import { hasPurpose } from "./lib/clientAuthorization";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -224,9 +225,9 @@ export const detail = memberQuery({
         lastName: client.lastName,
         phone: client.phone,
         email: client.email,
-        health: client.health,
+        health: await hasPurpose(ctx, ctx.orgId, client._id, "health") ? client.health : { conditions: [], allergies: [], skinConditions: [], none: { conditions: false, allergies: false, skin: false } },
         sex: client.sex,
-        lastPregnancy: client.lastPregnancy,
+        lastPregnancy: await hasPurpose(ctx, ctx.orgId, client._id, "health") ? client.lastPregnancy : undefined,
       },
       treatment: { name: treatment.name, color: treatment.color, durationMin: treatment.durationMin },
       member: { name: member.name, color: member.color },

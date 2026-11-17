@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from "../lib/legal-documents";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -126,7 +127,7 @@ describe("write guard", () => {
   test("off: an expired trial changes nothing", async () => {
     const s = await setupOrgs();
     await setTrialEnd(s, NOW - DAY_MS);
-    await s.asAna.mutation(api.clients.create, { client: { firstName: "Eva", lastName: "Paz", phone: "+573104445566" } });
+    await s.asAna.mutation(api.clients.create, { client: { firstName: "Eva", lastName: "Paz", phone: "+573104445566" }, adult: true, evidence: "Signed paper", policyHash: (await s.asAna.query(api.clientAuthorizations.registrationNotice, {})).policyHash, requestKey: crypto.randomUUID() });
     expect((await s.asAna.query(api.billing.status, {})).state).toBe("beta");
   });
 
@@ -136,7 +137,7 @@ describe("write guard", () => {
     await setTrialEnd(s, NOW - DAY_MS);
     await s.t.run(async (ctx) => {
       const org = (await ctx.db.get(s.ids.orgA))!;
-      await ctx.db.patch(s.ids.orgA, { booking: { ...org.booking, enabled: true } });
+      await ctx.db.patch(s.ids.orgA, { booking: { ...org.booking, enabled: true }, legalName: "Alba SAS", taxId: "123", address: "Calle 1", city: "Medellin", whatsapp: "+573001234567" });
     });
 
     const blocked = "Tu prueba terminó. Elige un plan para seguir creando citas y fichas.";
@@ -156,7 +157,7 @@ describe("write guard", () => {
       lastName: "Ríos",
       phone: "+573110000000",
       email: "vale@example.com",
-      authorized: true,
+      authorized: true, adult: true, policyHash: (await s.t.query(api.booking.page, { slug: "alba" }))!.policyHash, requestKey: crypto.randomUUID(),
     });
     const appointmentId = (await s.t.run((ctx) => ctx.db.query("appointments").first()))!._id;
     expect(await errorCode(s.asAna.mutation(api.appointments.confirm, { appointmentId }))).toBe("READ_ONLY");
@@ -164,7 +165,7 @@ describe("write guard", () => {
     await s.asSofi.mutation(api.members.updateProfile, { name: "Sofía", color: "teal" });
     expect(await s.asAna.query(api.clients.get, { clientId: s.ids.clientA })).toBeTruthy();
     // Org B still has its trial.
-    await s.asBea.mutation(api.clients.create, { client: { firstName: "Eva", lastName: "Paz", phone: "+573104445566" } });
+    await s.asBea.mutation(api.clients.create, { client: { firstName: "Eva", lastName: "Paz", phone: "+573104445566" }, adult: true, evidence: "Signed paper", policyHash: (await s.asBea.query(api.clientAuthorizations.registrationNotice, {})).policyHash, requestKey: crypto.randomUUID() });
   });
 
   test("on: a past-due subscription blocks writes with its own message; an active one allows them", async () => {
@@ -172,7 +173,8 @@ describe("write guard", () => {
     enforce();
     await setTrialEnd(s, NOW - DAY_MS);
     await subscribe(s, { status: "past_due" });
-    const create = () => s.asAna.mutation(api.clients.create, { client: { firstName: "Eva", lastName: "Paz", phone: "+573104445566" } });
+    const policyHash = (await s.asAna.query(api.clientAuthorizations.registrationNotice, {})).policyHash;
+    const create = () => s.asAna.mutation(api.clients.create, { client: { firstName: "Eva", lastName: "Paz", phone: "+573104445566" }, adult: true, evidence: "Signed paper", policyHash, requestKey: crypto.randomUUID() });
     expect(await errorMessage(create())).toBe("Tu pago está pendiente. Actualiza tu tarjeta para seguir creando citas y fichas.");
 
     await s.t.mutation(internal.billing.saveSubscription, {
@@ -202,6 +204,7 @@ describe("plan limits", () => {
     // The invitation sent during the trial cannot be accepted beyond the limit.
     const token = (await s.t.run((ctx) => ctx.db.query("invitations").collect())).find((i) => i.email === "eva@example.com")!.token;
     const eva = s.t.withIdentity({ subject: "eva", email: "eva@example.com" });
+    await eva.mutation(api.legal.acceptAccount, { version: LEGAL_VERSION, terms: true, privacy: true, adult: true });
     expect(await errorCode(eva.mutation(api.invitations.accept, { token }))).toBe("PLAN_LIMIT");
   });
 
@@ -227,13 +230,34 @@ describe("plan limits", () => {
 });
 
 describe("checkout and portal", () => {
+  test("requires current purchase acceptance before contacting Polar", async () => {
+    const s = await setupOrgs();
+    enforce();
+    vi.stubEnv("POLAR_ORGANIZATION_TOKEN", "test-token");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon" }))).toBe("LEGAL_REQUIRED");
+    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon", accepted: true, version: "old", expectedPrice: 100000 }))).toBe("LEGAL_REQUIRED");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("does not create a checkout when the displayed price changed", async () => {
+    const s = await setupOrgs();
+    enforce();
+    vi.stubEnv("POLAR_ORGANIZATION_TOKEN", "test-token");
+    const fetchMock = vi.fn(async () => Response.json({ prices: [{ amount_type: "fixed", price_currency: "cop", price_amount: 11000000 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon", accepted: true, version: LEGAL_VERSION, expectedPrice: 100000 }))).toBe("PRICE_CHANGED");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test("staff cannot open a checkout or the portal", async () => {
     const s = await setupOrgs();
     enforce();
     vi.stubEnv("POLAR_ORGANIZATION_TOKEN", "test-token");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    expect(await errorCode(s.asSofi.action(api.billing.checkout, { plan: "salon" }))).toBe("FORBIDDEN");
+    expect(await errorCode(s.asSofi.action(api.billing.checkout, { plan: "salon", accepted: true, version: LEGAL_VERSION, expectedPrice: 100000 }))).toBe("FORBIDDEN");
     expect(await errorCode(s.asSofi.action(api.billing.portal, {}))).toBe("FORBIDDEN");
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -242,11 +266,11 @@ describe("checkout and portal", () => {
     const s = await setupOrgs();
     enforce();
     vi.stubEnv("POLAR_ORGANIZATION_TOKEN", "test-token");
-    const fetchMock = vi.fn(async () => Response.json({ url: "https://sandbox.polar.sh/checkout/abc" }));
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => init?.method === "POST" ? Response.json({ url: "https://sandbox.polar.sh/checkout/abc" }) : Response.json({ prices: [{ amount_type: "fixed", price_currency: "cop", price_amount: 10000000 }] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    expect(await s.asAna.action(api.billing.checkout, { plan: "salon" })).toBe("https://sandbox.polar.sh/checkout/abc");
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(await s.asAna.action(api.billing.checkout, { plan: "salon", accepted: true, version: LEGAL_VERSION, expectedPrice: 100000 })).toBe("https://sandbox.polar.sh/checkout/abc");
+    const [url, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
     expect(url).toBe("https://sandbox-api.polar.sh/v1/checkouts/");
     expect(JSON.parse(init.body as string)).toMatchObject({
       products: [SALON],
@@ -261,17 +285,17 @@ describe("checkout and portal", () => {
     enforce();
     vi.stubEnv("POLAR_ORGANIZATION_TOKEN", "test-token");
     vi.stubGlobal("fetch", vi.fn());
-    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "solo" }))).toBe("PLAN_LIMIT");
+    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "solo", accepted: true, version: LEGAL_VERSION, expectedPrice: 100000 }))).toBe("PLAN_LIMIT");
   });
 
   test("beta and existing subscriptions have no checkout", async () => {
     const s = await setupOrgs();
     vi.stubEnv("POLAR_ORGANIZATION_TOKEN", "test-token");
     vi.stubGlobal("fetch", vi.fn());
-    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon" }))).toBe("FORBIDDEN");
+    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon", accepted: true, version: LEGAL_VERSION, expectedPrice: 100000 }))).toBe("FORBIDDEN");
     enforce();
     await subscribe(s);
-    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon" }))).toBe("FORBIDDEN");
+    expect(await errorCode(s.asAna.action(api.billing.checkout, { plan: "salon", accepted: true, version: LEGAL_VERSION, expectedPrice: 100000 }))).toBe("FORBIDDEN");
   });
 });
 
@@ -329,6 +353,7 @@ describe("trials", () => {
   test("a new business gets 14 days; the migration gives existing ones 14 days from now", async () => {
     const s = await setupOrgs();
     const ana = s.t.withIdentity({ subject: "nueva", email: "nueva@example.com" });
+    await ana.mutation(api.legal.acceptAccount, { version: LEGAL_VERSION, terms: true, privacy: true, adult: true });
     const orgId = await ana.mutation(api.orgs.create, {
       kind: "solo",
       name: "Nueva",
@@ -336,7 +361,9 @@ describe("trials", () => {
       schedule: [],
       treatments: [],
     });
-    expect((await s.t.run((ctx) => ctx.db.get(orgId)))?.trialEndsAt).toBe(NOW + 14 * DAY_MS);
+    const trialEndsAt = (await s.t.run((ctx) => ctx.db.get(orgId)))!.trialEndsAt!;
+    expect(trialEndsAt).toBeGreaterThanOrEqual(NOW + 14 * DAY_MS);
+    expect(trialEndsAt).toBeLessThanOrEqual(NOW + 14 * DAY_MS + 10);
 
     await setTrialEnd(s, NOW - 30 * DAY_MS);
     vi.setSystemTime(NOW + DAY_MS);

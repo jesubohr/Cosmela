@@ -8,6 +8,7 @@ import { action, internalQuery, type MutationCtx, type QueryCtx } from "./_gener
 import { adminMutation, authedMutation, fail, getOwned, memberQuery, requireAdmin } from "./lib/authz";
 import { DAY_MS, TRIAL_DAYS } from "./lib/billing";
 import { sha256Hex } from "./lib/consent";
+import { requireOrgLegalReady } from "./lib/orgLegal";
 import { normalizeText } from "./lib/text";
 import { inBogota } from "./lib/time";
 import { vOrgKind, vScheduleRange, vStaffColor } from "./lib/validators";
@@ -94,7 +95,7 @@ export const create = authedMutation({
       ownerId: ctx.userId,
       city: optionalText(args.city, 80),
       whatsapp: optionalPhone(args.whatsapp),
-      booking: { enabled: true, minNoticeHours: 2, maxDaysAhead: 30, slotMinutes: 30 },
+      booking: { enabled: false, minNoticeHours: 2, maxDaysAhead: 30, slotMinutes: 30 },
       reminders: { email: true },
       trialEndsAt: Date.now() + TRIAL_DAYS * DAY_MS,
     });
@@ -173,6 +174,7 @@ export const updateBooking = adminMutation({
     bookableMemberIds: v.array(v.id("members")),
   },
   handler: async (ctx, { bookableMemberIds, ...booking }) => {
+    if (booking.enabled) requireOrgLegalReady((await ctx.db.get(ctx.orgId))!);
     if (!Number.isInteger(booking.minNoticeHours) || booking.minNoticeHours < 0 || booking.minNoticeHours > 168) {
       invalid("La anticipación mínima debe estar entre 0 y 168 horas.");
     }
@@ -305,7 +307,7 @@ Datos de identificación y contacto (nombre, documento, fecha de nacimiento, tel
 Solo usaremos tus fotografías en las redes sociales del negocio si lo autorizas de forma expresa.
 
 4. Datos sensibles
-Los datos de salud, las fotografías y la firma son datos sensibles. No tienes la obligación de entregarlos ni de autorizar su tratamiento, pero sin la información de salud no podemos valorar si un tratamiento es seguro para ti. Los tratamos solo con tu autorización previa y expresa, y con medidas de seguridad reforzadas. Los datos de niñas, niños y adolescentes se tratan con la autorización de su representante legal y respetando sus derechos.
+La información de salud es sensible. Las fotografías y firmas reciben protección reforzada según su contenido y uso. Puedes negarte a entregar datos sensibles o autorizar su tratamiento. La reserva no depende de esa decisión. Si falta información para valorar un procedimiento seguro, el profesional debe explicarte las alternativas sin presumir tu autorización. La autorización de reserva no incluye datos de salud ni fotografías. No registramos clientes menores de 18 años en Cosmela.
 
 5. Tus derechos
 Como titular de los datos tienes derecho a:

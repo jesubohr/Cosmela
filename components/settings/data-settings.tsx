@@ -1,5 +1,7 @@
 "use client";
 
+import { CookiePreferencesLink } from "@/components/cookie-preferences";
+
 import { useConvex } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { Download } from "lucide-react";
@@ -13,6 +15,7 @@ import { api } from "@/convex/_generated/api";
 import { bogotaDateKey } from "@/convex/lib/time";
 import { DOCUMENT_TYPE_LABELS, SEX_LABELS } from "@/lib/constants";
 import { formatPhone, todayKey } from "@/lib/format";
+import { DataRecoveryTools } from "./data-recovery-tools";
 import { SettingsSection } from "./settings-page";
 
 type ClientRow = FunctionReturnType<typeof api.orgs.exportClients>[number];
@@ -78,6 +81,7 @@ export function DataSettings() {
 
   return (
     <div className="flex flex-col gap-10">
+      {isAdmin && <SettingsSection title="Datos del negocio"><DataRecoveryTools /></SettingsSection>}
       <SettingsSection
         title="Exportar clientes"
         description={
@@ -105,6 +109,11 @@ export function DataSettings() {
               Política de privacidad de Cosmela
             </Link>
           </li>
+          <li><Link href="/cookies" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Política de cookies</Link></li>
+          <li><Link href="/reembolsos" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Cancelaciones y reembolsos</Link></li>
+          <li><Link href="/acuerdo-datos" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Acuerdo de tratamiento de datos</Link></li>
+          <li><a href="mailto:ayuda@cosmela.app" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Contacto</a></li>
+          <li className="text-plum"><CookiePreferencesLink /></li>
         </ul>
       </SettingsSection>
     </div>

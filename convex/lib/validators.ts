@@ -193,12 +193,13 @@ export const vSessionConsent = v.object({
   userAgent: v.string(),
   /** SHA-256 (hex) of the signed evidence (see `consentHash`); shown as "Código de verificación". */
   hash: v.string(),
-  /** 2: the hash also covers `photoUse`. Older consents have no version. */
+  /** Version 2 includes photo use; version 3 also includes signature agreement. */
   hashVersion: v.optional(v.number()),
   /** The rendered `{documento}`, e.g. "cédula de ciudadanía 1.020.304.050". */
   documentText: v.string(),
   /** Clients under 18: the guardian signs instead of the client. */
   guardian: v.optional(vGuardian),
+  signatureAgreement: v.optional(v.object({ label: v.string(), version: v.number(), acceptedAt: v.number() })),
 });
 
 export const vSessionProcedure = v.object({

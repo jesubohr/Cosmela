@@ -127,6 +127,9 @@ function InlineCreate({
   onCreated: (client: PickedClient) => void;
 }) {
   const create = useMutation(api.clients.create);
+  const notice = useQuery(api.clientAuthorizations.registrationNotice, {});
+  const [adult, setAdult] = useState(false);
+  const [evidence, setEvidence] = useState("");
   const isPhone = /^[\d\s+]+$/.test(initial);
   const [first, ...rest] = isPhone ? [""] : initial.split(/\s+/);
   const [firstName, setFirstName] = useState(first ?? "");
@@ -144,7 +147,8 @@ function InlineCreate({
     setError(null);
     setPending(true);
     try {
-      const id = await create({ client: { firstName, lastName, phone } });
+      if (!adult || !notice || evidence.trim().length < 5) throw new Error("Registra la autorización y confirma la mayoría de edad.");
+      const id = await create({ client: { firstName, lastName, phone }, adult, evidence, policyHash: notice.policyHash, requestKey: crypto.randomUUID() });
       onCreated({ _id: id, name: `${firstName.trim()} ${lastName.trim()}`.trim(), phone });
     } catch (err) {
       const data = err instanceof ConvexError ? (err.data as { code: string; message: string; clientId?: Id<"clients">; clientName?: string }) : null;
@@ -179,6 +183,7 @@ function InlineCreate({
         </Label>
         <PhoneInput id={ids.phone} value={phone} onChange={setPhone} />
       </div>
+      {notice && <div className="flex flex-col gap-2"><p>{notice.label}</p><details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details><label>Cómo recibiste la autorización <input className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} /></label><label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label></div>}
       {error && (
         <p role="alert" className="text-sm text-rose">
           {error}

@@ -1,6 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, httpAction, internalMutation, internalQuery } from "./_generated/server";
+import { LEGAL_VERSION } from "../lib/legal-documents";
+import { checkoutAuthorizationLabel } from "../lib/legal-checkout";
+import { currentDocument, identityUserId, legalRequired } from "./lib/legal";
 import { fail, memberQuery, requireAdmin, requireMember } from "./lib/authz";
 import {
   DAY_MS,
@@ -51,7 +54,36 @@ export const memberOrg = internalQuery({
 
 export const adminOrg = internalQuery({
   args: {},
-  handler: async (ctx) => (await requireAdmin(ctx)).orgId,
+  handler: async (ctx) => {
+    const userId = await identityUserId(ctx);
+    const settings = await ctx.db.query("userSettings").withIndex("by_user", q => q.eq("userId", userId)).unique();
+    const member = settings ? await ctx.db.query("members").withIndex("by_org_user", q => q.eq("orgId", settings.activeOrgId).eq("userId", userId)).unique() : null;
+    if (!member?.active || member.role !== "admin") fail("FORBIDDEN");
+    return member.orgId;
+  },
+});
+
+export const recordCheckoutAcceptance = internalMutation({
+  args: { orgId: v.id("orgs"), plan: vPlan, amount: v.number(), version: v.string() },
+  handler: async (ctx, { orgId: expectedOrgId, plan, amount, version }) => {
+    const { orgId, userId } = await requireAdmin(ctx);
+    if ((await ctx.db.get(orgId))?.closureRequestedAt !== undefined) fail("FORBIDDEN", "Hay una solicitud de cierre en curso.");
+    if (orgId !== expectedOrgId) fail("FORBIDDEN", "El negocio cambió. Revisa la compra antes de continuar.");
+    const billing = await loadBilling(ctx, orgId);
+    if (!billingEnforced() || ["active", "canceling", "past_due"].includes(billing.state)) fail("FORBIDDEN", "Revisa el estado de tu suscripción antes de comprar.");
+    if (plan === "solo" && await countActiveMembers(ctx, orgId) > 1) fail("PLAN_LIMIT", "El plan Solo permite 1 profesional.");
+    if (version !== LEGAL_VERSION || !Number.isFinite(amount) || amount < 0) legalRequired();
+    return ctx.db.insert("checkoutAcceptances", { orgId, userId, version, plan, amount, currency: "COP", interval: "month",
+      termsId: await currentDocument(ctx, "terms"), refundsId: await currentDocument(ctx, "refunds"),
+      label: checkoutAuthorizationLabel(plan, amount), at: Date.now(), checkoutState: "requested" });
+  },
+});
+
+export const finishCheckoutRequest = internalMutation({
+  args: { id: v.id("checkoutAcceptances"), polarCheckoutId: v.optional(v.string()), failed: v.boolean() },
+  handler: async (ctx, { id, polarCheckoutId, failed }) => {
+    await ctx.db.patch(id, { polarCheckoutId, checkoutState: failed ? "failed" : "created" });
+  },
 });
 
 /** Checks that the admin may open a checkout for `plan` and returns what Polar needs. */
@@ -59,6 +91,7 @@ export const checkoutContext = internalQuery({
   args: { plan: vPlan },
   handler: async (ctx, { plan }) => {
     const { orgId, member } = await requireAdmin(ctx);
+    if ((await ctx.db.get(orgId))?.closureRequestedAt !== undefined) fail("FORBIDDEN", "Hay una solicitud de cierre en curso.");
     if (!billingEnforced()) fail("FORBIDDEN", "Durante la beta todo es gratis. Aún no necesitas un plan.");
     const billing = await loadBilling(ctx, orgId);
     if (billing.state === "active" || billing.state === "canceling" || billing.state === "past_due") {
@@ -94,24 +127,31 @@ export const plans = action({
 
 /** Opens a Polar checkout for the admin's org. Returns the checkout URL. */
 export const checkout = action({
-  args: { plan: vPlan },
-  handler: async (ctx, { plan }): Promise<string> => {
+  args: { plan: vPlan, accepted: v.optional(v.boolean()), version: v.optional(v.string()), expectedPrice: v.optional(v.number()) },
+  handler: async (ctx, { plan, accepted, version, expectedPrice }): Promise<string> => {
+    if (!accepted || version !== LEGAL_VERSION) legalRequired("Confirma las condiciones de la suscripción antes de pagar.");
     const { orgId, email } = await ctx.runQuery(internal.billing.checkoutContext, { plan });
     const productId = productIdFor(plan);
     if (!polarConfigured() || !productId) unavailable("Los pagos aún no están disponibles. Intenta más tarde.");
+    const price = copPrice(await polarRequest<PolarProduct>("GET", `/v1/products/${productId}`));
+    if (price === undefined || expectedPrice !== price) throw new ConvexError({ code: "PRICE_CHANGED", message: "El precio cambió. Actualiza la página y revisa el valor antes de continuar." });
+    const acceptanceId = await ctx.runMutation(internal.billing.recordCheckoutAcceptance, { orgId, plan, amount: price, version: LEGAL_VERSION });
     try {
-      const session = await polarRequest<{ url: string }>("POST", "/v1/checkouts/", {
+      const session = await polarRequest<{ id: string; url: string }>("POST", "/v1/checkouts/", {
         products: [productId],
         external_customer_id: orgId,
         customer_email: email || undefined,
-        metadata: { orgId },
+        metadata: { orgId, acceptanceId, legalVersion: LEGAL_VERSION },
         customer_metadata: { orgId },
         success_url: `${PLAN_URL}?checkout={CHECKOUT_ID}`,
         return_url: PLAN_URL,
         locale: "es",
       });
+      await ctx.runMutation(internal.billing.finishCheckoutRequest, { id: acceptanceId, polarCheckoutId: session.id, failed: false });
       return session.url;
     } catch (error) {
+      // An ambiguous network failure may still have created a payable checkout.
+      // Leave the request unresolved so closure fails closed until reconciled.
       console.error(`Polar checkout failed: ${String(error)}`);
       unavailable("No pudimos abrir el pago. Intenta de nuevo en unos minutos.");
     }

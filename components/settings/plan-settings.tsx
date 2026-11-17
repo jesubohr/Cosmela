@@ -5,16 +5,20 @@ import type { FunctionReturnType } from "convex/server";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { errorMessage } from "@/components/forms/error-message";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import { PLANS, readOnlyMessage, SALON_STAFF_LIMIT, type Plan } from "@/convex/lib/billing";
 import { inBogota } from "@/convex/lib/time";
 import { formatMoney } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
+import { LEGAL_VERSION } from "@/lib/legal-documents";
+import { checkoutAuthorizationLabel } from "@/lib/legal-checkout";
 
 type Status = FunctionReturnType<typeof api.billing.status>;
 type Prices = FunctionReturnType<typeof api.billing.plans>;
@@ -155,12 +159,14 @@ function PlanRow({
 }) {
   const checkout = useAction(api.billing.checkout);
   const [busy, setBusy] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const { name, description } = PLAN_INFO[plan];
 
   async function choose() {
     setBusy(true);
     try {
-      window.location.assign(await checkout({ plan }));
+      if (!accepted || price === undefined || price === null) return;
+      window.location.assign(await checkout({ plan, accepted, version: LEGAL_VERSION, expectedPrice: price }));
     } catch (error) {
       toast.error(errorMessage(error));
       setBusy(false);
@@ -168,7 +174,8 @@ function PlanRow({
   }
 
   return (
-    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-6">
+    <li className="flex flex-col gap-3 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-medium">{name}</span>
@@ -191,11 +198,26 @@ function PlanRow({
           )
         )}
         {canChoose && (
-          <Button variant={recommended ? "default" : "secondary"} disabled={busy} onClick={() => void choose()}>
+          <Button variant={recommended ? "default" : "secondary"} disabled={busy || !accepted || price == null} onClick={() => void choose()}>
             {busy ? "Abriendo…" : "Elegir plan"}
           </Button>
         )}
       </div>
+      </div>
+      {canChoose && price != null && (
+        <div className="flex flex-col gap-2 text-sm">
+          <label className="flex cursor-pointer items-start gap-3 py-2">
+            <Checkbox checked={accepted} onCheckedChange={value => setAccepted(value === true)} aria-label={`Autorizar suscripción ${name}`} />
+            <span>{checkoutAuthorizationLabel(plan, price)}</span>
+          </label>
+          <p className="text-ink-soft">Polar actúa como vendedor y procesa el pago. La prueba no genera un cobro por sí sola. Puedes cancelar futuras renovaciones en Administrar suscripción.</p>
+          <div className="flex flex-wrap gap-4">
+            <Link href="/terminos" target="_blank" className="text-plum underline">Términos</Link>
+            <Link href="/reembolsos" target="_blank" className="text-plum underline">Cancelaciones y reembolsos</Link>
+            <a href="https://polar.sh/legal/checkout-buyer-terms" target="_blank" rel="noreferrer" className="text-plum underline">Condiciones de Polar</a>
+          </div>
+        </div>
+      )}
     </li>
   );
 }

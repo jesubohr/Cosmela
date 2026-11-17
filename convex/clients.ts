@@ -3,6 +3,9 @@ import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { getOwned, memberMutation, memberQuery } from "./lib/authz";
+import { hasPurpose, recordAuthorization, requirePurpose } from "./lib/clientAuthorization";
+import { requireOrgLegalReady } from "./lib/orgLegal";
+import { isMinor } from "./lib/consent";
 import { clientSearchText, normalizeText } from "./lib/text";
 import { bogotaDateKey } from "./lib/time";
 import { vClientHabits, vClientHealth, vClientSkin, vDocumentType, vSex } from "./lib/validators";
@@ -60,13 +63,14 @@ function normalize(input: ClientInput) {
   const email = clean(input.email)?.toLowerCase();
   if (email && !EMAIL.test(email)) invalid("Escribe un correo válido, como nombre@correo.com.");
   const birthDate = clean(input.birthDate);
-  if (birthDate && (!DATE.test(birthDate) || birthDate > bogotaDateKey(Date.now()))) {
+  if (birthDate && (!DATE.test(birthDate) || Number.isNaN(Date.parse(birthDate)) || new Date(`${birthDate}T00:00:00Z`).toISOString().slice(0, 10) !== birthDate || birthDate > bogotaDateKey(Date.now()) || isMinor(birthDate))) {
     invalid("Revisa la fecha de nacimiento.");
   }
   const emergencyName = clean(input.emergencyContact?.name);
   const emergencyPhone = clean(input.emergencyContact?.phone);
   if (emergencyPhone && !PHONE.test(emergencyPhone)) invalid("Revisa el teléfono del contacto de emergencia.");
   const documentNumber = clean(input.documentNumber);
+  if (documentNumber && input.documentType === "TI") invalid("Solo se pueden registrar personas mayores de edad.");
 
   return {
     firstName,
@@ -121,26 +125,26 @@ function healthFields(input: ClientInput) {
   };
 }
 
-/** Quick create (name + phone) or a full ficha. Returns the new client id. */
+/** Creates the basic record and its authorization together; health comes later. */
 export const create = memberMutation({
-  args: { client: vClientInput },
-  handler: async (ctx, { client }) => {
+  args: { client: vClientInput, adult: v.optional(v.boolean()), evidence: v.optional(v.string()), policyHash: v.optional(v.string()), requestKey: v.optional(v.string()) },
+  handler: async (ctx, { client, adult, evidence, policyHash, requestKey }) => {
+    requireOrgLegalReady((await ctx.db.get(ctx.orgId))!);
+    if (!adult || !evidence || evidence.trim().length < 5 || evidence.length > 500 || !policyHash || !requestKey || requestKey.length > 100) invalid("Registra la mayoría de edad y la evidencia de autorización del cliente.");
     const fields = normalize(client);
     await assertPhoneFree(ctx, fields.phone);
-    const withFicha = client.health !== undefined;
-    const now = Date.now();
-    return await ctx.db.insert("clients", {
+    if (client.health || client.habits || client.skin || client.notes) invalid("Registra primero la autorización para datos de salud.");
+    const clientId = await ctx.db.insert("clients", {
       orgId: ctx.orgId,
       ...fields,
       health: EMPTY_HEALTH,
       habits: {},
       skin: {},
-      ...healthFields(client),
-      fichaCompletedAt: withFicha ? now : undefined,
-      healthReviewedAt: withFicha ? now : undefined,
       createdBy: ctx.member._id,
       isArchived: false,
     });
+    await recordAuthorization(ctx, { orgId: ctx.orgId, clientId, purpose: "basic", action: "accepted", method: "external_evidence", evidence: evidence.trim(), recordedBy: ctx.member._id, requestKey, policyHash, adult });
+    return clientId;
   },
 });
 
@@ -149,6 +153,7 @@ export const update = memberMutation({
   args: { clientId: v.id("clients"), client: vClientInput },
   handler: async (ctx, { clientId, client }) => {
     const existing = await getOwned(ctx, "clients", clientId);
+    if (client.health || client.habits || client.skin || client.notes) await requirePurpose(ctx, ctx.orgId, clientId, "health");
     const fields = normalize(client);
     if (fields.phone !== existing.phone) await assertPhoneFree(ctx, fields.phone, clientId);
     const now = Date.now();
@@ -177,7 +182,7 @@ export const restore = memberMutation({
 });
 
 /** One row of the clients list. Alert fields feed `getClientAlerts` for the alert dot. */
-function toRow(client: Doc<"clients">) {
+function toRow(client: Doc<"clients">, allowed: boolean) {
   return {
     _id: client._id,
     firstName: client.firstName,
@@ -185,9 +190,9 @@ function toRow(client: Doc<"clients">) {
     phone: client.phone,
     birthDate: client.birthDate,
     lastVisitAt: client.lastVisitAt,
-    health: client.health,
+    health: allowed ? client.health : EMPTY_HEALTH,
     sex: client.sex,
-    lastPregnancy: client.lastPregnancy,
+    lastPregnancy: allowed ? client.lastPregnancy : undefined,
   };
 }
 export type ClientRow = ReturnType<typeof toRow>;
@@ -233,7 +238,7 @@ export const list = memberQuery({
         .withIndex("by_org_archived_name", (q) => q.eq("orgId", ctx.orgId).eq("isArchived", false))
         .paginate(paginationOpts);
     }
-    return { ...page, page: page.page.map(toRow) };
+    return { ...page, page: await Promise.all(page.page.map(async client => toRow(client, await hasPurpose(ctx, ctx.orgId, client._id, "health")))) };
   },
 });
 
@@ -258,7 +263,7 @@ export const listWithBalance = memberQuery({
     const rows = [];
     for (const [clientId, balance] of balances) {
       const client = await ctx.db.get(clientId);
-      if (client && !client.isArchived) rows.push({ ...toRow(client), balance });
+      if (client && !client.isArchived) rows.push({ ...toRow(client, await hasPurpose(ctx, ctx.orgId, client._id, "health")), balance });
     }
     return rows.sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "es"));
   },
@@ -293,9 +298,12 @@ export const get = memberQuery({
   args: { clientId: v.id("clients") },
   handler: async (ctx, { clientId }) => {
     const client = await getOwned(ctx, "clients", clientId);
+    let allowed = true;
+    try { await requirePurpose(ctx, ctx.orgId, clientId, "health"); } catch { allowed = false; }
+    const safeClient = allowed ? client : { ...client, health: EMPTY_HEALTH, habits: {}, skin: {}, notes: undefined, lastMedications: undefined, lastPregnancy: undefined };
     const authorization = client.dataAuthorization;
-    if (!authorization) return client;
-    return { ...client, dataAuthorization: { ...authorization, policyText: await acceptedPolicyText(ctx, authorization) } };
+    if (!authorization) return safeClient;
+    return { ...safeClient, dataAuthorization: { ...authorization, policyText: await acceptedPolicyText(ctx, authorization) } };
   },
 });
 export type ClientDoc = Doc<"clients">;
@@ -318,6 +326,7 @@ export const summary = memberQuery({
     // Abonos for appointments not attended (yet): upcoming, postponed, cancelled, or missed.
     const credit = appointments.filter((a) => a.status !== "completed").reduce((sum, a) => sum + a.paidTotal, 0);
 
+    const healthAllowed = await hasPurpose(ctx, ctx.orgId, clientId, "health");
     const cases = (await ctx.db.query("cases").withIndex("by_client", (q) => q.eq("clientId", clientId)).collect()).filter(
       (c) => c.status === "open",
     );
@@ -325,7 +334,7 @@ export const summary = memberQuery({
     return {
       nextAppointment: upcoming ? await describeAppointment(ctx, upcoming) : null,
       openCases: await Promise.all(
-        cases.map(async (c) => ({
+        (healthAllowed ? cases : []).map(async (c) => ({
           _id: c._id,
           treatmentName: (await ctx.db.get(c.treatmentId))?.name ?? "",
           reasons: c.reasons,
@@ -352,3 +361,13 @@ async function describeAppointment(ctx: QueryCtx, appointment: Doc<"appointments
     memberName: member?.name ?? "",
   };
 }
+
+/** Adult-only quarantine inventory for administrators. Historical records remain untouched. */
+export const legacyMinors = memberQuery({
+  args: {},
+  handler: async (ctx) => {
+    if (ctx.member.role !== "admin") return [];
+    const clients = await ctx.db.query("clients").withIndex("by_org", q => q.eq("orgId", ctx.orgId)).collect();
+    return clients.filter(client => client.documentType === "TI" || isMinor(client.birthDate)).map(client => ({ _id: client._id, name: `${client.firstName} ${client.lastName}`.trim() }));
+  },
+});
