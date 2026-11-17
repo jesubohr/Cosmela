@@ -1,5 +1,7 @@
 # Cosmela — Design system
 
+Surface, icon, and motion polish rules for every screen, the landing page included, live in [the root DESIGN.md](../DESIGN.md).
+
 Philosophy: less is more (https://jakub.kr/writing/less-is-more). Every element must earn its place. No eyebrow labels, no decorative text, no gratuitous icons, no gradient washes, no "AI SaaS card kit". The audience is cosmetologists who may not be tech-savvy: big targets, plain words, one primary action per screen.
 
 ## 1. Point of view

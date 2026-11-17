@@ -1,0 +1,39 @@
+# Acuerdo de tratamiento de datos por encargo
+
+Borrador `2026-11-16-draft.1`. No vigente. Anexo propuesto a los términos de Cosmela. Requiere revisión de un abogado colombiano y de los contratos de proveedores antes de publicación.
+
+## Partes, objeto e instrucciones
+
+El negocio identificado en su cuenta actúa como responsable de los datos de sus clientes. Cosmela S.A., NIT 99009900-1, Cra 51B #76 - 136, Barranquilla, Colombia, actúa como encargado para prestar las funciones contratadas. El representante autorizado del negocio acepta este acuerdo con evidencia de su versión y facultad para contratar. Contacto de Cosmela: ayuda@cosmela.app; responsable de atención: Jesus Borrero.
+
+El encargo comprende recolección por formularios autorizados, organización, consulta, almacenamiento, envío de comunicaciones de servicio, exportación y supresión de datos de clientes adultos y del personal autorizado: identificación, contacto, citas, pagos, salud pertinente, fotografías, firmas y consentimientos. Dura durante el servicio y las operaciones de cierre y conservación justificadas.
+
+Las instrucciones documentadas consisten en las funciones solicitadas mediante la cuenta y las instrucciones adicionales verificadas del administrador, dentro del contrato y la ley. Cosmela informará si considera que una instrucción infringe la normativa y no la ejecutará hasta resolverlo. No usará estos datos para publicidad, venta, analítica de contenido o entrenamiento de modelos.
+
+## Deberes del responsable
+
+El negocio determina finalidades lícitas, informa su identidad y política, obtiene y conserva las autorizaciones que correspondan antes de recolectar, controla sus usuarios y atiende los derechos de los titulares. Documenta la necesidad de cada campo y los períodos de custodia. No incorpora menores ni presupone que una reserva autoriza datos de salud o promoción de fotografías.
+
+No carga datos ajenos al objeto del servicio. El servicio admite profesionales relacionados con la cosmetología, incluidos profesionales regulados según su actividad. Esa admisión no certifica el cumplimiento de los requisitos de historia clínica. Si los registros constituyen historia clínica u otro documento regulado, el negocio debe identificar los deberes aplicables y acordar las condiciones específicas de custodia, conservación y exportación antes de usar Cosmela para ese fin. [TODO: verificar la adecuación técnica y contractual a esos registros].
+
+## Deberes del encargado
+
+Cosmela mantiene confidencialidad del personal autorizado, acceso por negocio y rol, controles de archivos, comunicaciones cifradas y procedimientos de seguridad. Permite el acceso solo a quienes lo requieren para el servicio y registra las actuaciones de soporte con acceso a datos. La obligación de confidencialidad continúa tras terminar el servicio.
+
+Cosmela conserva evidencia de autorizaciones obtenidas mediante el producto, ayuda a localizar registros y tramita las instrucciones legítimas de acceso, corrección, revocación y supresión. Remite las solicitudes recibidas al responsable con tiempo suficiente para cumplir los plazos legales, sin desconocer sus propias obligaciones como encargado. Proporciona evidencia razonable de los controles y coopera con las autoridades competentes.
+
+Ante un incidente, contiene el riesgo, preserva evidencia proporcional, informa al responsable sin demora indebida con los hechos disponibles y actualiza la información. Ambas partes cumplen sus obligaciones propias de reporte; avisar al negocio no sustituye un reporte exigible a la SIC.
+
+## Proveedores y tratamiento fuera de Colombia
+
+Se propone usar Convex, Cloudflare R2, Resend y Vercel según las funciones necesarias. PostHog solo recibe analítica opcional limitada de la cuenta y no el contenido de los clientes. Polar interviene en la compra de la suscripción y puede actuar como responsable independiente para sus finalidades legales y comerciales.
+
+[TODO: inventario contractual de países, funciones, subencargados y garantías por proveedor]. Los servicios de alojamiento se encuentran en Estados Unidos según lo informado por el operador. No se autoriza de forma indeterminada cualquier transferencia o uso propio de un tercero. Antes de nuevas transmisiones, Cosmela formalizará los contratos exigibles con obligaciones acordes con este encargo. Si un destinatario decide finalidades propias, evaluará los requisitos de transferencia aplicables.
+
+Cosmela notificará cambios materiales de subencargados con 30 días calendario de antelación cuando sea posible. Recibirá objeciones fundadas en protección de datos y buscará una alternativa razonable; si no puede resolverlas, permitirá terminar el servicio y exportar los datos sin imponer la aceptación del nuevo uso.
+
+## Terminación, devolución y supresión
+
+El negocio puede obtener una exportación segura con sus registros, relaciones y archivos, sujeta a las facultades de quien la solicita. La propuesta concede 30 días calendario desde la confirmación de cierre para exportar; elimina copias activas a más tardar al día 60 y deja caducar respaldos en un máximo de 90 días adicionales. [TODO: aprobar y validar estos límites].
+
+Una obligación legal o controversia documentada puede exigir conservación limitada y restringida. Antes de cerrar, las partes deben resolver la custodia de los registros que no puedan suprimirse. La evidencia mínima del contrato se conserva por un período separado y no ampara retener todo el contenido del cliente. Cosmela confirmará la eliminación y sus excepciones documentadas al responsable. Ninguna limitación contractual elimina obligaciones imperativas de las partes.
