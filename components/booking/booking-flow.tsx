@@ -93,13 +93,14 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
   const days = availability?.days;
   const nextFrom = availability?.nextFrom ?? null;
 
-  // Bring the next step into view after each choice (not on first load).
+  // Bring the next step into view and focus its heading after each choice (not on first load).
   const stepRef = useRef<HTMLDivElement>(null);
   const moved = useRef(false);
   useEffect(() => {
-    if (!moved.current) return;
+    if (!moved.current || !stepRef.current) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    stepRef.current?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+    stepRef.current.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+    stepRef.current.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
   }, [step]);
 
   function choose(update: () => void) {
@@ -371,10 +372,16 @@ function TimeSkeleton() {
 }
 
 function Confirmation({ orgName, sent }: { orgName: string; sent: Sent }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // The form that had focus is gone; the page is already scrolled to the top.
+  useEffect(() => headingRef.current?.focus({ preventScroll: true }), []);
+
   return (
-    <section aria-live="polite" className="flex flex-col gap-6">
+    <section className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h2 className="font-display text-[1.75rem] leading-tight">Solicitud enviada</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="font-display text-[1.75rem] leading-tight outline-none">
+          Solicitud enviada
+        </h2>
         <p className="text-ink-soft">
           {orgName} confirmará tu cita por correo a <span className="text-ink [overflow-wrap:anywhere]">{sent.email}</span>.
         </p>

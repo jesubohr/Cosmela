@@ -92,7 +92,7 @@ export function SignaturePad({ ref, onChange, label, disabled, className }: Sign
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <div className="relative h-[200px] overflow-hidden rounded-lg border border-input bg-surface md:h-[240px]">
+      <div className="relative h-[200px] overflow-hidden rounded-lg border border-field-line bg-surface md:h-[240px]">
         <canvas
           ref={canvasRef}
           role="img"

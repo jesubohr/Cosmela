@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { PhoneInput } from "@/components/shared/phone-input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,8 +31,9 @@ function validate(details: Details): Errors {
   if (!details.firstName.trim()) errors.firstName = "Escribe tu nombre.";
   if (!isValidPhone(details.phone)) errors.phone = "Escribe un WhatsApp de 10 dígitos.";
   if (!EMAIL.test(details.email.trim())) errors.email = "Escribe un correo válido, como nombre@correo.com.";
-  if (!details.adult) errors.adult = "Confirma que eres mayor de edad.";
+  // Same order as the form, so the first error gets focus.
   if (!details.authorized) errors.authorized = "Marca la autorización para enviar tu solicitud.";
+  if (!details.adult) errors.adult = "Confirma que eres mayor de edad.";
   return errors;
 }
 
@@ -61,6 +62,13 @@ export function DetailsForm({
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const firstInvalidField = useRef<string | null>(null);
+
+  useEffect(() => {
+    const id = firstInvalidField.current;
+    if (id) document.getElementById(id)?.focus();
+    firstInvalidField.current = null;
+  }, [errors]);
 
   function set<K extends keyof Details>(key: K, value: Details[K]) {
     setDetails((current) => ({ ...current, [key]: value }));
@@ -70,10 +78,11 @@ export function DetailsForm({
   async function submit(event: FormEvent) {
     event.preventDefault();
     const found = validate(details);
+    const first = Object.keys(found)[0];
     setErrors(found);
     setFormError(null);
-    if (Object.keys(found).length > 0) {
-      document.getElementById(`booking-${Object.keys(found)[0]}`)?.focus();
+    if (first) {
+      firstInvalidField.current = `booking-${first}`;
       return;
     }
     setPending(true);
@@ -178,10 +187,20 @@ export function DetailsForm({
       </div>
 
       <label htmlFor="booking-adult" className="flex items-start gap-3">
-        <Checkbox id="booking-adult" checked={details.adult} onCheckedChange={(checked) => set("adult", checked === true)} />
+        <Checkbox
+          id="booking-adult"
+          checked={details.adult}
+          onCheckedChange={(checked) => set("adult", checked === true)}
+          aria-invalid={!!errors.adult}
+          aria-describedby={errors.adult ? "booking-adult-error" : undefined}
+        />
         <span>Confirmo que la reserva es para mí y que tengo 18 años o más.</span>
       </label>
-      {errors.adult && <p role="alert" className="text-sm text-rose">{errors.adult}</p>}
+      {errors.adult && (
+        <p id="booking-adult-error" className="text-sm text-rose">
+          {errors.adult}
+        </p>
+      )}
       {formError && (
         <p role="alert" className="rounded-lg bg-rose-soft px-4 py-3 text-rose">
           {formError}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 import { ACCOUNT_PRIVACY_LABEL, ACCOUNT_TERMS_LABEL, ADULT_LABEL, LEGAL_VERSION } from "@/lib/legal-documents";
 import { OtpInput } from "./otp-input";
 
@@ -33,11 +34,6 @@ function verifyErrorMessage(error: AuthError) {
   }
   if (error?.status === 429) return "Hiciste varios intentos seguidos. Espera un minuto e intenta de nuevo.";
   return "No pudimos verificar el código. Revisa tu conexión e intenta de nuevo.";
-}
-
-/** Only same-site paths, never "//evil.com". */
-function safeNext(next: string | null) {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/hoy";
 }
 
 export function LoginForm() {
@@ -182,12 +178,16 @@ export function LoginForm() {
     >
       <div className="flex flex-col gap-2">
         <h1 className="font-display text-[1.75rem] leading-tight lg:text-[2.25rem]">Revisa tu correo</h1>
-        <p className="text-ink-soft">
+        <p id="otp-hint" className="text-ink-soft">
           Escribe el código de 6 dígitos que enviamos a <span className="font-medium text-ink [overflow-wrap:anywhere]">{email}</span>.
         </p>
       </div>
       <div className="flex flex-col gap-2">
+        <Label htmlFor="otp" className="text-base">
+          Código
+        </Label>
         <OtpInput
+          id="otp"
           value={code}
           onChange={(value) => {
             setCode(value);
@@ -196,7 +196,7 @@ export function LoginForm() {
           onComplete={(value) => void verify(value)}
           invalid={Boolean(error)}
           disabled={pending}
-          describedBy={error ? "login-error" : undefined}
+          describedBy={error ? "otp-hint login-error" : "otp-hint"}
         />
         {error && (
           <p id="login-error" role="alert" className="text-sm text-rose">
@@ -208,10 +208,12 @@ export function LoginForm() {
         {pending ? "Verificando…" : "Ingresar"}
       </Button>
       <div className="flex flex-col items-start gap-1">
+        {/* Silent while counting down; speaks once when the resend button returns. */}
+        <p className="sr-only" aria-live="polite">
+          {resendIn === 0 ? "Ya puedes pedir otro código." : ""}
+        </p>
         {resendIn > 0 ? (
-          <p className="flex min-h-11 items-center text-sm text-ink-soft" aria-live="polite">
-            Puedes pedir otro código en {resendIn} s
-          </p>
+          <p className="flex min-h-11 items-center text-sm text-ink-soft">Puedes pedir otro código en {resendIn} s</p>
         ) : (
           <Button type="button" variant="link" className="h-11 px-0" disabled={pending} onClick={() => void resend()}>
             Reenviar código

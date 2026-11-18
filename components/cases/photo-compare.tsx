@@ -59,7 +59,7 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
                 >
                   {urls[photo.key] && (
                     // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-                    <img src={urls[photo.key]} alt="" className="size-full object-cover" />
+                    <img src={urls[photo.key]} alt="" loading="lazy" className="size-full object-cover" />
                   )}
                   {index >= 0 && (
                     <span className="absolute bottom-0.5 left-0.5 rounded bg-plum px-1 text-xs font-medium text-on-solid">{index + 1}</span>

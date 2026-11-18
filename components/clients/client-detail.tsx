@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { Archive, ArchiveRestore, Ellipsis, MessageCircle, Phone, Printer } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useAgendaSheets } from "@/components/agenda/agenda-sheets";
 import { useNow } from "@/components/agenda/parts";
@@ -46,6 +46,7 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
   const openSheet = useAgendaSheets();
   const restore = useMutation(api.clients.restore);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const actionsRef = useRef<HTMLButtonElement>(null);
   const now = useNow();
 
   const tabParam = params.get("tab");
@@ -70,7 +71,7 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
           client && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Más acciones">
+                <Button ref={actionsRef} variant="ghost" size="icon" aria-label="Más acciones">
                   <Ellipsis strokeWidth={1.75} />
                 </Button>
               </DropdownMenuTrigger>
@@ -187,6 +188,7 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
           onOpenChange={setArchiveOpen}
           clientId={clientId}
           name={name}
+          returnFocusRef={actionsRef}
           onArchived={() => router.push("/clientes")}
         />
       )}
@@ -199,12 +201,14 @@ function ArchiveDialog({
   onOpenChange,
   clientId,
   name,
+  returnFocusRef,
   onArchived,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientId: Id<"clients">;
   name: string;
+  returnFocusRef: RefObject<HTMLElement | null>;
   onArchived: () => void;
 }) {
   const archive = useMutation(api.clients.archive);
@@ -225,6 +229,7 @@ function ArchiveDialog({
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
+      returnFocusRef={returnFocusRef}
       title={`¿Archivar a ${name}?`}
       description="Sale de la lista y de la búsqueda. Su ficha, citas y pagos se conservan."
       footer={

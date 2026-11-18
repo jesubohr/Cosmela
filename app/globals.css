@@ -14,12 +14,14 @@
   --ink: #2a2131;
   --ink-soft: #6b6273;
   --line: #e6e0eb;
+  /* Control boundaries (inputs, checkboxes, radios): at least 3:1 on every surface. */
+  --field-line: #887e90;
   --plum: #5b2a86;
   --plum-hover: #4a2170;
   --lilac: #efe8f6;
   --sage: #3f7d5f;
   --sage-soft: #e5f1ea;
-  --amber: #9a6510;
+  --amber: #94610f;
   --amber-soft: #fbf0dc;
   --rose: #b0303c;
   --rose-soft: #fbe7e9;
@@ -93,6 +95,7 @@
   --ink: #ede8f1;
   --ink-soft: #a89eb1;
   --line: #372f3d;
+  --field-line: #827789;
   --plum: #c5a3ea;
   --plum-hover: #d6bdf1;
   --lilac: #31263f;
@@ -138,6 +141,7 @@
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
+  --color-field-line: var(--field-line);
   --color-plum: var(--plum);
   --color-plum-hover: var(--plum-hover);
   --color-lilac: var(--lilac);

@@ -21,11 +21,12 @@ Light and dark themes. The user picks Como el dispositivo, Claro, or Oscuro in M
 | `--ink` | `#2A2131` | Primary text (deep aubergine, not black) |
 | `--ink-soft` | `#6B6273` | Secondary text, placeholders ≥ 4.5:1 on white |
 | `--line` | `#E6E0EB` | Hairline borders, dividers |
+| `--field-line` | `#887E90` | Input, select, checkbox, and radio borders (≥ 3:1 on white, porcelain, and lilac) |
 | `--plum` | `#5B2A86` | Primary actions, active nav, focus ring, links |
 | `--plum-hover` | `#4A2170` | Primary hover/pressed |
 | `--lilac` | `#EFE8F6` | Selected chips, active nav background, subtle highlights |
 | `--sage` | `#3F7D5F` / soft `#E5F1EA` | Success, paid, completed |
-| `--amber` | `#9A6510` / soft `#FBF0DC` | Pending payment, warnings, requested |
+| `--amber` | `#94610F` / soft `#FBF0DC` | Pending payment, warnings, requested |
 | `--rose` | `#B0303C` / soft `#FBE7E9` | Allergies, contraindications, destructive |
 
 Fitzpatrick swatches (I→VI): `#F6E1D3`, `#EBC9AE`, `#D8A884`, `#B9835B`, `#8A5A3A`, `#4E3022`.

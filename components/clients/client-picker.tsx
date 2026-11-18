@@ -70,11 +70,12 @@ export function ClientPicker({ value, onChange, error }: ClientPickerProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${searchId}-error` : undefined}
           className="pl-10"
         />
       </div>
       {error && (
-        <p role="alert" className="text-sm text-rose">
+        <p id={`${searchId}-error`} className="text-sm text-rose">
           {error}
         </p>
       )}

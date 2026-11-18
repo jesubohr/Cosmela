@@ -31,6 +31,7 @@ import {
   FormError,
   MemberSelect,
   SheetActions,
+  useFocusFirstError,
   useFormOptions,
   useShowOnAgenda,
   type FormOptions,
@@ -164,6 +165,7 @@ function Fields({
   const [errors, setErrors] = useState<Partial<Record<"client" | "treatment" | "time" | "price" | "deposit" | "form", string>>>({});
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState<{ id: Id<"appointments">; clientName: string; start: number; whatsapp: string } | null>(null);
+  const formRef = useFocusFirstError(errors);
 
   const treatment = options.treatments.find((t) => t._id === treatmentId);
   const member = options.members.find((m) => m._id === memberId);
@@ -259,14 +261,19 @@ function Fields({
         : "No quedan horarios libres este día. Elige otro día o escribe otra hora.";
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-6">
       <FieldBlock label="Cliente">
         <ClientPicker value={client} onChange={setClient} error={errors.client} />
       </FieldBlock>
 
       <FieldBlock label="Tratamiento" htmlFor={ids.treatment} error={errors.treatment}>
         <Select value={treatmentId ?? ""} onValueChange={(v) => chooseTreatment(v as Id<"treatments">)}>
-          <SelectTrigger id={ids.treatment} className="w-full" aria-invalid={errors.treatment ? true : undefined}>
+          <SelectTrigger
+            id={ids.treatment}
+            className="w-full"
+            aria-invalid={errors.treatment ? true : undefined}
+            aria-describedby={errors.treatment ? `${ids.treatment}-error` : undefined}
+          >
             <SelectValue placeholder="Elige un tratamiento" />
           </SelectTrigger>
           <SelectContent>
@@ -318,7 +325,13 @@ function Fields({
         ) : slots.length === 0 ? (
           <p className="text-sm text-ink-soft">{noSlotsText}</p>
         ) : (
-          <div role="radiogroup" aria-label="Horarios libres" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <div
+            role="radiogroup"
+            aria-label="Horarios libres"
+            aria-invalid={errors.time ? true : undefined}
+            aria-describedby={errors.time ? `${ids.time}-error` : undefined}
+            className="grid grid-cols-3 gap-2 sm:grid-cols-4"
+          >
             {slots.map((slot, index) => (
               <Chip
                 key={slot}
@@ -344,11 +357,12 @@ function Fields({
             value={time ?? ""}
             onChange={(e) => setTime(e.target.value || undefined)}
             aria-invalid={errors.time ? true : undefined}
+            aria-describedby={errors.time ? `${ids.time}-error` : undefined}
             className="w-36 tabular-nums"
           />
         </div>
         {errors.time && (
-          <p role="alert" className="text-sm text-rose">
+          <p id={`${ids.time}-error`} className="text-sm text-rose">
             {errors.time}
           </p>
         )}
@@ -375,7 +389,14 @@ function Fields({
       </div>
 
       <FieldBlock label="Precio" htmlFor={ids.price} error={errors.price}>
-        <MoneyInput id={ids.price} value={price} onChange={setPrice} className="max-w-48" aria-invalid={errors.price ? true : undefined} />
+        <MoneyInput
+          id={ids.price}
+          value={price}
+          onChange={setPrice}
+          className="max-w-48"
+          aria-invalid={errors.price ? true : undefined}
+          aria-describedby={errors.price ? `${ids.price}-error` : undefined}
+        />
       </FieldBlock>
 
       <FieldBlock label="Notas" htmlFor={ids.notes}>
@@ -392,7 +413,14 @@ function Fields({
           </div>
           {depositOn && (
             <div className="flex flex-col gap-4 rounded-xl border border-line p-4">
-              <MoneyInput aria-label="Valor del abono" value={depositAmount} onChange={setDepositAmount} className="max-w-48" />
+              <MoneyInput
+                aria-label="Valor del abono"
+                value={depositAmount}
+                onChange={setDepositAmount}
+                className="max-w-48"
+                aria-invalid={errors.deposit ? true : undefined}
+                aria-describedby={errors.deposit ? `${ids.deposit}-error` : undefined}
+              />
               <SingleChips
                 label="Medio de pago"
                 options={PAYMENT_METHODS.map((m) => ({ value: m, label: PAYMENT_METHOD_LABELS[m] }))}
@@ -401,7 +429,7 @@ function Fields({
                 required
               />
               {errors.deposit && (
-                <p role="alert" className="text-sm text-rose">
+                <p id={`${ids.deposit}-error`} className="text-sm text-rose">
                   {errors.deposit}
                 </p>
               )}

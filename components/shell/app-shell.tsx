@@ -43,8 +43,18 @@ export function AppShell({ defaultOpen, children }: { defaultOpen: boolean; chil
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-surface-raised focus:px-4 focus:py-3 focus:text-ink focus:shadow-float"
+      >
+        Saltar al contenido
+      </a>
       <AppSidebar viewer={viewer} />
-      <SidebarInset className="min-h-dvh pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] lg:pb-0">
+      <SidebarInset
+        id="main-content"
+        tabIndex={-1}
+        className="min-h-dvh pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] outline-none lg:pb-0"
+      >
         <OfflineBanner />
         {viewer ? (
           <ViewerProvider viewer={viewer}>

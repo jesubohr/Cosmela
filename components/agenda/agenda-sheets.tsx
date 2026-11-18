@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { CalendarOff, CalendarPlus } from "lucide-react";
-import { createContext, useCallback, useContext, useId, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { errorText } from "@/components/forms/error-message";
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog";
@@ -35,7 +35,7 @@ export type Sheet =
 type Kind = Sheet["kind"];
 type SheetOf<K extends Kind> = Extract<Sheet, { kind: K }>;
 
-const SheetsContext = createContext<((sheet: Sheet) => void) | null>(null);
+const SheetsContext = createContext<((sheet: Sheet, opener?: HTMLElement | null) => void) | null>(null);
 
 /** Opens an agenda sheet (appointment, block, payment…) from anywhere under `AgendaSheets`. */
 export function useAgendaSheets() {
@@ -51,15 +51,21 @@ export function useAgendaSheets() {
 export function AgendaSheets({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<Kind | null>(null);
   const [payloads, setPayloads] = useState<Partial<{ [K in Kind]: SheetOf<K> & { nonce: number } }>>({});
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
-  const open = useCallback((sheet: Sheet) => {
+  const open = useCallback((sheet: Sheet, opener?: HTMLElement | null) => {
+    if (opener) returnFocusRef.current = opener;
     setPayloads((previous) => ({ ...previous, [sheet.kind]: { ...sheet, nonce: (previous[sheet.kind]?.nonce ?? 0) + 1 } }));
     setCurrent(sheet.kind);
   }, []);
-  const close = useCallback(() => setCurrent(null), []);
+  const close = useCallback(() => {
+    returnFocusRef.current = null;
+    setCurrent(null);
+  }, []);
   const onOpenChange = (value: boolean) => {
     if (!value) close();
   };
+  const dialogProps = { onOpenChange, returnFocusRef };
 
   const p = payloads;
   const toDetail = (appointmentId: Id<"appointments">) => open({ kind: "detail", appointmentId });
@@ -72,7 +78,7 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
         <ResponsiveDialog
           key={`slot-${p.slot.nonce}`}
           open={current === "slot"}
-          onOpenChange={onOpenChange}
+          {...dialogProps}
           title={slotTitle(p.slot)}
         >
           <SlotChooser slot={p.slot} open={open} />
@@ -80,19 +86,19 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
       )}
 
       {p.create && (
-        <ResponsiveDialog key={`create-${p.create.nonce}`} open={current === "create"} onOpenChange={onOpenChange} title="Nueva cita" desktop="sheet" bodyClassName="pb-0">
+        <ResponsiveDialog key={`create-${p.create.nonce}`} open={current === "create"} {...dialogProps} title="Nueva cita" desktop="sheet" bodyClassName="pb-0">
           <AppointmentForm mode="create" prefill={p.create.prefill} onDone={close} />
         </ResponsiveDialog>
       )}
 
       {p.edit && (
-        <ResponsiveDialog key={`edit-${p.edit.nonce}`} open={current === "edit"} onOpenChange={onOpenChange} title="Reprogramar cita" desktop="sheet" bodyClassName="pb-0">
+        <ResponsiveDialog key={`edit-${p.edit.nonce}`} open={current === "edit"} {...dialogProps} title="Reprogramar cita" desktop="sheet" bodyClassName="pb-0">
           <AppointmentForm mode="edit" appointmentId={p.edit.appointmentId} onDone={toDetail} />
         </ResponsiveDialog>
       )}
 
       {p.detail && (
-        <ResponsiveDialog key={`detail-${p.detail.nonce}`} open={current === "detail"} onOpenChange={onOpenChange} title="Cita" desktop="sheet" bodyClassName="pb-0">
+        <ResponsiveDialog key={`detail-${p.detail.nonce}`} open={current === "detail"} {...dialogProps} title="Cita" desktop="sheet" bodyClassName="pb-0">
           <AppointmentDetail
             appointmentId={p.detail.appointmentId}
             actions={{
@@ -106,7 +112,7 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
       )}
 
       {p.walkIn && (
-        <ResponsiveDialog key={`walkIn-${p.walkIn.nonce}`} open={current === "walkIn"} onOpenChange={onOpenChange} title="Atención sin cita" desktop="sheet" bodyClassName="pb-0">
+        <ResponsiveDialog key={`walkIn-${p.walkIn.nonce}`} open={current === "walkIn"} {...dialogProps} title="Atención sin cita" desktop="sheet" bodyClassName="pb-0">
           <WalkInForm clientId={p.walkIn.clientId} />
         </ResponsiveDialog>
       )}
@@ -115,7 +121,7 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
         <ResponsiveDialog
           key={`block-${p.block.nonce}`}
           open={current === "block"}
-          onOpenChange={onOpenChange}
+          {...dialogProps}
           title={p.block.block ? "Editar bloqueo" : "Bloquear horario"}
           bodyClassName="pb-0"
         >
@@ -124,7 +130,7 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
       )}
 
       {p.payment && (
-        <ResponsiveDialog key={`payment-${p.payment.nonce}`} open={current === "payment"} onOpenChange={onOpenChange} title="Registrar pago" bodyClassName="pb-0">
+        <ResponsiveDialog key={`payment-${p.payment.nonce}`} open={current === "payment"} {...dialogProps} title="Registrar pago" bodyClassName="pb-0">
           <PaymentForm
             appointmentId={p.payment.appointmentId}
             onDone={() => (p.payment!.backToDetail ? toDetail(p.payment!.appointmentId) : close())}
@@ -133,13 +139,13 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
       )}
 
       {p.cancel && (
-        <ResponsiveDialog key={`cancel-${p.cancel.nonce}`} open={current === "cancel"} onOpenChange={onOpenChange} title="Cancelar cita" bodyClassName="pb-0">
+        <ResponsiveDialog key={`cancel-${p.cancel.nonce}`} open={current === "cancel"} {...dialogProps} title="Cancelar cita" bodyClassName="pb-0">
           <ReasonForm appointmentId={p.cancel.appointmentId} action="cancel" onBack={() => toDetail(p.cancel!.appointmentId)} onDone={close} />
         </ResponsiveDialog>
       )}
 
       {p.reject && (
-        <ResponsiveDialog key={`reject-${p.reject.nonce}`} open={current === "reject"} onOpenChange={onOpenChange} title="Rechazar solicitud" bodyClassName="pb-0">
+        <ResponsiveDialog key={`reject-${p.reject.nonce}`} open={current === "reject"} {...dialogProps} title="Rechazar solicitud" bodyClassName="pb-0">
           <ReasonForm appointmentId={p.reject.appointmentId} action="reject" onBack={() => toDetail(p.reject!.appointmentId)} onDone={close} />
         </ResponsiveDialog>
       )}

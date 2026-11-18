@@ -53,11 +53,13 @@ export function BusinessHeader({
   );
 }
 
-/** A heading plus its content; the heading receives focus-free scroll targets. */
+/** A heading plus its content. The flow moves focus to the heading when the step appears. */
 export function Step({ title, children, className, id }: { title: string; children: ReactNode; className?: string; id?: string }) {
   return (
     <section id={id} aria-label={title} className={cn("flex scroll-mt-6 flex-col gap-4", className)}>
-      <h2 className="text-[1.125rem] leading-snug font-medium">{title}</h2>
+      <h2 tabIndex={-1} className="text-[1.125rem] leading-snug font-medium outline-none">
+        {title}
+      </h2>
       {children}
     </section>
   );

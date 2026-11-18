@@ -12,6 +12,18 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // No page is meant to be embedded, so no site may frame the app (clickjacking).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
+      },
+    ];
+  },
   // PostHog reverse proxy; the static rules must come before the catch-all.
   async rewrites() {
     return [

@@ -40,7 +40,7 @@ export function PhotoThumbs({
         const label = `Foto ${PHOTO_KIND_LABELS[photo.kind].toLowerCase()} ${index + 1}`;
         const image = url ? (
           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URLs
-          <img src={url} alt={label} className="size-full object-cover" />
+          <img src={url} alt={label} loading="lazy" className="size-full object-cover" />
         ) : null;
         return (
           <li

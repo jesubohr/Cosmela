@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CalendarOff, CalendarPlus, ClipboardPlus, Plus, UserPlus, type LucideIcon } from "lucide-react";
 import { useAgendaSheets, type Sheet } from "@/components/agenda/agenda-sheets";
 import { Button } from "@/components/ui/button";
@@ -31,16 +31,17 @@ export function QuickActions() {
   const router = useRouter();
   const openSheet = useAgendaSheets();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   function run(action: Action) {
     if ("href" in action) router.push(action.href);
-    else openSheet(action.sheet());
+    else openSheet(action.sheet(), triggerRef.current);
   }
 
   if (isMobile) {
     return (
       <>
-        <Button size="icon" aria-label="Crear" onClick={() => setOpen(true)} className="rounded-full">
+        <Button ref={triggerRef} size="icon" aria-label="Crear" onClick={() => setOpen(true)} className="rounded-full">
           <Plus strokeWidth={2} />
         </Button>
         <Drawer open={open} onOpenChange={setOpen}>
@@ -74,7 +75,7 @@ export function QuickActions() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button>
+        <Button ref={triggerRef}>
           <Plus strokeWidth={2} />
           Crear
         </Button>

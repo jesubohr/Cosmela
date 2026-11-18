@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
@@ -38,12 +38,24 @@ export function FieldBlock({ label, htmlFor, children, error, className }: {
       )}
       {children}
       {error && (
-        <p role="alert" className="text-sm text-rose">
+        <p id={htmlFor && `${htmlFor}-error`} className="text-sm text-rose">
           {error}
         </p>
       )}
     </div>
   );
+}
+
+/**
+ * Put the returned ref on a form. After a failed submit, focus moves to the first invalid
+ * control, so screen readers read the error it points to with `aria-describedby`.
+ */
+export function useFocusFirstError(errors: object) {
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]:is(input, textarea, button)')?.focus();
+  }, [errors]);
+  return ref;
 }
 
 export function FormError({ children }: { children: ReactNode }) {

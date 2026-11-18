@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { FieldBlock, FormError, MemberSelect, SheetActions, useFormOptions } from "./parts";
+import { FieldBlock, FormError, MemberSelect, SheetActions, useFocusFirstError, useFormOptions } from "./parts";
 
 /** "Atención sin cita": creates an appointment that starts now and opens the attention flow. */
 export function WalkInForm({ clientId }: { clientId?: Id<"clients"> }) {
@@ -36,6 +36,7 @@ function Fields({ options, initialClient }: { options: NonNullable<ReturnType<ty
   const [memberId, setMemberId] = useState(own?._id ?? options.members[0]?._id);
   const [errors, setErrors] = useState<{ client?: string; treatment?: string; form?: string }>({});
   const [pending, setPending] = useState(false);
+  const formRef = useFocusFirstError(errors);
   const isSalon = viewer.org.kind === "salon" && options.members.length > 1;
 
   async function submit(event: FormEvent) {
@@ -57,13 +58,18 @@ function Fields({ options, initialClient }: { options: NonNullable<ReturnType<ty
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-6">
       <FieldBlock label="Cliente">
         <ClientPicker value={client} onChange={setClient} error={errors.client} />
       </FieldBlock>
       <FieldBlock label="Tratamiento" htmlFor={ids.treatment} error={errors.treatment}>
         <Select value={treatmentId ?? ""} onValueChange={(v) => setTreatmentId(v as Id<"treatments">)}>
-          <SelectTrigger id={ids.treatment} className="w-full">
+          <SelectTrigger
+            id={ids.treatment}
+            className="w-full"
+            aria-invalid={errors.treatment ? true : undefined}
+            aria-describedby={errors.treatment ? `${ids.treatment}-error` : undefined}
+          >
             <SelectValue placeholder="Elige un tratamiento" />
           </SelectTrigger>
           <SelectContent>
