@@ -28,7 +28,7 @@ export function ClientList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="relative">
-        <Search aria-hidden className="pointer-events-none absolute inset-y-0 left-3 my-auto size-5 text-ink-soft" strokeWidth={1.75} />
+        <Search aria-hidden className="pointer-events-none absolute inset-y-0 left-3 my-auto size-5 text-ink-soft" strokeWidth={1.5} />
         <Input
           type="search"
           aria-label="Buscar clientes"
@@ -164,7 +164,7 @@ function ClientRowLink({ client, meta }: { client: ClientRow; meta?: React.React
             <span className="line-clamp-2 font-medium">{name}</span>
             {hasAlerts && (
               <span title="Tiene alertas de salud" className="mt-0.5 shrink-0 text-rose">
-                <TriangleAlert aria-hidden className="size-4" strokeWidth={1.75} />
+                <TriangleAlert aria-hidden className="size-4" strokeWidth={1.5} />
                 <span className="sr-only">Tiene alertas de salud</span>
               </span>
             )}
@@ -172,7 +172,7 @@ function ClientRowLink({ client, meta }: { client: ClientRow; meta?: React.React
           <span className="truncate text-sm text-ink-soft tabular-nums">{formatPhone(client.phone)}</span>
         </span>
         {meta && <span className="shrink-0 text-right text-sm text-ink-soft">{meta}</span>}
-        <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
+        <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.5} />
       </Link>
     </li>
   );

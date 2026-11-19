@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { CalendarCheck, Check, Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { AppointmentForm } from "@/components/agenda/appointment-form";
 import { Chip, SingleChips } from "@/components/clients/chips";
@@ -122,7 +122,7 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
                     aria-hidden
                     className={cn(
                       "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-                      item.included ? "border-plum bg-plum text-on-solid" : "border-ink-soft/50 bg-surface",
+                      item.included ? "border-plum bg-plum text-on-solid" : "border-field-line bg-surface",
                     )}
                   >
                     {item.included && <Check className="size-4" strokeWidth={2.5} />}
@@ -171,7 +171,7 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
           )}
           {price !== null && balance <= 0 ? (
             <p className="flex items-center gap-2 font-medium text-sage">
-              <Check className="size-5" strokeWidth={2} />
+              <Check className="size-5" />
               Pagada
             </p>
           ) : (
@@ -253,10 +253,7 @@ export function ClosingStep({ data, onBack, registerDraft }: StepProps) {
                 <Input id={ids.followNote} placeholder="Revisar manchas, segunda sesión…" value={followNote} onChange={(e) => setFollowNote(e.target.value)} />
               </div>
               {nextAppointment ? (
-                <p className="flex items-center gap-2 rounded-xl bg-sage-soft px-4 py-3 text-sage">
-                  <CalendarCheck className="size-5 shrink-0" strokeWidth={1.75} />
-                  Próxima cita: {formatDateTime(nextAppointment.start)}
-                </p>
+                <p className="rounded-xl bg-sage-soft px-4 py-3 text-sage">Próxima cita: {formatDateTime(nextAppointment.start)}</p>
               ) : (
                 <div className="flex flex-col gap-3">
                   <div role="radiogroup" aria-label="Seguimiento" className="grid grid-cols-2 gap-2">

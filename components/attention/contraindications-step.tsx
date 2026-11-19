@@ -143,7 +143,7 @@ function Checklist({ data, onBack, onDone }: StepProps) {
                       aria-hidden
                       className={cn(
                         "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-                        checked ? "border-rose bg-rose text-on-solid" : "border-ink-soft/50 bg-surface",
+                        checked ? "border-rose bg-rose text-on-solid" : "border-field-line bg-surface",
                       )}
                     >
                       {checked && <Check className="size-4" strokeWidth={2.5} />}
@@ -162,7 +162,7 @@ function Checklist({ data, onBack, onDone }: StepProps) {
         {present.length > 0 && (
           <section role="alert" className="flex flex-col gap-4 rounded-xl bg-rose-soft p-4 text-rose">
             <div className="flex gap-3">
-              <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={1.75} />
+              <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
               <p>
                 {present.length === 1 ? "Marcaste una contraindicación" : `Marcaste ${present.length} contraindicaciones`}: {present.join(", ")}. Lo más seguro es posponer el tratamiento.
               </p>

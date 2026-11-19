@@ -61,7 +61,7 @@ function PrintLink({ href, label }: { href: string; label: string }) {
   return (
     <Button variant="ghost" size="icon" asChild>
       <Link href={href} aria-label={label}>
-        <Printer strokeWidth={1.75} />
+        <Printer />
       </Link>
     </Button>
   );

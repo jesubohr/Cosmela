@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatPhone, isValidPhone } from "@/lib/format";
+import { AuthorizationInputs } from "./authorization-inputs";
 
 export type PickedClient = { _id: Id<"clients">; name: string; phone: string };
 
@@ -61,7 +62,7 @@ export function ClientPicker({ value, onChange, error }: ClientPickerProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="relative">
-        <Search aria-hidden className="pointer-events-none absolute inset-y-0 left-3 my-auto size-5 text-ink-soft" strokeWidth={1.75} />
+        <Search aria-hidden className="pointer-events-none absolute inset-y-0 left-3 my-auto size-5 text-ink-soft" strokeWidth={1.5} />
         <Input
           id={searchId}
           type="search"
@@ -109,7 +110,7 @@ export function ClientPicker({ value, onChange, error }: ClientPickerProps) {
             onClick={() => setCreating(true)}
             className="flex min-h-14 w-full items-center gap-3 px-3 text-left font-medium text-plum hover:bg-lilac"
           >
-            <UserPlus aria-hidden className="size-5" strokeWidth={1.75} />
+            <UserPlus aria-hidden className="size-5" strokeWidth={1.5} />
             {term && !/^[\d\s+]+$/.test(term) ? `Crear cliente «${term}»` : "Crear cliente nuevo"}
           </button>
         </li>
@@ -184,7 +185,19 @@ function InlineCreate({
         </Label>
         <PhoneInput id={ids.phone} value={phone} onChange={setPhone} />
       </div>
-      {notice && <div className="flex flex-col gap-2"><p>{notice.label}</p><details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details><label>Cómo recibiste la autorización <input className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} /></label><label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label></div>}
+      {notice && (
+        <div className="flex flex-col gap-4">
+          <p className="max-w-[70ch]">{notice.label}</p>
+          <AuthorizationInputs
+            policy={notice.policy}
+            evidenceLabel="Cómo recibiste la autorización"
+            evidence={evidence}
+            onEvidenceChange={setEvidence}
+            adult={adult}
+            onAdultChange={setAdult}
+          />
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-sm text-rose">
           {error}

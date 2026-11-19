@@ -33,7 +33,7 @@ export function StepSection({ title, description, children, className }: {
     <section className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-col gap-1">
         <h2 className="text-[1.125rem] font-medium">{title}</h2>
-        {description && <p className="text-sm text-ink-soft">{description}</p>}
+        {description && <p className="max-w-[70ch] text-sm text-ink-soft">{description}</p>}
       </div>
       {children}
     </section>

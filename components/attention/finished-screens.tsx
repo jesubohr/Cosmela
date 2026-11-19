@@ -82,7 +82,7 @@ export function SuccessScreen({ data }: { data: DraftData }) {
         {items.length > 0 && (
           <Button size="lg" asChild>
             <a href={whatsappLink(client.phone, message)} target="_blank" rel="noopener noreferrer">
-              <MessageCircle strokeWidth={1.75} />
+              <MessageCircle />
               Enviar indicaciones por WhatsApp
             </a>
           </Button>

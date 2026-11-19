@@ -661,12 +661,12 @@ export function FitzpatrickPicker({
             <span
               aria-hidden
               className={cn(
-                "flex size-9 items-center justify-center rounded-full border border-ink/10",
+                "flex size-9 items-center justify-center rounded-full outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
                 selected && "ring-2 ring-plum ring-offset-2 ring-offset-lilac",
               )}
               style={{ backgroundColor: swatch }}
             >
-              {selected && <Check className={cn("size-4", type >= 4 ? "text-white" : "text-[#2a2131]")} strokeWidth={2.25} />}
+              {selected && <Check className={cn("size-4", type >= 4 ? "text-white" : "text-[#2a2131]")} strokeWidth={2.5} />}
             </span>
             {label}
           </button>

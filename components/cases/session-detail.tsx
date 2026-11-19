@@ -34,7 +34,7 @@ export function SessionDetail({ caseId, sessionId }: { caseId: string; sessionId
           data && data.session.status !== "draft" ? (
             <Button variant="secondary" asChild>
               <Link href={`/imprimir/sesion/${sessionId}`}>
-                <Printer strokeWidth={1.75} />
+                <Printer />
                 Imprimir
               </Link>
             </Button>
@@ -52,7 +52,7 @@ export function SessionDetail({ caseId, sessionId }: { caseId: string; sessionId
           <>
             <Summary data={data} />
             {data.session.status === "draft" ? (
-              <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-4">
+              <div className="flex flex-col items-start gap-3 rounded-card border border-transparent bg-surface p-4 shadow-border">
                 <p>Esta atención sigue en curso.</p>
                 <Button asChild>
                   <Link href={`/atencion/${data.session.appointmentId}`}>Continuar atención</Link>
@@ -77,7 +77,7 @@ function Summary({ data }: { data: SessionDetailData }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
-        <Link href={`/clientes/${client._id}`} className="text-lg font-medium hover:underline">
+        <Link href={`/clientes/${client._id}`} className="-my-2 py-2 text-lg font-medium hover:underline">
           {client.name}
         </Link>
         <span className="text-ink-soft">{motivo ? `${treatment.name} para ${motivo.toLowerCase()}` : treatment.name}</span>

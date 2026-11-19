@@ -48,7 +48,7 @@ export function HistoryTab({ clientId }: { clientId: Id<"clients"> }) {
               )}
               <PhotoThumbs photos={s.photos} size="sm" />
             </div>
-            <ChevronRight aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
+            <ChevronRight aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" strokeWidth={1.5} />
           </Link>
         </li>
       ))}

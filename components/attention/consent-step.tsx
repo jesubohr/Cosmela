@@ -171,7 +171,12 @@ function SignForm({ data, onBack, onDone }: StepProps) {
           {photoUse === "none" && hasBeforePhotos && <p className="text-sm text-amber">Las fotos de antes se eliminarán al firmar.</p>}
         </StepSection>
 
-        <label className="flex items-start gap-3"><Checkbox id={ids.authorize} checked={authorize} onCheckedChange={(value) => setAuthorize(value === true)} /><span>{SIGNATURE_AGREEMENT_LABEL}</span></label>
+        <div className="flex items-start gap-3">
+          <Checkbox id={ids.authorize} checked={authorize} onCheckedChange={(value) => setAuthorize(value === true)} className="mt-0.5 size-6" />
+          <Label htmlFor={ids.authorize} className="max-w-[70ch] text-base leading-normal font-normal">
+            {SIGNATURE_AGREEMENT_LABEL}
+          </Label>
+        </div>
         <StepSection title={signerLabel}>
           <SignaturePad ref={clientPad} label={signerLabel} onChange={(empty) => setClientSigned(!empty)} disabled={pending} />
         </StepSection>
@@ -206,8 +211,6 @@ function SignForm({ data, onBack, onDone }: StepProps) {
         </StepSection>
       </StepBody>
       <StepFooter onBack={onBack} onContinue={() => void submit()} label="Firmar consentimiento" pending={pending} blocked={blocked} error={error} />
-
-
     </>
   );
 }

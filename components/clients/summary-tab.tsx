@@ -38,7 +38,7 @@ export function SummaryTab({ clientId, notes }: { clientId: Id<"clients">; notes
           <button
             type="button"
             onClick={() => openSheet({ kind: "detail", appointmentId: next._id })}
-            className="flex flex-col items-start gap-1 rounded-xl border border-line bg-surface p-4 text-left hover:bg-porcelain"
+            className="flex flex-col items-start gap-1 rounded-card border border-transparent bg-surface p-4 text-left shadow-border transition-colors hover:bg-porcelain"
           >
             <span className="font-display text-[1.75rem] leading-none tabular-nums">{formatTime(next.start)}</span>
             <span className="text-ink-soft first-letter:uppercase">{formatDate(next.start)}</span>
@@ -86,7 +86,7 @@ export function SummaryTab({ clientId, notes }: { clientId: Id<"clients">; notes
                   <span className="shrink-0 text-sm text-ink-soft tabular-nums">
                     {c.plannedSessions ? `${c.sessionCount} de ${c.plannedSessions} sesiones` : `${c.sessionCount} sesiones`}
                   </span>
-                  <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
+                  <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.5} />
                 </Link>
               </li>
             ))}

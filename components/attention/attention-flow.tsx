@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Ellipsis, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { AuthorizationInputs } from "@/components/clients/authorization-inputs";
 import { errorText } from "@/components/forms/error-message";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { Button } from "@/components/ui/button";
@@ -88,28 +89,55 @@ function AuthorizationGate({ data, onLeave }: { data: DraftData; onLeave: () => 
       if (action === "rejected") router.push("/hoy");
     } catch (err) { setError(errorText(err)); } finally { setPending(false); }
   }
-  return <div className="mx-auto flex max-w-xl flex-col gap-4 p-4">
-    <h1 className="text-xl font-semibold">Autorización para datos de salud</h1>
-    <p>Esta información es sensible. El cliente puede negarse a responder o autorizar su tratamiento. La reserva no depende de esta decisión.</p>
-    <p>{notice.labels.health}</p>
-    <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details>
-    <label className="flex flex-col gap-2">Cómo recibiste la decisión del cliente
-      <textarea className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} placeholder="Describe la autorización o negativa recibida" />
-    </label>
-    <label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
-    {error && <p role="alert">{error}</p>}
-    <div className="flex gap-2"><Button disabled={pending} onClick={() => void decide("accepted")}>Registrar autorización</Button><Button variant="secondary" disabled={pending} onClick={() => void decide("rejected")}>Registrar negativa y salir</Button></div>
-  </div>;
+  return (
+    <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-10">
+      <h1 className="font-display text-[1.75rem] leading-tight">Autorización para datos de salud</h1>
+      <div className="flex max-w-[70ch] flex-col gap-3">
+        <p>Esta información es sensible. El cliente puede negarse a responder o autorizar su tratamiento. La reserva no depende de esta decisión.</p>
+        <p>{notice.labels.health}</p>
+      </div>
+      <AuthorizationInputs
+        policy={notice.policy}
+        evidenceLabel="Cómo recibiste la decisión del cliente"
+        evidence={evidence}
+        onEvidenceChange={setEvidence}
+        adult={adult}
+        onAdultChange={setAdult}
+      />
+      <div aria-live="polite" className="empty:hidden">
+        {error && (
+          <p role="alert" className="rounded-xl bg-rose-soft px-4 py-3 text-rose">
+            {error}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button size="lg" disabled={pending} onClick={() => void decide("accepted")}>
+          Registrar autorización
+        </Button>
+        <Button size="lg" variant="secondary" disabled={pending} onClick={() => void decide("rejected")}>
+          Registrar negativa y salir
+        </Button>
+      </div>
+    </main>
+  );
 }
 
 function Stepper({ data, onLeave }: { data: DraftData; onLeave: () => void }) {
   const router = useRouter();
   const { client, treatment, appointment, session } = data;
   const [step, setStep] = useState(() => Math.min(session.step + 1, STEPS.length));
-  const [direction, setDirection] = useState<"forward" | "back">("forward");
+  // Null until the first step change, so the opening step does not animate.
+  const [direction, setDirection] = useState<"forward" | "back" | null>(null);
   const [closing, setClosing] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const draft = useRef<(() => Promise<unknown>) | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  // The keyed step remounts and drops the focused control; hand focus to the new step.
+  useEffect(() => {
+    if (direction) heading.current?.focus({ preventScroll: true });
+  }, [step, direction]);
 
   function go(next: number) {
     setDirection(next > step ? "forward" : "back");
@@ -152,15 +180,15 @@ function Stepper({ data, onLeave }: { data: DraftData; onLeave: () => void }) {
           <div className="flex items-start gap-3">
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-lg font-medium">{`${client.firstName} ${client.lastName}`.trim()}</span>
-              <span className="truncate text-ink-soft">
-                {treatment.name}
-                <span className="font-display ml-3 text-ink tabular-nums">{formatTime(appointment.start)}</span>
+              <span className="flex items-baseline gap-x-3 overflow-hidden">
+                <span className="truncate text-ink-soft">{treatment.name}</span>
+                <span className="font-display shrink-0 text-xl tabular-nums">{formatTime(appointment.start)}</span>
               </span>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Más opciones" disabled={closing}>
-                  <Ellipsis className="size-6" strokeWidth={1.75} />
+                  <Ellipsis className="size-6" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -170,24 +198,28 @@ function Stepper({ data, onLeave }: { data: DraftData; onLeave: () => void }) {
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="ghost" size="icon" aria-label="Cerrar y guardar" onClick={() => void closeFlow()} disabled={closing} className="-mr-2">
-              <X className="size-6" strokeWidth={1.75} />
+              <X className="size-6" />
             </Button>
           </div>
           <AlertChips client={alertSource} />
-          <div className="flex items-center gap-3 pt-1">
-            <span className="shrink-0 text-sm text-ink-soft tabular-nums">
-              Paso {step} de {STEPS.length}
-            </span>
+          <div className="flex flex-col gap-1.5 pt-1">
             <div
               role="progressbar"
               aria-label="Avance de la atención"
               aria-valuemin={1}
               aria-valuemax={STEPS.length}
               aria-valuenow={step}
-              className="h-1 flex-1 overflow-hidden rounded-full bg-line"
+              aria-valuetext={`Paso ${step} de ${STEPS.length}, ${title}`}
+              className="h-1 overflow-hidden rounded-full bg-line"
             >
-              <div className="h-full rounded-full bg-plum transition-[width] duration-300" style={{ width: `${(step / STEPS.length) * 100}%` }} />
+              <div className="h-full rounded-full bg-plum transition-[width] duration-300 ease-out" style={{ width: `${(step / STEPS.length) * 100}%` }} />
             </div>
+            <p className="flex items-baseline gap-3 text-sm">
+              <span className="text-ink-soft tabular-nums">
+                Paso {step} de {STEPS.length}
+              </span>
+              <span className="font-medium">{title}</span>
+            </p>
           </div>
         </div>
       </header>
@@ -195,12 +227,15 @@ function Stepper({ data, onLeave }: { data: DraftData; onLeave: () => void }) {
       <main
         key={step}
         className={cn(
-          "mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-6 duration-150 animate-in fade-in",
-          direction === "forward" ? "slide-in-from-right-2" : "slide-in-from-left-2",
-          "motion-reduce:slide-in-from-right-0 motion-reduce:slide-in-from-left-0",
+          "mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-6",
+          direction && "animate-in duration-150 ease-out fade-in",
+          direction === "forward" && "motion-safe:slide-in-from-right-2",
+          direction === "back" && "motion-safe:slide-in-from-left-2",
         )}
       >
-        <h1 className="font-display mb-6 text-[1.75rem] leading-tight">{title}</h1>
+        <h1 ref={heading} tabIndex={-1} className="sr-only">
+          {title}
+        </h1>
         <Step {...props} />
       </main>
       <DiscardAttentionDialog

@@ -88,7 +88,7 @@ function Editable({ data, onDone, registerDraft }: StepProps) {
       <StepBody>
         {firstVisit ? (
           <>
-            <div className="flex flex-col gap-1 text-ink-soft">
+            <div className="flex max-w-[70ch] flex-col gap-1 text-ink-soft">
               <p>
                 Es la primera visita de {client.firstName}. {client.fichaCompletedAt ? "Confirma su ficha" : "Completa su ficha"}; las preguntas de salud son
                 opcionales.

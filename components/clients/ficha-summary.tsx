@@ -100,7 +100,7 @@ export function FichaSummary({
               <span className="inline-flex items-center gap-2">
                 <span
                   aria-hidden
-                  className="size-5 rounded-full border border-ink/10"
+                  className="size-5 rounded-full outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                   style={{ backgroundColor: FITZPATRICK[skin.fitzpatrick].swatch }}
                 />
                 {FITZPATRICK[skin.fitzpatrick].label}

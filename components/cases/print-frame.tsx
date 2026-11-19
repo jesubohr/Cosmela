@@ -26,7 +26,7 @@ export function PrintFrame({ org, title, children }: { org: OrgHeader; title: st
           Volver
         </Button>
         <Button onClick={() => window.print()}>
-          <Printer strokeWidth={1.75} />
+          <Printer />
           Imprimir
         </Button>
       </div>

@@ -37,7 +37,7 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
               aria-pressed={slot === index}
               onClick={() => setSlot(index as 0 | 1)}
               className={cn(
-                "min-h-10 rounded-full px-4 font-medium transition-colors",
+                "min-h-11 rounded-full px-4 font-medium transition-colors",
                 slot === index ? "bg-lilac text-plum" : "text-ink-soft hover:text-ink",
               )}
             >
@@ -46,6 +46,9 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
           ))}
         </div>
         <p className="text-sm text-ink-soft">Toca una foto para ponerla como {slot === 0 ? "foto 1" : "foto 2"}.</p>
+        <p aria-live="polite" className="sr-only">
+          Foto 1: {caption(first)}. Foto 2: {caption(second)}.
+        </p>
         <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
           {photos.map((photo) => {
             const index = pair.indexOf(photo.key);
@@ -54,15 +57,15 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
                 <button
                   type="button"
                   onClick={() => pick(photo.key)}
-                  aria-label={caption(photo)}
+                  aria-label={index >= 0 ? `${caption(photo)}, foto ${index + 1}` : caption(photo)}
                   className={cn("relative block size-16 overflow-hidden rounded-lg bg-line", index >= 0 && "ring-2 ring-plum ring-offset-2 ring-offset-porcelain")}
                 >
                   {urls[photo.key] && (
                     // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-                    <img src={urls[photo.key]} alt="" loading="lazy" className="size-full object-cover" />
+                    <img src={urls[photo.key]} alt="" loading="lazy" className="size-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" />
                   )}
                   {index >= 0 && (
-                    <span className="absolute bottom-0.5 left-0.5 rounded bg-plum px-1 text-xs font-medium text-on-solid">{index + 1}</span>
+                    <span className="absolute bottom-0.5 left-0.5 rounded bg-plum px-1.5 text-sm leading-5 font-medium text-on-solid">{index + 1}</span>
                   )}
                 </button>
               </li>
@@ -78,7 +81,7 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
             <div className="aspect-[3/4] overflow-hidden rounded-xl bg-line">
               {urls[photo.key] && (
                 // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-                <img src={urls[photo.key]} alt={caption(photo)} className="size-full object-cover" />
+                <img src={urls[photo.key]} alt={caption(photo)} className="size-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" />
               )}
             </div>
             <figcaption className="text-sm text-ink-soft">{caption(photo)}</figcaption>
@@ -91,14 +94,14 @@ export function PhotoCompare({ photos }: { photos: ComparablePhoto[] }) {
         <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-line">
           {urls[second.key] && (
             // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-            <img src={urls[second.key]} alt={caption(second)} className="absolute inset-0 size-full object-cover" />
+            <img src={urls[second.key]} alt={caption(second)} className="absolute inset-0 size-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" />
           )}
           {urls[first.key] && (
             // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
             <img
               src={urls[first.key]}
               alt={caption(first)}
-              className="absolute inset-0 size-full object-cover"
+              className="absolute inset-0 size-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
               style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
             />
           )}

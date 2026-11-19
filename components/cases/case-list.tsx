@@ -104,7 +104,7 @@ export function CaseList() {
                       {c.next?.kind === "followUp" && <span>Seguimiento {formatShortDate(bogotaToEpoch(c.next.dueDate))}</span>}
                     </div>
                   </div>
-                  <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
+                  <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.5} />
                 </Link>
               </li>
             );

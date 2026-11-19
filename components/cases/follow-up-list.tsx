@@ -52,7 +52,7 @@ export function FollowUpList({ rows }: { rows: FollowUpRow[] }) {
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" asChild>
                   <a href={whatsappLink(row.client.phone, followUpMessage(row, viewer.org.name))} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle strokeWidth={1.75} />
+                    <MessageCircle />
                     WhatsApp
                   </a>
                 </Button>

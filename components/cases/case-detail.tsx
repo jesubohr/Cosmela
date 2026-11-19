@@ -66,7 +66,7 @@ function Body({ data }: { data: CaseData }) {
     <>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-0.5">
-          <Link href={`/clientes/${client._id}`} className="self-start text-lg font-medium hover:underline">
+          <Link href={`/clientes/${client._id}`} className="-my-2 self-start py-2 text-lg font-medium hover:underline">
             {client.name}
           </Link>
           {motivo && <span className="text-ink-soft">{motivo}</span>}
@@ -143,7 +143,7 @@ function Body({ data }: { data: CaseData }) {
                     s.status === "closed" ? "bg-plum text-on-solid" : s.status === "postponed" ? "bg-rose-soft text-rose" : "bg-lilac text-plum",
                   )}
                 >
-                  {s.number ?? "·"}
+                  {s.number ?? "–"}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <Link
@@ -158,7 +158,7 @@ function Body({ data }: { data: CaseData }) {
                         {formatShortDate(s.closedAt ?? s.startedAt)}, con {s.memberName}
                       </span>
                     </span>
-                    <ChevronRight aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
+                    <ChevronRight aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-soft" strokeWidth={1.5} />
                   </Link>
                   {s.contraindications && <p className="text-rose">Pospuesta por: {s.contraindications.join(", ")}</p>}
                   {s.evolution && <p>{s.evolution}</p>}

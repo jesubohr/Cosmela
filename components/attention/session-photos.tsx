@@ -14,6 +14,7 @@ import type { PhotoKind } from "@/convex/lib/validators";
 import { PHOTO_KIND_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useSignedUrls } from "@/components/shared/use-signed-urls";
+import { AuthorizationInputs } from "@/components/clients/authorization-inputs";
 
 type Photo = { key: string; kind: PhotoKind; at: number };
 
@@ -40,7 +41,7 @@ export function PhotoThumbs({
         const label = `Foto ${PHOTO_KIND_LABELS[photo.kind].toLowerCase()} ${index + 1}`;
         const image = url ? (
           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URLs
-          <img src={url} alt={label} loading="lazy" className="size-full object-cover" />
+          <img src={url} alt={label} loading="lazy" className="size-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" />
         ) : null;
         return (
           <li
@@ -59,9 +60,9 @@ export function PhotoThumbs({
                 type="button"
                 onClick={() => onDelete(photo)}
                 aria-label={`Eliminar ${label.toLowerCase()}`}
-                className="absolute top-1 right-1 flex size-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                className="absolute top-1 right-1 flex size-9 items-center justify-center rounded-full bg-black/60 text-white transition-colors after:absolute after:-inset-1 hover:bg-black/80"
               >
-                <X className="size-4" strokeWidth={2} />
+                <X className="size-4" />
               </button>
             )}
           </li>
@@ -100,22 +101,47 @@ export function SessionPhotos({ sessionId, photos, kind }: { sessionId: Id<"sess
   return (
     <div className="flex flex-col gap-3">
       <PhotoThumbs photos={own} onDelete={setDeleting} />
-      {attention && !attention.allowed && <div className="flex flex-col gap-2">
-        <p>{attention.label}</p>
-        <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{attention.policy}</p></details>
-        <label>Cómo recibiste la autorización <input className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} /></label>
-        <label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
-        <Button type="button" onClick={() => void record({ clientId: attention.clientId, purpose: "record_photos", action: "accepted", policyHash: attention.policyHash, evidence, adult, requestKey: crypto.randomUUID() }).catch(error => toast.error(errorText(error)))}>Registrar autorización</Button>
-      </div>}
-      {attention?.allowed && <PhotoUpload
-        sessionId={sessionId}
-        label={own.length > 0 ? "Tomar otra foto" : "Tomar foto"}
-        onUploaded={(key) =>
-          void attach({ key, target: { kind: "sessionPhoto", sessionId, photoKind: kind } }).catch((error) =>
-            toast.error(errorText(error)),
-          )
-        }
-      />}
+      {attention && !attention.allowed && (
+        <div className="flex flex-col gap-4">
+          <p className="max-w-[70ch]">{attention.label}</p>
+          <AuthorizationInputs
+            policy={attention.policy}
+            evidenceLabel="Cómo recibiste la autorización"
+            evidence={evidence}
+            onEvidenceChange={setEvidence}
+            adult={adult}
+            onAdultChange={setAdult}
+          />
+          <Button
+            type="button"
+            className="self-start"
+            onClick={() =>
+              void record({
+                clientId: attention.clientId,
+                purpose: "record_photos",
+                action: "accepted",
+                policyHash: attention.policyHash,
+                evidence,
+                adult,
+                requestKey: crypto.randomUUID(),
+              }).catch((error) => toast.error(errorText(error)))
+            }
+          >
+            Registrar autorización
+          </Button>
+        </div>
+      )}
+      {attention?.allowed && (
+        <PhotoUpload
+          sessionId={sessionId}
+          label={own.length > 0 ? "Tomar otra foto" : "Tomar foto"}
+          onUploaded={(key) =>
+            void attach({ key, target: { kind: "sessionPhoto", sessionId, photoKind: kind } }).catch((error) =>
+              toast.error(errorText(error)),
+            )
+          }
+        />
+      )}
       <ResponsiveDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}

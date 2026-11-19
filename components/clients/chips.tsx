@@ -20,7 +20,7 @@ export function Chip({ selected, className, children, ...props }: ChipProps) {
       )}
       {...props}
     >
-      {selected && <Check aria-hidden className="-ml-1 size-4" strokeWidth={2} />}
+      {selected && <Check aria-hidden className="-ml-1 size-4" />}
       {children}
     </button>
   );

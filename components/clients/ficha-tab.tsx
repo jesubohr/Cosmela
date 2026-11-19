@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ClientDoc } from "@/convex/clients";
+import { AuthorizationInputs } from "./authorization-inputs";
 import { FichaForm, fichaFromClient, useSaveFicha, withoutFixedErrors, type FichaErrors, type FichaValue } from "./ficha-form";
 import { FichaSummary } from "./ficha-summary";
 import { SheetBar } from "./sheet-bar";
@@ -45,16 +46,42 @@ function Authorizations({ client, status }: { client: ClientDoc; status: { healt
     } catch { toast.error("Describe cómo recibiste la decisión del cliente."); } finally { setPending(false); }
   }
   if (!notice) return null;
-  return <div className="flex flex-col gap-3 rounded-xl border p-4">
-    <p>Los datos de salud son sensibles. El cliente puede negarse a autorizarlos sin perder su reserva.</p>
-    <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details>
-    <label>Cómo recibiste la decisión <input className="rounded border p-2" value={evidence} onChange={event => setEvidence(event.target.value)} /></label>
-    <label><input type="checkbox" checked={adult} onChange={event => setAdult(event.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
-    <p>{notice.labels.health}</p>
-    <div className="flex flex-wrap gap-2">{status.health ? <Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("health", "withdrawn")}>Registrar retiro</Button> : <><Button type="button" disabled={pending} onClick={() => void decide("health", "accepted")}>Registrar autorización</Button><Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("health", "rejected")}>Registrar negativa</Button></>}</div>
-    <p>{notice.labels.record_photos}</p>
-    {status.recordPhotos && <Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("record_photos", "withdrawn")}>Registrar retiro de fotos</Button>}
-  </div>;
+  return (
+    <section className="flex flex-col gap-4 rounded-card border border-transparent bg-surface p-4 shadow-border">
+      <p className="max-w-[70ch]">Los datos de salud son sensibles. El cliente puede negarse a autorizarlos sin perder su reserva.</p>
+      <AuthorizationInputs
+        policy={notice.policy}
+        evidenceLabel="Cómo recibiste la decisión"
+        evidence={evidence}
+        onEvidenceChange={setEvidence}
+        adult={adult}
+        onAdultChange={setAdult}
+      />
+      <p className="max-w-[70ch]">{notice.labels.health}</p>
+      <div className="flex flex-wrap gap-2">
+        {status.health ? (
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("health", "withdrawn")}>
+            Registrar retiro
+          </Button>
+        ) : (
+          <>
+            <Button type="button" disabled={pending} onClick={() => void decide("health", "accepted")}>
+              Registrar autorización
+            </Button>
+            <Button type="button" variant="secondary" disabled={pending} onClick={() => void decide("health", "rejected")}>
+              Registrar negativa
+            </Button>
+          </>
+        )}
+      </div>
+      <p className="max-w-[70ch]">{notice.labels.record_photos}</p>
+      {status.recordPhotos && (
+        <Button type="button" variant="secondary" disabled={pending} className="self-start" onClick={() => void decide("record_photos", "withdrawn")}>
+          Registrar retiro de fotos
+        </Button>
+      )}
+    </section>
+  );
 }
 
 function FichaEditor({ client, onClose }: { client: ClientDoc; onClose: () => void }) {

@@ -72,13 +72,13 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button ref={actionsRef} variant="ghost" size="icon" aria-label="Más acciones">
-                  <Ellipsis strokeWidth={1.75} />
+                  <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem asChild className="min-h-11 text-base">
                   <Link href={`/imprimir/ficha/${clientId}`}>
-                    <Printer className="size-5" strokeWidth={1.75} />
+                    <Printer className="size-5" strokeWidth={1.5} />
                     Imprimir ficha
                   </Link>
                 </DropdownMenuItem>
@@ -87,12 +87,12 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
                     className="min-h-11 text-base"
                     onSelect={() => void restore({ clientId }).then(() => toast.success("Cliente restaurado"))}
                   >
-                    <ArchiveRestore className="size-5" strokeWidth={1.75} />
+                    <ArchiveRestore className="size-5" strokeWidth={1.5} />
                     Restaurar
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem className="min-h-11 text-base" onSelect={() => setArchiveOpen(true)}>
-                    <Archive className="size-5" strokeWidth={1.75} />
+                    <Archive className="size-5" strokeWidth={1.5} />
                     Archivar
                   </DropdownMenuItem>
                 )}
@@ -107,14 +107,13 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
         ) : (
           <div className="flex flex-col gap-4">
             {client.isArchived && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-porcelain px-4 py-3 ring-1 ring-line">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-porcelain px-4 py-3">
                 <p>Este cliente está archivado. No aparece en la lista ni en la búsqueda.</p>
                 <Button variant="secondary" onClick={() => void restore({ clientId }).then(() => toast.success("Cliente restaurado"))}>
                   Restaurar
                 </Button>
               </div>
             )}
-            <h2 className="font-display text-[1.75rem] leading-tight font-medium break-words">{name}</h2>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-soft">
               {client.birthDate && <span>{ageFromBirthDate(client.birthDate)} años</span>}
               <span className="tabular-nums">{formatPhone(client.phone)}</span>
@@ -131,13 +130,13 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
               )}
               <Button variant="secondary" asChild>
                 <a href={whatsappLink(client.phone)} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle strokeWidth={1.75} />
+                  <MessageCircle />
                   WhatsApp
                 </a>
               </Button>
               <Button variant="secondary" asChild>
                 <a href={`tel:${client.phone}`}>
-                  <Phone strokeWidth={1.75} />
+                  <Phone />
                   Llamar
                 </a>
               </Button>
@@ -252,7 +251,6 @@ function HeaderSkeleton() {
   return (
     <div aria-busy className="flex flex-col gap-3">
       <Skeleton className="h-5 w-48" />
-      <Skeleton className="h-7 w-64" />
       <div className="flex gap-2">
         <Skeleton className="h-11 w-32" />
         <Skeleton className="h-11 w-36" />

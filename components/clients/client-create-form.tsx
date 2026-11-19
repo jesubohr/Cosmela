@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AuthorizationInputs } from "./authorization-inputs";
 import { SheetBar } from "./sheet-bar";
 import { emptyFicha, FichaForm, useSaveFicha, withoutFixedErrors, type FichaErrors, type FichaValue } from "./ficha-form";
 
@@ -42,12 +43,19 @@ export function ClientCreateForm() {
   return (
     <form onSubmit={submit} noValidate className="flex max-w-2xl flex-col gap-8">
       <FichaForm value={ficha} onChange={change} errors={errors} sections={["identity"]} />
-      {notice && <div className="flex flex-col gap-3">
-        <p>{notice.label}</p>
-        <details><summary>Leer la política del negocio</summary><p className="whitespace-pre-line">{notice.policy}</p></details>
-        <label>Cómo recibiste la autorización <input className="rounded border p-2" value={evidence} onChange={e => setEvidence(e.target.value)} /></label>
-        <label><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /> Confirmé que el cliente tiene 18 años o más.</label>
-      </div>}
+      {notice && (
+        <section className="flex flex-col gap-4">
+          <p className="max-w-[70ch]">{notice.label}</p>
+          <AuthorizationInputs
+            policy={notice.policy}
+            evidenceLabel="Cómo recibiste la autorización"
+            evidence={evidence}
+            onEvidenceChange={setEvidence}
+            adult={adult}
+            onAdultChange={setAdult}
+          />
+        </section>
+      )}
       <SheetBar>
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Guardar cliente"}
