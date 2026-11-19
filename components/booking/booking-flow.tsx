@@ -236,10 +236,10 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
               <li>
                 <RowButton onClick={() => choose(() => setMember("any"))} className="items-center">
                   <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-lilac text-plum">
-                    <Users className="size-5" strokeWidth={1.75} />
+                    <Users className="size-5" />
                   </span>
                   <span className="flex-1 font-medium">Cualquiera disponible</span>
-                  <ChevronRight aria-hidden className="size-5 text-ink-soft" strokeWidth={1.75} />
+                  <ChevronRight aria-hidden className="size-5 text-ink-soft" />
                 </RowButton>
               </li>
               {page.members.map((m) => (
@@ -247,7 +247,7 @@ function Flow({ slug, page }: { slug: string; page: PageData }) {
                   <RowButton onClick={() => choose(() => setMember(m._id))} className="items-center">
                     <InitialsAvatar name={m.name} color={m.color} />
                     <span className="flex-1 font-medium">{m.name}</span>
-                    <ChevronRight aria-hidden className="size-5 text-ink-soft" strokeWidth={1.75} />
+                    <ChevronRight aria-hidden className="size-5 text-ink-soft" />
                   </RowButton>
                 </li>
               ))}
@@ -321,7 +321,7 @@ function RowButton({ onClick, className, children }: { onClick: () => void; clas
       type="button"
       onClick={onClick}
       className={cn(
-        "flex min-h-16 w-full items-start gap-4 px-4 py-4 text-left transition-colors hover:bg-porcelain focus-visible:-outline-offset-2 active:bg-lilac",
+        "-mx-3 flex min-h-16 w-[calc(100%+1.5rem)] items-start gap-4 rounded-lg px-3 py-4 text-left transition-colors hover:bg-lilac/60 active:bg-lilac",
         className,
       )}
     >
@@ -342,12 +342,12 @@ function SummaryRow({
   onChange: () => void;
 }) {
   return (
-    <li className="flex min-h-16 items-center gap-4 px-4 py-3">
+    <li className="flex min-h-16 items-center gap-4 py-3">
       <div className="min-w-0 flex-1">
         <p className="font-medium">{primary}</p>
         {secondary && <p className="text-sm text-ink-soft">{secondary}</p>}
       </div>
-      <Button type="button" variant="ghost" size="sm" onClick={onChange} aria-label={label} className="text-plum">
+      <Button type="button" variant="ghost" onClick={onChange} aria-label={label} className="-mr-3 text-plum">
         Cambiar
       </Button>
     </li>
@@ -386,7 +386,7 @@ function Confirmation({ orgName, sent }: { orgName: string; sent: Sent }) {
           {orgName} confirmará tu cita por correo a <span className="text-ink [overflow-wrap:anywhere]">{sent.email}</span>.
         </p>
       </div>
-      <div className="rounded-card border border-line bg-surface p-5">
+      <div className="rounded-card border border-transparent bg-surface p-5 shadow-border">
         <p className="font-display text-[2.25rem] leading-none tabular-nums">{formatTime(sent.start)}</p>
         <p className="mt-2">{formatDate(sent.start)}</p>
         <p className="mt-4 border-t border-line pt-4 font-medium">{sent.treatmentName}</p>

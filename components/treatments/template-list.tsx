@@ -63,7 +63,7 @@ export function TemplateList({
         return (
           <section key={category} className="flex flex-col gap-3">
             <h2 className="text-lg font-medium">{TREATMENT_CATEGORY_LABELS[category]}</h2>
-            <ul className="flex flex-col gap-2">
+            <ul className="divide-y divide-line border-y border-line">
               {templates.map((template) => (
                 <TemplateItem
                   key={template.key}
@@ -100,18 +100,18 @@ function TemplateItem({
   const durationId = `template-${template.key}-duration`;
 
   return (
-    <li className={cn("rounded-card border bg-surface transition-colors", selected ? "border-plum/40" : "border-line")}>
+    <li className="py-1">
       <button
         type="button"
         aria-pressed={selected}
         onClick={onToggle}
-        className="flex w-full items-start gap-3 rounded-card p-4 text-left hover:bg-porcelain/60"
+        className="-mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 rounded-lg p-3 text-left hover:bg-lilac/60"
       >
         <span
           aria-hidden
           className={cn(
             "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-            selected ? "border-plum bg-plum text-on-solid" : "border-ink-soft/40 bg-surface",
+            selected ? "border-plum bg-plum text-on-solid" : "border-field-line bg-surface",
           )}
         >
           {selected && <Check className="size-4" strokeWidth={2.5} />}
@@ -128,7 +128,7 @@ function TemplateItem({
           {owned && <span className="text-sm text-ink-soft">Ya está en tu catálogo</span>}
           {template.scope === "gray" && !selected && (
             <span className="flex items-center gap-1.5 text-sm text-amber">
-              <Info aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
+              <Info aria-hidden className="size-4 shrink-0" strokeWidth={1.5} />
               Revisa la normativa antes de ofrecerlo
             </span>
           )}
@@ -136,7 +136,7 @@ function TemplateItem({
       </button>
 
       {selected && (
-        <div className="flex flex-col gap-3 px-4 pb-4 sm:pl-13">
+        <div className="flex flex-col gap-3 pb-3 pl-9">
           {template.scope === "gray" && <GrayNotice />}
           <div className="grid max-w-sm grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">

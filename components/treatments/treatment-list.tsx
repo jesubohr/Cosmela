@@ -60,7 +60,7 @@ export function TreatmentList() {
             return (
               <section key={category} className="flex flex-col gap-3">
                 <h2 className="text-lg font-medium">{TREATMENT_CATEGORY_LABELS[category]}</h2>
-                <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+                <ul className="divide-y divide-line border-y border-line">
                   {items.map((treatment) => (
                     <TreatmentRow key={treatment._id} treatment={treatment} isAdmin={isAdmin} />
                   ))}
@@ -90,7 +90,7 @@ function TreatmentRow({ treatment, isAdmin }: { treatment: Treatment; isAdmin: b
     <li className="flex items-center">
       <Link
         href={`/tratamientos/${treatment._id}`}
-        className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2 pl-4 hover:bg-porcelain/60"
+        className="-ml-3 flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-lg py-2 pl-3 hover:bg-lilac/60"
       >
         <span
           aria-hidden
@@ -104,17 +104,17 @@ function TreatmentRow({ treatment, isAdmin }: { treatment: Treatment; isAdmin: b
             <span>{formatMoney(treatment.price)}</span>
             {treatment.bookableOnline && (
               <span className="inline-flex items-center" title="Disponible para reserva en línea">
-                <Globe aria-hidden className="size-4" strokeWidth={1.75} />
+                <Globe aria-hidden className="size-4" />
                 <span className="sr-only">Disponible para reserva en línea</span>
               </span>
             )}
             {!treatment.active && <span>Inactivo</span>}
           </span>
         </span>
-        {!isAdmin && <ChevronRight aria-hidden className="mr-4 size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />}
+        {!isAdmin && <ChevronRight aria-hidden className="mr-1 size-5 shrink-0 text-ink-soft" />}
       </Link>
       {isAdmin && (
-        <div className="flex min-h-16 items-center gap-2 px-4">
+        <div className="flex min-h-16 items-center gap-2 pl-4">
           <label htmlFor={`active-${treatment._id}`} className="text-sm text-ink-soft">
             Activo
           </label>

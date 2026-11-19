@@ -165,7 +165,7 @@ function BusinessForm({ org }: { org: Org }) {
             id="org-policy"
             value={policy ?? org.defaultPrivacyPolicy}
             onChange={(e) => setPolicy(e.target.value)}
-            className="max-h-[32rem] min-h-80 text-[0.9375rem] leading-relaxed"
+            className="max-h-[32rem] min-h-80 max-w-[70ch] text-[0.9375rem] leading-relaxed"
             style={{ fieldSizing: "fixed" }}
           />
           {policy !== null && (

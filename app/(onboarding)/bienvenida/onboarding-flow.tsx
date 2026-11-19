@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Store, UserRound } from "lucide-react";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -181,7 +181,7 @@ function Wizard({ initialName }: { initialName: string }) {
         {step === 0 && (
           <>
             {invitations?.map((invitation) => (
-              <div key={invitation.token} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
+              <div key={invitation.token} className="flex flex-col gap-3 rounded-card border border-transparent bg-surface p-4 shadow-border">
                 <p>{invitation.orgName} te invitó a su equipo.</p>
                 <Button asChild variant="secondary" className="self-start">
                   <Link href={`/invitacion/${invitation.token}`}>Ver invitación</Link>
@@ -195,10 +195,10 @@ function Wizard({ initialName }: { initialName: string }) {
                 aria-describedby={errors["kind-solo"] ? "kind-error" : undefined}
                 className="grid gap-3 sm:grid-cols-2"
               >
-                <KindOption id="kind-solo" icon={UserRound} selected={kind === "solo"} onSelect={() => setKind("solo")}>
+                <KindOption id="kind-solo" selected={kind === "solo"} onSelect={() => setKind("solo")}>
                   {ORG_KIND_LABELS.solo}
                 </KindOption>
-                <KindOption icon={Store} selected={kind === "salon"} onSelect={() => setKind("salon")}>
+                <KindOption selected={kind === "salon"} onSelect={() => setKind("salon")}>
                   {ORG_KIND_LABELS.salon}
                 </KindOption>
               </div>
@@ -312,7 +312,7 @@ function ProgressDots({ step }: { step: number }) {
           key={label}
           aria-current={index === step ? "step" : undefined}
           className={cn(
-            "h-2 rounded-full transition-all",
+            "h-2 rounded-full transition-[width,background-color]",
             index === step ? "w-6 bg-plum" : "w-2",
             index < step && "bg-plum/60",
             index > step && "bg-line",
@@ -327,13 +327,11 @@ function ProgressDots({ step }: { step: number }) {
 
 function KindOption({
   id,
-  icon: Icon,
   selected,
   onSelect,
   children,
 }: {
   id?: string;
-  icon: typeof Store;
   selected: boolean;
   onSelect: () => void;
   children: ReactNode;
@@ -346,19 +344,12 @@ function KindOption({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "flex min-h-24 items-center gap-4 rounded-card border-2 bg-surface p-4 text-left text-lg font-medium transition-colors",
-        selected ? "border-plum bg-lilac text-plum" : "border-line hover:border-plum/30",
+        "flex min-h-20 items-center justify-between gap-4 rounded-card border-2 p-4 text-left text-lg font-medium transition-colors",
+        selected ? "border-plum bg-lilac text-plum" : "border-line bg-surface hover:bg-lilac/60",
       )}
     >
-      <span
-        className={cn(
-          "flex size-12 shrink-0 items-center justify-center rounded-full",
-          selected ? "bg-surface" : "bg-porcelain",
-        )}
-      >
-        <Icon className="size-6 text-plum" strokeWidth={1.75} />
-      </span>
       {children}
+      {selected && <Check aria-hidden className="size-6 shrink-0" strokeWidth={2.5} />}
     </button>
   );
 }

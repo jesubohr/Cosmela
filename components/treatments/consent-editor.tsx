@@ -72,7 +72,7 @@ export function ConsentEditor({
               onClick={() => insert(token)}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-base hover:bg-lilac"
             >
-              <Plus aria-hidden className="size-4 text-plum" strokeWidth={2} />
+              <Plus aria-hidden className="size-4 text-plum" strokeWidth={1.5} />
               {label}
             </button>
           ))}
@@ -90,7 +90,7 @@ export function ConsentEditor({
         <h3 id="consent-preview" className="font-medium">
           Vista previa
         </h3>
-        <div className="rounded-card border border-line bg-surface p-4 leading-relaxed lg:p-6">
+        <div className="rounded-card border border-transparent bg-surface p-4 leading-relaxed shadow-border lg:p-6">
           <ConsentPreview text={value} values={previewValues} />
         </div>
       </section>

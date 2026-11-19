@@ -96,7 +96,7 @@ export function PlanSettings() {
     return (
       <div aria-busy className="flex flex-col gap-4">
         <Skeleton className="h-7 w-64" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-32 w-full" />
       </div>
     );
   }
@@ -118,7 +118,7 @@ export function PlanSettings() {
 
       {isAdmin && (
         <>
-          <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+          <ul className="divide-y divide-line border-y border-line">
             {PLANS.map((plan) => (
               <PlanRow
                 key={plan}
@@ -174,35 +174,35 @@ function PlanRow({
   }
 
   return (
-    <li className="flex flex-col gap-3 p-4">
+    <li className="flex flex-col gap-3 py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="font-medium">{name}</span>
-          {(recommended || current) && (
-            <span className="rounded-full bg-lilac px-2.5 py-0.5 text-sm font-medium text-plum">
-              {current ? "Plan actual" : "Recomendado"}
-            </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-medium">{name}</span>
+            {(recommended || current) && (
+              <span className="rounded-full bg-lilac px-2.5 py-0.5 text-sm font-medium text-plum">
+                {current ? "Plan actual" : "Recomendado"}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-ink-soft">{description}</p>
+        </div>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          {price === undefined ? (
+            <Skeleton className="h-5 w-28" />
+          ) : (
+            price !== null && (
+              <span className="tabular-nums">
+                {formatMoney(price)} <span className="text-ink-soft">/ mes</span>
+              </span>
+            )
+          )}
+          {canChoose && (
+            <Button variant={recommended ? "default" : "secondary"} disabled={busy || !accepted || price == null} onClick={() => void choose()}>
+              {busy ? "Abriendo…" : "Elegir plan"}
+            </Button>
           )}
         </div>
-        <p className="text-sm text-ink-soft">{description}</p>
-      </div>
-      <div className="flex items-center justify-between gap-4 sm:justify-end">
-        {price === undefined ? (
-          <Skeleton className="h-5 w-28" />
-        ) : (
-          price !== null && (
-            <span className="tabular-nums">
-              {formatMoney(price)} <span className="text-ink-soft">/ mes</span>
-            </span>
-          )
-        )}
-        {canChoose && (
-          <Button variant={recommended ? "default" : "secondary"} disabled={busy || !accepted || price == null} onClick={() => void choose()}>
-            {busy ? "Abriendo…" : "Elegir plan"}
-          </Button>
-        )}
-      </div>
       </div>
       {canChoose && price != null && (
         <div className="flex flex-col gap-2 text-sm">
@@ -210,11 +210,11 @@ function PlanRow({
             <Checkbox checked={accepted} onCheckedChange={value => setAccepted(value === true)} aria-label={`Autorizar suscripción ${name}`} />
             <span>{checkoutAuthorizationLabel(plan, price)}</span>
           </label>
-          <p className="text-ink-soft">Polar actúa como vendedor y procesa el pago. La prueba no genera un cobro por sí sola. Puedes cancelar futuras renovaciones en Administrar suscripción.</p>
-          <div className="flex flex-wrap gap-4">
-            <Link href="/terminos" target="_blank" className="text-plum underline">Términos</Link>
-            <Link href="/reembolsos" target="_blank" className="text-plum underline">Cancelaciones y reembolsos</Link>
-            <a href="https://polar.sh/legal/checkout-buyer-terms" target="_blank" rel="noreferrer" className="text-plum underline">Condiciones de Polar</a>
+          <p className="max-w-[70ch] text-ink-soft">Polar actúa como vendedor y procesa el pago. La prueba no genera un cobro por sí sola. Puedes cancelar futuras renovaciones en Administrar suscripción.</p>
+          <div className="flex flex-wrap gap-x-4">
+            <Link href="/terminos" target="_blank" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Términos</Link>
+            <Link href="/reembolsos" target="_blank" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Cancelaciones y reembolsos</Link>
+            <a href="https://polar.sh/legal/checkout-buyer-terms" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-plum underline underline-offset-4">Condiciones de Polar</a>
           </div>
         </div>
       )}

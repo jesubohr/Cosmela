@@ -30,7 +30,7 @@ export function BusinessHeader({
       <div className="flex items-center gap-4">
         {logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- short-lived signed R2 URL
-          <img src={logoUrl} alt="" className="size-14 shrink-0 rounded-card border border-line bg-surface object-cover" />
+          <img src={logoUrl} alt="" className="size-14 shrink-0 rounded-card object-cover" />
         )}
         <div className="min-w-0">
           <h1 className="font-display text-[1.75rem] leading-tight text-balance sm:text-[2.25rem]">{name}</h1>
@@ -42,7 +42,7 @@ export function BusinessHeader({
               rel="noreferrer"
               className="mt-1 inline-flex min-h-11 items-center gap-1.5 font-medium text-plum underline-offset-4 hover:underline"
             >
-              <MessageCircle aria-hidden className="size-4" strokeWidth={1.75} />
+              <MessageCircle aria-hidden className="size-4" />
               WhatsApp
             </a>
           )}
@@ -65,10 +65,10 @@ export function Step({ title, children, className, id }: { title: string; childr
   );
 }
 
-/** White list with hairline dividers (DESIGN.md: lists are lists). */
+/** Rows with hairline dividers (DESIGN.md: lists are lists). */
 export function RowList({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <ul aria-label={label} className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+    <ul aria-label={label} className="divide-y divide-line border-y border-line">
       {children}
     </ul>
   );

@@ -81,11 +81,11 @@ function SettingsNav({ activeHref }: { activeHref: string }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-lg px-3 font-medium",
+                  "flex min-h-11 items-center gap-3 rounded-lg px-3 font-medium transition-colors",
                   active ? "bg-lilac text-plum" : "text-ink hover:bg-lilac/60",
                 )}
               >
-                <Icon className="size-5 shrink-0" strokeWidth={1.75} />
+                <Icon className="size-5 shrink-0" />
                 {label}
               </Link>
             </li>
@@ -97,7 +97,7 @@ function SettingsNav({ activeHref }: { activeHref: string }) {
             onClick={() => void signOut()}
             className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left font-medium text-rose hover:bg-rose-soft"
           >
-            <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
+            <LogOut className="size-5 shrink-0" />
             Cerrar sesión
           </button>
         </li>
@@ -113,13 +113,13 @@ export function SettingsMenu() {
 
   return (
     <div className="flex flex-col gap-6">
-      <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+      <ul className="divide-y divide-line border-y border-line">
         {sections.map(({ href, label, icon: Icon }) => (
           <li key={href}>
-            <Link href={href} className="flex min-h-14 items-center gap-3 px-4 hover:bg-porcelain">
-              <Icon className="size-5 text-plum" strokeWidth={1.75} />
+            <Link href={href} className="-mx-3 flex min-h-14 items-center gap-3 rounded-lg px-3 hover:bg-lilac/60">
+              <Icon className="size-5 text-plum" />
               <span className="flex-1 font-medium">{label}</span>
-              <ChevronRight className="size-5 text-ink-soft" strokeWidth={1.75} />
+              <ChevronRight className="size-5 text-ink-soft" />
             </Link>
           </li>
         ))}
@@ -127,9 +127,9 @@ export function SettingsMenu() {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="flex min-h-14 items-center gap-3 rounded-card border border-line bg-surface px-4 text-left font-medium text-rose hover:bg-rose-soft"
+        className="-mx-3 flex min-h-14 items-center gap-3 rounded-lg px-3 text-left font-medium text-rose hover:bg-rose-soft"
       >
-        <LogOut className="size-5" strokeWidth={1.75} />
+        <LogOut className="size-5" />
         Cerrar sesión
       </button>
     </div>

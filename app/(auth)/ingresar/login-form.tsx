@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useConvexAuth } from "convex/react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
@@ -34,6 +35,23 @@ function verifyErrorMessage(error: AuthError) {
   }
   if (error?.status === 429) return "Hiciste varios intentos seguidos. Espera un minuto e intenta de nuevo.";
   return "No pudimos verificar el código. Revisa tu conexión e intenta de nuevo.";
+}
+
+function ConsentRow({ id, checked, onChange, children }: { id: string; checked: boolean; onChange: (checked: boolean) => void; children: ReactNode }) {
+  return (
+    <div className="flex min-h-11 items-start gap-3 py-2">
+      <Checkbox id={id} checked={checked} onCheckedChange={(value) => onChange(value === true)} className="mt-0.5 size-6" />
+      <label htmlFor={id} className="cursor-pointer leading-normal">{children}</label>
+    </div>
+  );
+}
+
+function LegalLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} target="_blank" className="text-plum underline underline-offset-4">
+      {children}
+    </Link>
+  );
 }
 
 export function LoginForm() {
@@ -127,7 +145,6 @@ export function LoginForm() {
   if (step === "email") {
     return (
       <form onSubmit={submitEmail} noValidate className="flex flex-col gap-6">
-        <p className="text-sm text-ink-soft">Cosmela S.A., NIT 99009900-1, utiliza tu correo y los datos de tu cuenta para permitir el acceso, prestar el servicio, proteger la cuenta y atender solicitudes. Puedes ejercer tus derechos en <a className="underline" href="mailto:ayuda@cosmela.app">ayuda@cosmela.app</a>.</p>
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[1.75rem] leading-tight lg:text-[2.25rem]">Ingresa a Cosmela</h1>
           <p className="text-ink-soft">Te enviaremos un código a tu correo. No necesitas contraseña.</p>
@@ -155,14 +172,24 @@ export function LoginForm() {
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-3 text-sm">
-          <label className="flex items-start gap-2"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /> <span>{ACCOUNT_TERMS_LABEL} <Link className="text-plum underline" href="/terminos" target="_blank">Leer términos</Link></span></label>
-          <label className="flex items-start gap-2"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} /> <span>{ACCOUNT_PRIVACY_LABEL} <Link className="text-plum underline" href="/privacidad" target="_blank">Leer política</Link></span></label>
-          <label className="flex items-start gap-2"><input type="checkbox" checked={adult} onChange={(event) => setAdult(event.target.checked)} /> <span>{ADULT_LABEL}</span></label>
+        <div className="flex flex-col">
+          <ConsentRow id="login-terms" checked={terms} onChange={setTerms}>
+            {ACCOUNT_TERMS_LABEL} <LegalLink href="/terminos">Leer términos</LegalLink>
+          </ConsentRow>
+          <ConsentRow id="login-privacy" checked={privacy} onChange={setPrivacy}>
+            {ACCOUNT_PRIVACY_LABEL} <LegalLink href="/privacidad">Leer política</LegalLink>
+          </ConsentRow>
+          <ConsentRow id="login-adult" checked={adult} onChange={setAdult}>
+            {ADULT_LABEL}
+          </ConsentRow>
         </div>
         <Button type="submit" size="lg" disabled={pending}>
           {pending ? "Enviando…" : "Enviar código"}
         </Button>
+        <p className="text-sm text-ink-soft">
+          Cosmela S.A., NIT 99009900-1, utiliza tu correo y los datos de tu cuenta para permitir el acceso, prestar el servicio, proteger la cuenta y atender solicitudes. Puedes ejercer tus derechos en{" "}
+          <a className="underline underline-offset-4" href="mailto:ayuda@cosmela.app">ayuda@cosmela.app</a>.
+        </p>
       </form>
     );
   }

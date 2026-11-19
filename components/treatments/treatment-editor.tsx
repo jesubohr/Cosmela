@@ -173,7 +173,7 @@ function Editor({ treatment }: { treatment: Treatment }) {
       />
       <PageBody className="flex flex-col gap-6">
         {!treatment.active && (
-          <p className="rounded-lg bg-porcelain px-3 py-2 text-ink-soft ring-1 ring-line">
+          <p className="max-w-[70ch] rounded-lg border border-line bg-porcelain px-3 py-2 text-ink-soft">
             Este tratamiento está inactivo: no aparece al agendar ni en tu página de reservas.
           </p>
         )}
@@ -223,7 +223,7 @@ function Editor({ treatment }: { treatment: Treatment }) {
             {isAdmin ? (
               <ConsentEditor value={draft.consentText} onChange={(text) => set("consentText", text)} previewValues={previewValues} />
             ) : (
-              <div className="rounded-card border border-line bg-surface p-4 leading-relaxed lg:p-6">
+              <div className="rounded-card border border-transparent bg-surface p-4 leading-relaxed shadow-border lg:p-6">
                 <ConsentPreview text={treatment.consentText} values={previewValues} />
               </div>
             )}
@@ -320,7 +320,7 @@ function GeneralForm({ draft, set, grayScope }: { draft: Draft; set: SetDraft; g
         </span>
         <ColorPicker value={draft.color} onChange={(color) => set("color", color)} labelledBy="treatment-color" />
       </div>
-      <div className="flex items-center justify-between gap-4 rounded-card border border-line bg-surface px-4 py-3">
+      <div className="flex min-h-11 items-center justify-between gap-4">
         <div className="flex flex-col">
           <Label htmlFor="treatment-online" className="text-base">
             Disponible para reserva en línea
@@ -355,9 +355,9 @@ function GeneralSummary({ treatment, grayScope }: { treatment: Treatment; graySc
     <div className="flex max-w-2xl flex-col gap-4">
       {grayScope && <GrayNotice />}
       {treatment.description && <p className="max-w-[70ch]">{treatment.description}</p>}
-      <dl className="divide-y divide-line rounded-card border border-line bg-surface">
+      <dl className="divide-y divide-line border-y border-line">
         {rows.map(([label, value]) => (
-          <div key={label} className="flex min-h-12 items-center justify-between gap-4 px-4 py-2">
+          <div key={label} className="flex min-h-12 items-center justify-between gap-4 py-2">
             <dt className="text-ink-soft">{label}</dt>
             <dd className="text-right tabular-nums">{value}</dd>
           </div>
@@ -487,7 +487,7 @@ function TreatmentActions({ treatment }: { treatment: Treatment }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Más acciones">
-            <EllipsisVertical strokeWidth={1.75} />
+            <EllipsisVertical />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -501,16 +501,16 @@ function TreatmentActions({ treatment }: { treatment: Treatment }) {
               })
             }
           >
-            <Copy className="size-5" strokeWidth={1.75} />
+            <Copy className="size-5" />
             Duplicar
           </DropdownMenuItem>
           <DropdownMenuItem className="min-h-11 text-base" onSelect={() => void toggleActive()}>
-            <Power className="size-5" strokeWidth={1.75} />
+            <Power className="size-5" />
             {treatment.active ? "Desactivar" : "Activar"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="min-h-11 text-base text-rose focus:text-rose" onSelect={() => setConfirming(true)}>
-            <Trash2 className="size-5 text-rose" strokeWidth={1.75} />
+            <Trash2 className="size-5 text-rose" />
             Eliminar
           </DropdownMenuItem>
         </DropdownMenuContent>

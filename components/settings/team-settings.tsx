@@ -41,7 +41,7 @@ export function InviteButton() {
   return (
     <>
       <Button onClick={() => setOpen(true)}>
-        <UserPlus strokeWidth={1.75} />
+        <UserPlus />
         Invitar profesional
       </Button>
       <InviteDialog open={open} onOpenChange={setOpen} />
@@ -66,13 +66,13 @@ export function TeamSettings() {
   return (
     <div className="flex flex-col gap-10">
       <SettingsSection title="Profesionales">
-        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+        <ul className="divide-y divide-line border-y border-line">
           {members.map((member) => (
             <li key={member._id}>
               <button
                 type="button"
                 onClick={() => setEditing(member)}
-                className="flex min-h-16 w-full items-center gap-3 px-4 py-2 text-left hover:bg-porcelain/60"
+                className="-mx-3 flex min-h-16 w-[calc(100%+1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-lilac/60"
               >
                 <InitialsAvatar name={member.name} color={member.color} className={cn(!member.active && "opacity-50")} />
                 <span className="flex min-w-0 flex-1 flex-col">
@@ -85,7 +85,7 @@ export function TeamSettings() {
                   <span>{ROLE_LABELS[member.role]}</span>
                   {!member.active && <span>Inactivo</span>}
                 </span>
-                <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" strokeWidth={1.75} />
+                <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-soft" />
               </button>
             </li>
           ))}
@@ -96,7 +96,7 @@ export function TeamSettings() {
         {invitations.length === 0 ? (
           <EmptyState className="py-0" message="No hay invitaciones pendientes." />
         ) : (
-          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+          <ul className="divide-y divide-line border-y border-line">
             {invitations.map((invitation) => (
               <InvitationRow key={invitation._id} invitation={invitation} />
             ))}
@@ -215,7 +215,7 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
   }
 
   return (
-    <li className="flex min-h-16 items-center gap-3 py-2 pl-4 pr-2">
+    <li className="flex min-h-16 items-center gap-3 py-2">
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium">{invitation.email}</span>
         <span className="text-sm text-ink-soft">
@@ -225,8 +225,8 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={`Acciones para ${invitation.email}`}>
-            <EllipsisVertical strokeWidth={1.75} />
+          <Button variant="ghost" size="icon" className="-mr-2" aria-label={`Acciones para ${invitation.email}`}>
+            <EllipsisVertical />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -234,7 +234,7 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
             className="min-h-11 text-base"
             onSelect={() => void run(() => resend({ id: invitation._id }), "Invitación reenviada")}
           >
-            <Send className="size-5" strokeWidth={1.75} />
+            <Send className="size-5" />
             Reenviar
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -246,14 +246,14 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
               )
             }
           >
-            <Copy className="size-5" strokeWidth={1.75} />
+            <Copy className="size-5" />
             Copiar enlace
           </DropdownMenuItem>
           <DropdownMenuItem
             className="min-h-11 text-base text-rose focus:text-rose"
             onSelect={() => void run(() => cancel({ id: invitation._id }), "Invitación cancelada")}
           >
-            <X className="size-5 text-rose" strokeWidth={1.75} />
+            <X className="size-5 text-rose" />
             Cancelar invitación
           </DropdownMenuItem>
         </DropdownMenuContent>

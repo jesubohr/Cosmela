@@ -186,7 +186,7 @@ export function DetailsForm({
         </Link>
       </div>
 
-      <label htmlFor="booking-adult" className="flex items-start gap-3">
+      <label htmlFor="booking-adult" className="flex min-h-11 items-start gap-3 py-2">
         <Checkbox
           id="booking-adult"
           checked={details.adult}
@@ -228,7 +228,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={id} className="text-sm">
+      <Label htmlFor={id} className="text-base">
         {label}
       </Label>
       {children}

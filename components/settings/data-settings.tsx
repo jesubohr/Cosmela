@@ -92,7 +92,7 @@ export function DataSettings() {
       >
         {isAdmin && (
           <Button variant="secondary" className="self-start" disabled={exporting} onClick={() => void exportClients()}>
-            <Download strokeWidth={1.75} />
+            <Download />
             {exporting ? "Exportando…" : "Exportar clientes"}
           </Button>
         )}

@@ -101,7 +101,7 @@ function BookingForm({ org, members }: { org: Org; members: Member[] }) {
   return (
     <div className="flex flex-col gap-10">
       <SettingsSection title="Página de reservas" description="Tus clientes piden cita en línea y tú la confirmas.">
-        <div className="flex items-center justify-between gap-4 rounded-card border border-line bg-surface px-4 py-3">
+        <div className="flex min-h-11 items-center justify-between gap-4">
           <Label htmlFor="booking-enabled" className="text-base">
             Recibir reservas en línea
           </Label>
@@ -112,7 +112,7 @@ function BookingForm({ org, members }: { org: Org; members: Member[] }) {
           <p className="rounded-lg border border-line bg-surface px-3 py-2.5 text-ink [overflow-wrap:anywhere]">{url}</p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => void copy()}>
-              <Copy strokeWidth={1.75} />
+              <Copy />
               Copiar enlace
             </Button>
             <Button asChild variant="secondary">
@@ -122,13 +122,13 @@ function BookingForm({ org, members }: { org: Org; members: Member[] }) {
                 rel="noreferrer"
                 onClick={() => void markShared({ step: "booking" })}
               >
-                <MessageCircle strokeWidth={1.75} />
+                <MessageCircle />
                 Compartir por WhatsApp
               </a>
             </Button>
             <Button asChild variant="ghost">
               <a href={url} target="_blank" rel="noreferrer">
-                <ExternalLink strokeWidth={1.75} />
+                <ExternalLink />
                 Abrir página
               </a>
             </Button>
@@ -179,11 +179,11 @@ function BookingForm({ org, members }: { org: Org; members: Member[] }) {
       </SettingsSection>
 
       <SettingsSection title="Profesionales que aceptan reservas">
-        <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+        <ul className="divide-y divide-line border-y border-line">
           {members.map((member) => {
             const id = `bookable-${member._id}`;
             return (
-              <li key={member._id} className="flex min-h-16 items-center gap-3 px-4 py-2">
+              <li key={member._id} className="flex min-h-16 items-center gap-3 py-2">
                 <InitialsAvatar name={member.name} color={member.color} />
                 <Label htmlFor={id} className="min-w-0 flex-1 text-base">
                   <span className="truncate">{member.isMe ? `${member.name} (tú)` : member.name}</span>

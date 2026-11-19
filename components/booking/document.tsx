@@ -21,8 +21,8 @@ export function DocumentPage({
           href={back.href}
           className={
             back.display
-              ? "self-start font-display text-[1.375rem] leading-none text-plum"
-              : "self-start text-sm font-medium text-plum underline-offset-4 hover:underline"
+              ? "inline-flex min-h-11 items-center self-start font-display text-[1.375rem] leading-none text-plum"
+              : "inline-flex min-h-11 items-center self-start text-sm font-medium text-plum underline-offset-4 hover:underline"
           }
         >
           {back.label}

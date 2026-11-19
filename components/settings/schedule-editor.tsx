@@ -63,7 +63,7 @@ export function ScheduleEditor({ value, onChange, error, disabled }: ScheduleEdi
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+      <ul className="divide-y divide-line border-y border-line">
         {WEEK_DAYS.map(({ day, label }) => {
           const ranges = rangesOf(value, day);
           const open = ranges.length > 0;
@@ -72,7 +72,7 @@ export function ScheduleEditor({ value, onChange, error, disabled }: ScheduleEdi
           const switchId = `schedule-day-${day}`;
 
           return (
-            <li key={day} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:gap-6">
+            <li key={day} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-6">
               <div className="flex min-h-11 items-center justify-between gap-3 sm:w-36 sm:shrink-0">
                 <label htmlFor={switchId} className="font-medium">
                   {label}
@@ -129,7 +129,7 @@ export function ScheduleEditor({ value, onChange, error, disabled }: ScheduleEdi
                             )
                           }
                         >
-                          <X strokeWidth={1.75} />
+                          <X />
                         </Button>
                       )}
                     </div>

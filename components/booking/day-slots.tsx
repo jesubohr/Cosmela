@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { inBogota } from "@/convex/lib/time";
+import { handleRadioKeys } from "@/components/forms/radio-keys";
 import { cn } from "@/lib/utils";
 
 type Day = { date: string; slots: number[] };
@@ -39,6 +40,7 @@ export function DaySlots({
       <div
         role="radiogroup"
         aria-label="Día"
+        onKeyDown={handleRadioKeys}
         className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0"
       >
         {days.map((day) => {
@@ -50,17 +52,18 @@ export function DaySlots({
               type="button"
               role="radio"
               aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
               aria-label={format(calendar, "EEEE d 'de' MMMM", { locale: es })}
               onClick={() => onDateChange(day.date)}
               className={cn(
-                "flex h-[76px] w-16 shrink-0 snap-start sm:w-auto flex-col items-center justify-center gap-0.5 rounded-lg border transition-colors",
+                "flex h-[76px] w-16 shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-lg border transition-colors sm:w-auto",
                 selected
                   ? "border-plum bg-plum text-on-solid"
-                  : "border-line bg-surface hover:border-plum/40 hover:bg-porcelain",
+                  : "border-line bg-surface hover:border-plum/40 hover:bg-lilac/60",
               )}
             >
               <span className={cn("text-sm", !selected && "text-ink-soft")}>{short(calendar, "EEE")}</span>
-              <span className="font-display text-[1.375rem] leading-none tabular-nums">{calendar.getDate()}</span>
+              <span className="text-xl leading-none font-medium tabular-nums">{calendar.getDate()}</span>
               <span className={cn("text-sm", !selected && "text-ink-soft")}>{short(calendar, "MMM")}</span>
             </button>
           );

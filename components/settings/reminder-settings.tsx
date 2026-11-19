@@ -15,7 +15,7 @@ export function ReminderSettings() {
     if (current) store.setQuery(api.orgs.get, {}, { ...current, reminders: { email } });
   });
 
-  if (!org) return <Skeleton aria-busy className="h-20 w-full" />;
+  if (!org) return <Skeleton aria-busy className="h-16 w-full" />;
 
   async function toggle(email: boolean) {
     try {
@@ -27,9 +27,9 @@ export function ReminderSettings() {
   }
 
   return (
-    <div className="flex items-start justify-between gap-4 rounded-card border border-line bg-surface px-4 py-4">
+    <div className="flex items-start justify-between gap-4">
       <div className="flex flex-col gap-1">
-        <Label htmlFor="reminder-email" className="text-base">
+        <Label htmlFor="reminder-email" className="text-base leading-snug">
           Recordatorio por correo el día anterior
         </Label>
         <p id="reminder-email-help" className="text-sm text-ink-soft">
