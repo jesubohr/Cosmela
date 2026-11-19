@@ -15,8 +15,9 @@ import { clientRecordGuidePath, homeShareImagePath, siteUrl } from "@/lib/seo";
 import "@/components/landing/landing.css";
 
 const title = "Software para centros de estética y cosmetología | Cosmela";
+const socialTitle = "Tu cabina virtual, sin tanto papeleo | Cosmela";
 const description =
-  "Cosmela reúne agenda de citas, reservas en línea, fichas de cosmetología y consentimientos informados para profesionales y centros de estética en Colombia.";
+  "Cosmela es tu cabina virtual para estética y cosmetología en Colombia. Consulta las citas del día, las fichas de tus clientes y sus próximos tratamientos en un solo lugar.";
 const shareImage = {
   url: homeShareImagePath,
   width: 1200,
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   other: { "page-type": "software", "site-kind": "software" },
   openGraph: {
-    title,
+    title: socialTitle,
     description,
     type: "website",
     url: "/",
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title,
+    title: socialTitle,
     description,
     images: [shareImage],
   },
@@ -125,13 +126,10 @@ export default function Home() {
           <div className={styles.wrap}>
             <div className={styles.heroGrid}>
               <div className={styles.heroText}>
-                <h1 id="hero-h">
-                  Software para centros de estética
-                </h1>
+                <h1 id="hero-h">Tu cabina virtual, sin tanto papeleo</h1>
                 <p className={styles.lead}>
-                  Organiza citas, fichas de clientes y consentimientos informados
-                  en un solo lugar. Para profesionales de la cosmetología y
-                  equipos en Colombia.
+                  Consulta las citas del día, las fichas de tus clientes y sus
+                  próximos tratamientos en un solo lugar.
                 </p>
                 <div className={styles.actions}>
                   <Link className={styles.primary} href="/ingresar">
