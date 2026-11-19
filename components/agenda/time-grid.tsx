@@ -84,10 +84,10 @@ export function TimeGrid({ columns, startHour, endHour, now, compact, onSlot, on
   }, [days]);
 
   return (
-    <div className="border-y border-line bg-surface sm:rounded-xl sm:border">
+    <div className="border-y border-line bg-surface sm:overflow-clip sm:rounded-card sm:border">
       {hasHeader && (
-        <div className="sticky top-14 z-10 flex border-b border-line bg-surface sm:rounded-t-xl lg:top-16">
-          <div className="w-14 shrink-0 sm:w-16" />
+        <div className="sticky top-14 z-10 flex border-b border-line bg-surface lg:top-16">
+          <div className="w-16 shrink-0" />
           <div className="grid flex-1" style={template}>
             {columns.map((column) => (
               <div key={column.key} className="min-w-0 border-l border-line px-1 py-2 sm:px-2">
@@ -98,11 +98,11 @@ export function TimeGrid({ columns, startHour, endHour, now, compact, onSlot, on
         </div>
       )}
       <div ref={body} className="flex">
-        <div className="relative w-14 shrink-0 sm:w-16" style={{ height }} aria-hidden>
+        <div className="relative w-16 shrink-0" style={{ height }} aria-hidden>
           {hours.slice(1).map((hour) => (
             <span
               key={hour}
-              className="absolute right-1.5 -translate-y-1/2 text-xs whitespace-nowrap text-ink-soft tabular-nums sm:right-2 sm:text-sm"
+              className="absolute right-1.5 -translate-y-1/2 text-sm whitespace-nowrap text-ink-soft tabular-nums"
               style={{ top: (hour - startHour) * HOUR_PX }}
             >
               {formatHour(hour)}
@@ -299,9 +299,9 @@ function AppointmentCard({
       onClick={onClick}
       aria-label={`${formatTime(appointment.start)}, ${appointment.clientName}, ${appointment.treatmentName}, ${APPOINTMENT_STATUS_LABELS[status]}`}
       className={cn(
-        "absolute z-[4] flex overflow-hidden rounded-md text-left leading-tight transition-shadow hover:shadow-float focus-visible:z-10",
+        "absolute z-[4] flex overflow-hidden rounded-md text-left leading-tight hover:brightness-95 focus-visible:z-10",
         short ? "items-center gap-1.5" : "flex-col",
-        compact ? "px-1 py-0.5" : short ? "pr-1.5 pl-2.5" : "py-1 pr-1.5 pl-2.5",
+        compact ? "px-1 py-0.5" : short ? "pr-1.5 pl-2.5" : "pt-0.5 pr-1.5 pb-0.5 pl-2.5",
         requested && "border border-dashed bg-surface",
         muted && "opacity-60",
       )}
@@ -309,15 +309,15 @@ function AppointmentCard({
     >
       {!compact && !requested && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: strong }} />}
       {status === "in_progress" && (
-        <span aria-hidden className="absolute top-1.5 right-1.5 size-2 animate-pulse rounded-full" style={{ backgroundColor: strong }} />
+        <span aria-hidden className="absolute top-1.5 right-1.5 size-2 rounded-full" style={{ backgroundColor: strong }} />
       )}
       {!compact && (
-        <span className="font-display shrink-0 text-sm tabular-nums" style={{ color: strong }}>
+        <span className={cn("font-display shrink-0 tabular-nums", short ? "text-sm/5" : "text-base/5")} style={{ color: strong }}>
           {time}
         </span>
       )}
-      <span className={cn("truncate text-sm font-medium text-ink", struck && "line-through")}>{name}</span>
-      {!compact && heightPx >= 56 && <span className="truncate text-sm text-ink-soft">{appointment.treatmentName}</span>}
+      <span className={cn("shrink-0 truncate text-sm/[1.125rem] font-medium text-ink", struck && "line-through")}>{name}</span>
+      {!compact && heightPx >= 56 && <span className="shrink-0 truncate text-sm/[1.125rem] text-ink-soft">{appointment.treatmentName}</span>}
     </button>
   );
 }

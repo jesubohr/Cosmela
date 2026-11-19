@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Ban, CalendarClock, MessageCircle, UserX, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { TimeText } from "@/components/dashboard/parts";
 import { errorText } from "@/components/forms/error-message";
 import { AlertChips } from "@/components/shared/alert-chips";
 import { useViewer } from "@/components/shell/viewer";
@@ -70,7 +71,7 @@ export function AppointmentDetail({ appointmentId, actions }: { appointmentId: I
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <p className="font-display text-[2.25rem] leading-none tabular-nums">{formatTime(appointment.start)}</p>
+        <TimeText ms={appointment.start} className="text-[2.25rem] leading-none" periodClassName="text-base" />
         <p className="text-ink-soft first-letter:uppercase">
           {formatDate(appointment.start)}, hasta las {formatTime(appointment.end)}
         </p>
@@ -86,7 +87,7 @@ export function AppointmentDetail({ appointmentId, actions }: { appointmentId: I
       </div>
 
       {appointment.contactEmail && appointment.contactEmail !== client.email && (
-        <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-card border border-line bg-surface px-4 py-3">
           <div className="flex flex-col gap-0.5">
             <p className="text-sm text-ink-soft">Correo de la solicitud</p>
             <p className="[overflow-wrap:anywhere]">{appointment.contactEmail}</p>
@@ -103,7 +104,7 @@ export function AppointmentDetail({ appointmentId, actions }: { appointmentId: I
         </div>
       )}
 
-      <dl className="divide-y divide-line rounded-xl border border-line bg-surface">
+      <dl className="divide-y divide-line rounded-card border border-line bg-surface">
         <Row label="Tratamiento">
           <span className="inline-flex items-center gap-2">
             <span aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: STAFF_COLORS[treatment.color].strong }} />
@@ -198,10 +199,10 @@ function ActionRow({
   disabled?: boolean;
   tone?: "rose";
 }) {
-  const className = `flex min-h-12 w-full items-center gap-3 rounded-lg px-2 text-left font-medium hover:bg-lilac disabled:opacity-50 ${tone === "rose" ? "text-rose hover:bg-rose-soft" : "text-ink"}`;
+  const className = `-mx-2 flex min-h-12 w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 text-left font-medium hover:bg-lilac disabled:opacity-50 ${tone === "rose" ? "text-rose hover:bg-rose-soft" : "text-ink"}`;
   const content = (
     <>
-      <Icon aria-hidden className={`size-5 ${tone === "rose" ? "" : "text-plum"}`} strokeWidth={1.75} />
+      <Icon aria-hidden className={`size-5 ${tone === "rose" ? "" : "text-plum"}`} />
       {label}
     </>
   );

@@ -15,6 +15,7 @@ import { api } from "@/convex/_generated/api";
 import { bogotaDateKey } from "@/convex/lib/time";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 type Report = FunctionReturnType<typeof api.reports.month>;
 
@@ -51,7 +52,7 @@ function AdminReports() {
     <div className="flex max-w-3xl flex-col gap-10">
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" aria-label="Mes anterior" onClick={() => setMonth(shiftMonth(month, -1))}>
-          <ChevronLeft strokeWidth={1.75} />
+          <ChevronLeft />
         </Button>
         <h2 className="min-w-44 text-center text-[1.125rem] font-medium" aria-live="polite">
           {monthLabel(month)}
@@ -63,7 +64,7 @@ function AdminReports() {
           disabled={month >= current}
           onClick={() => setMonth(shiftMonth(month, 1))}
         >
-          <ChevronRight strokeWidth={1.75} />
+          <ChevronRight />
         </Button>
       </div>
 
@@ -71,11 +72,13 @@ function AdminReports() {
         <ReportSkeleton />
       ) : (
         <>
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line">
-            <Figure label="Ingresos recibidos" value={formatMoney(report.income)} />
-            <Figure label="Citas atendidas" value={String(report.completed)} />
-            <Figure label="Clientes nuevos" value={String(report.newClients)} />
-            <Figure label="Saldo por cobrar" value={formatMoney(report.balance)} hint="A hoy" />
+          <dl className="flex flex-col gap-6">
+            <Figure label="Ingresos recibidos" value={formatMoney(report.income)} large />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 border-t border-line pt-6 sm:grid-cols-3">
+              <Figure label="Citas atendidas" value={String(report.completed)} />
+              <Figure label="Clientes nuevos" value={String(report.newClients)} />
+              <Figure label="Saldo por cobrar" value={formatMoney(report.balance)} hint="A hoy" className="col-span-2 sm:col-span-1" />
+            </div>
           </dl>
 
           {report.income === 0 && report.completed === 0 ? (
@@ -85,7 +88,7 @@ function AdminReports() {
               <ByMethod rows={report.byMethod} />
               {treatments.length > 0 && (
                 <Block title="Tratamientos más realizados">
-                  <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+                  <ul className="divide-y divide-line border-y border-line">
                     {treatments.map((t) => (
                       <Row key={t.treatmentId} primary={t.name} secondary={citas(t.count)} amount={t.revenue} />
                     ))}
@@ -94,7 +97,7 @@ function AdminReports() {
               )}
               {viewer.org.kind === "salon" && (
                 <Block title="Por profesional">
-                  <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+                  <ul className="divide-y divide-line border-y border-line">
                     {report.members.map((m) => (
                       <Row
                         key={m.memberId}
@@ -119,14 +122,14 @@ function citas(count: number) {
   return count === 1 ? "1 cita atendida" : `${count} citas atendidas`;
 }
 
-function Figure({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Figure({ label, value, hint, large, className }: { label: string; value: string; hint?: string; large?: boolean; className?: string }) {
   return (
-    <div className="flex flex-col gap-2 bg-surface p-4 lg:p-5">
-      <dt className="text-sm text-ink-soft">
+    <div className={cn("flex flex-col gap-2", className)}>
+      <dt className="text-ink-soft">
         {label}
         {hint && <span className="sr-only">, {hint.toLowerCase()}</span>}
       </dt>
-      <dd className="font-display text-[1.5rem] leading-none whitespace-nowrap tabular-nums sm:text-[2.25rem]">{value}</dd>
+      <dd className={cn("font-display leading-none whitespace-nowrap tabular-nums", large ? "text-[2.75rem]" : "text-[1.75rem]")}>{value}</dd>
     </div>
   );
 }
@@ -167,7 +170,7 @@ function ByMethod({ rows }: { rows: Report["byMethod"] }) {
 
 function Row({ leading, primary, secondary, amount }: { leading?: ReactNode; primary: string; secondary: string; amount: number }) {
   return (
-    <li className="flex min-h-14 items-center gap-3 px-4 py-2.5">
+    <li className="flex min-h-14 items-center gap-3 py-2.5">
       {leading}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium">{primary}</span>
@@ -184,7 +187,10 @@ function Row({ leading, primary, secondary, amount }: { leading?: ReactNode; pri
 function ReportSkeleton() {
   return (
     <div aria-busy className="flex flex-col gap-10">
-      <Skeleton className="h-48 w-full rounded-card lg:h-28" />
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-16 w-full" />
+      </div>
       <div className="flex flex-col gap-3">
         <Skeleton className="h-6 w-56" />
         <Skeleton className="h-24 w-full" />

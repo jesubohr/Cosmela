@@ -79,7 +79,7 @@ const STATUS_TONES: Record<AppointmentStatus, string> = {
 export function StatusChip({ status, className }: { status: AppointmentStatus; className?: string }) {
   return (
     <span className={cn("inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium", STATUS_TONES[status], className)}>
-      {status === "in_progress" && <span aria-hidden className="size-2 animate-pulse rounded-full bg-plum" />}
+      {status === "in_progress" && <span aria-hidden className="size-2 rounded-full bg-plum" />}
       {APPOINTMENT_STATUS_LABELS[status]}
     </span>
   );

@@ -51,7 +51,7 @@ export function NextAppointmentCard({ appointment, member, now }: { appointment:
   });
 
   return (
-    <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
+    <div className="flex flex-col gap-4 rounded-card border border-transparent bg-surface p-5 shadow-border">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TimeText ms={appointment.start} className="text-[2.75rem] leading-none" periodClassName="text-base" />
         {notStarted && <NotStartedChip />}
@@ -68,7 +68,7 @@ export function NextAppointmentCard({ appointment, member, now }: { appointment:
         </Button>
         <Button asChild size="lg" variant="secondary">
           <a href={whatsappLink(appointment.client.phone, message)} target="_blank" rel="noopener noreferrer">
-            <MessageCircle strokeWidth={1.75} />
+            <MessageCircle />
             WhatsApp
           </a>
         </Button>
@@ -108,7 +108,7 @@ export function TomorrowCard({
       <button
         type="button"
         onClick={() => openSheet({ kind: "detail", appointmentId: first._id })}
-        className="flex flex-col items-start gap-4 rounded-card border border-line bg-surface p-5 text-left hover:bg-porcelain"
+        className="flex flex-col items-start gap-4 rounded-card border border-transparent bg-surface p-5 text-left shadow-border hover:bg-porcelain"
       >
         <span className="flex flex-col gap-1">
           <span className="text-ink-soft">Mañana</span>
@@ -127,9 +127,9 @@ export function TomorrowCard({
 export function InProgressCard({ session, member }: { session: InProgress; member: Member }) {
   const [discarding, setDiscarding] = useState(false);
   return (
-    <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
+    <div className="flex flex-col gap-4 rounded-card border border-transparent bg-surface p-5 shadow-border">
       <p className="flex items-baseline gap-2">
-        <span aria-hidden className="size-2.5 animate-pulse self-center rounded-full bg-plum" />
+        <span aria-hidden className="size-2.5 self-center rounded-full bg-plum" />
         <span className="text-ink-soft">Desde las</span>
         <TimeText ms={session.startedAt} className="text-[1.75rem] leading-none" />
       </p>

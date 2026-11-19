@@ -57,7 +57,7 @@ export function HoyView() {
       <div className="flex min-w-0 flex-col gap-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-display text-[1.75rem] leading-tight lg:text-[2.25rem]">
+            <p className="font-display text-[1.75rem] leading-tight font-medium lg:text-[2.25rem]">
               {greeting(now)}
               {name && `, ${name}`}
             </p>
@@ -159,7 +159,7 @@ function Day({
             message={team ? "El equipo no tiene citas hoy." : "No tienes citas hoy."}
             action={
               <Button variant="secondary" onClick={() => openSheet({ kind: "create", prefill: { date: today } })}>
-                <CalendarPlus strokeWidth={1.75} />
+                <CalendarPlus />
                 Agendar cita
               </Button>
             }
@@ -175,7 +175,10 @@ function Day({
 function DaySkeleton() {
   return (
     <div aria-busy className="flex flex-col gap-8">
-      <Skeleton className="h-56 w-full rounded-card" />
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-6 w-28" />
+        <Skeleton className="h-56 w-full rounded-card" />
+      </div>
       <div className="flex flex-col gap-3">
         <Skeleton className="h-6 w-24" />
         {[0, 1, 2].map((i) => (
@@ -190,7 +193,8 @@ function ListsSkeleton() {
   return (
     <div aria-busy className="flex flex-col gap-3">
       <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-36 w-full rounded-card" />
+      <Skeleton className="h-14 w-full" />
+      <Skeleton className="h-14 w-full" />
     </div>
   );
 }

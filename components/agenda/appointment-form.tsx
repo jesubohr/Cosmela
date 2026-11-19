@@ -367,8 +367,8 @@ function Fields({
           </p>
         )}
         {(conflicts.length > 0 || check?.outsideHours) && (
-          <div role="status" className="flex gap-3 rounded-xl bg-amber-soft px-4 py-3 text-amber">
-            <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={1.75} />
+          <div role="status" className="flex gap-3 rounded-card bg-amber-soft px-4 py-3 text-amber">
+            <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
             <div className="flex flex-col gap-1">
               {conflicts.map((c) => (
                 <p key={c.id}>
@@ -412,7 +412,7 @@ function Fields({
             </Label>
           </div>
           {depositOn && (
-            <div className="flex flex-col gap-4 rounded-xl border border-line p-4">
+            <div className="flex flex-col gap-4 border-l-2 border-line pl-4">
               <MoneyInput
                 aria-label="Valor del abono"
                 value={depositAmount}
@@ -460,7 +460,7 @@ function SavedState({ clientName, start, whatsapp, onDone }: { clientName: strin
   return (
     <div className="flex flex-col gap-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div role="status" className="flex gap-3">
-        <CircleCheck aria-hidden className="mt-0.5 size-6 shrink-0 text-sage" strokeWidth={1.75} />
+        <CircleCheck aria-hidden className="mt-0.5 size-6 shrink-0 text-sage" />
         <div className="flex flex-col gap-1">
           <p className="text-[1.125rem] font-medium">Cita guardada</p>
           <p className="text-ink-soft">{clientName}</p>
@@ -472,7 +472,7 @@ function SavedState({ clientName, start, whatsapp, onDone }: { clientName: strin
       <div className="flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
         <Button asChild>
           <a href={whatsapp} target="_blank" rel="noopener noreferrer">
-            <MessageCircle strokeWidth={1.75} />
+            <MessageCircle />
             Enviar confirmación por WhatsApp
           </a>
         </Button>

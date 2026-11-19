@@ -5,6 +5,9 @@ import { useQuery } from "convex/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Chip } from "@/components/clients/chips";
+import { DayTimeline } from "@/components/dashboard/day-timeline";
+import { handleRadioKeys } from "@/components/forms/radio-keys";
+import { EmptyState } from "@/components/shared/empty-state";
 import { InitialsAvatar } from "@/components/shared/initials-avatar";
 import { useViewer } from "@/components/shell/viewer";
 import { Button } from "@/components/ui/button";
@@ -15,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { bogotaDateKey } from "@/convex/lib/time";
+import type { StaffColor } from "@/convex/lib/validators";
 import { rangesForDate } from "@/convex/lib/slots";
 import { cn } from "@/lib/utils";
 import { useAgendaSheets } from "./agenda-sheets";
@@ -40,11 +44,13 @@ import { MonthView } from "./month-view";
 import { useFormOptions, useNow, type FormOptions } from "./parts";
 import { TimeGrid, type GridAppointment, type GridBlock, type GridColumn, type SlotSelection } from "./time-grid";
 
-type View = "dia" | "semana" | "mes";
+type View = "dia" | "semana" | "mes" | "lista";
 const VIEWS: { value: View; label: string }[] = [
   { value: "dia", label: "Día" },
   { value: "semana", label: "Semana" },
   { value: "mes", label: "Mes" },
+  // One day as rows: every appointment gets a full-size target, however short it is.
+  { value: "lista", label: "Lista" },
 ];
 
 export function AgendaView() {
@@ -58,7 +64,9 @@ export function AgendaView() {
   const now = useNow();
 
   const viewParam = params.get("vista");
-  const view: View = viewParam === "dia" || viewParam === "semana" || viewParam === "mes" ? viewParam : isPhone ? "dia" : "semana";
+  const view: View = VIEWS.some((v) => v.value === viewParam) ? (viewParam as View) : isPhone ? "dia" : "semana";
+  // The list covers the same single day as "dia".
+  const span = view === "lista" ? "dia" : view;
   const dateParam = params.get("fecha");
   const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayKey();
   const today = bogotaDateKey(now);
@@ -74,15 +82,15 @@ export function AgendaView() {
   }
 
   const range = useMemo(() => {
-    if (view === "dia") return { days: [date], start: dayStart(date), end: dayStart(addDays(date, 1)) };
-    if (view === "semana") {
+    if (span === "dia") return { days: [date], start: dayStart(date), end: dayStart(addDays(date, 1)) };
+    if (span === "semana") {
       const first = weekStart(date);
       const days = Array.from({ length: 7 }, (_, i) => addDays(first, i));
       return { days, start: dayStart(first), end: dayStart(addDays(first, 7)) };
     }
     const days = monthGrid(date);
     return { days, start: dayStart(days[0]), end: dayStart(addDays(days[days.length - 1], 1)) };
-  }, [view, date]);
+  }, [span, date]);
 
   const data = useQuery(api.appointments.agenda, { start: range.start, end: range.end });
 
@@ -95,10 +103,10 @@ export function AgendaView() {
     memberFilter !== "all" ? memberFilter : singleMemberDay ? (ownMember?._id ?? members[0]?._id) : "all";
 
   const step = (direction: 1 | -1) =>
-    navigate({ fecha: view === "dia" ? addDays(date, direction) : view === "semana" ? addDays(date, 7 * direction) : addMonths(date, direction) });
+    navigate({ fecha: span === "dia" ? addDays(date, direction) : span === "semana" ? addDays(date, 7 * direction) : addMonths(date, direction) });
 
   const title = capitalize(
-    isPhone ? formatCompactTitle(view, date) : view === "dia" ? formatDayKey(date) : view === "semana" ? formatWeek(date) : formatMonth(date),
+    isPhone ? formatCompactTitle(span, date) : span === "dia" ? formatDayKey(date) : span === "semana" ? formatWeek(date) : formatMonth(date),
   );
 
   return (
@@ -107,10 +115,10 @@ export function AgendaView() {
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <DatePicker title={title} value={date} onChange={(fecha) => navigate({ fecha })} />
           <Button variant="ghost" size="icon" aria-label="Anterior" onClick={() => step(-1)}>
-            <ChevronLeft strokeWidth={1.75} />
+            <ChevronLeft />
           </Button>
           <Button variant="ghost" size="icon" aria-label="Siguiente" onClick={() => step(1)}>
-            <ChevronRight strokeWidth={1.75} />
+            <ChevronRight />
           </Button>
           {/* Phones only show "Hoy" when it does something, to keep the controls on one row. */}
           {(!isPhone || date !== today) && (
@@ -153,6 +161,16 @@ export function AgendaView() {
 
       {!options || !data ? (
         <AgendaSkeleton />
+      ) : view === "lista" ? (
+        <DayList
+          date={date}
+          today={today}
+          now={now}
+          appointments={filterAppointments(data.appointments, selected, showCancelled)}
+          blocks={data.blocks.filter((b) => selected === "all" || b.memberId === selected)}
+          members={isSalon && selected === "all" ? new Map(members.map((m) => [m._id, m])) : undefined}
+          onCreate={() => openSheet({ kind: "create", prefill: { date } })}
+        />
       ) : view === "mes" ? (
         <MonthView
           days={range.days}
@@ -257,6 +275,7 @@ function GridForView({
               <span className="flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1.5">
                 <span className="text-sm text-ink-soft">{short.weekday}</span>
                 <span
+                  aria-current={date === today ? "date" : undefined}
                   className={cn(
                     "flex size-7 items-center justify-center rounded-full text-sm font-medium tabular-nums",
                     date === today && "bg-plum text-on-solid",
@@ -302,6 +321,41 @@ function GridForView({
   );
 }
 
+function DayList({
+  date,
+  today,
+  now,
+  appointments,
+  blocks,
+  members,
+  onCreate,
+}: {
+  date: string;
+  today: string;
+  now: number;
+  appointments: GridAppointment[];
+  blocks: GridBlock[];
+  members?: Map<Id<"members">, { name: string; color: StaffColor }>;
+  onCreate: () => void;
+}) {
+  const inDay = (item: { start: number }) => bogotaDateKey(item.start) === date;
+  const dayAppointments = appointments.filter(inDay).map((a) => ({ ...a, client: { name: a.clientName } }));
+  const dayBlocks = blocks.filter(inDay);
+  if (dayAppointments.length === 0 && dayBlocks.length === 0) {
+    return (
+      <EmptyState
+        message="No hay citas este día."
+        action={
+          <Button variant="secondary" onClick={onCreate}>
+            Agendar cita
+          </Button>
+        }
+      />
+    );
+  }
+  return <DayTimeline appointments={dayAppointments} blocks={dayBlocks} now={now} showNow={date === today} members={members} />;
+}
+
 function filterAppointments(appointments: GridAppointment[], selected: Id<"members"> | "all", showCancelled: boolean) {
   return appointments.filter(
     (a) => (selected === "all" || a.memberId === selected) && (showCancelled || a.status !== "cancelled"),
@@ -341,7 +395,7 @@ function DatePicker({ title, value, onChange }: { title: string; value: string; 
         <button
           type="button"
           aria-label={`${title}. Elegir fecha`}
-          className="font-display -ml-2 min-h-11 min-w-0 truncate rounded-lg px-2 text-left text-[1.375rem] leading-tight hover:bg-lilac lg:text-[1.75rem]"
+          className="font-display -ml-2 min-h-11 min-w-0 truncate rounded-lg px-2 text-left text-[1.375rem] leading-tight font-medium hover:bg-lilac lg:text-[1.75rem]"
         >
           {title}
         </button>
@@ -368,7 +422,12 @@ function Segmented({ value, onChange, compact }: { value: View; onChange: (value
     <div
       role="radiogroup"
       aria-label="Vista"
-      className={cn("flex shrink-0 rounded-[0.75rem] border border-line bg-porcelain", compact ? "p-0.5" : "p-1")}
+      onKeyDown={handleRadioKeys}
+      className={cn(
+        "flex shrink-0 border border-line bg-porcelain",
+        // Button radius (10px) + padding + border keeps the corners concentric.
+        compact ? "rounded-[13px] p-0.5" : "rounded-[15px] p-1",
+      )}
     >
       {VIEWS.map((option) => (
         <button
@@ -376,11 +435,12 @@ function Segmented({ value, onChange, compact }: { value: View; onChange: (value
           type="button"
           role="radio"
           aria-checked={value === option.value}
+          tabIndex={value === option.value ? 0 : -1}
           onClick={() => onChange(option.value)}
           className={cn(
-            "rounded-lg text-base font-medium transition-colors",
+            "rounded-lg border border-transparent text-base font-medium transition-colors",
             compact ? "min-h-10 px-3" : "min-h-11 flex-1 px-4 lg:flex-none",
-            value === option.value ? "bg-surface text-ink shadow-[0_1px_2px_rgb(42_33_49/0.08)]" : "text-ink-soft hover:text-ink",
+            value === option.value ? "bg-surface text-ink shadow-border" : "text-ink-soft hover:text-ink",
           )}
         >
           {option.label}
@@ -392,9 +452,9 @@ function Segmented({ value, onChange, compact }: { value: View; onChange: (value
 
 function AgendaSkeleton() {
   return (
-    <div aria-busy className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
-      {Array.from({ length: 8 }, (_, i) => (
-        <Skeleton key={i} className="h-12 w-full" />
+    <div aria-busy className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
+      {Array.from({ length: 6 }, (_, i) => (
+        <Skeleton key={i} className="h-14 w-full" />
       ))}
     </div>
   );

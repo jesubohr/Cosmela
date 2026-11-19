@@ -83,11 +83,11 @@ export function FirstSteps({ checklist, bookingEnabled }: { checklist: NonNullab
       <p className="-mt-2 text-ink-soft">
         {doneCount} de {steps.length} listos
       </p>
-      <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+      <ul className="divide-y divide-line border-y border-line">
         {steps.map((step) => (
           <li key={step.key}>
             {step.done ? (
-              <div className="flex min-h-14 items-center gap-3 px-4 text-ink-soft">
+              <div className="flex min-h-14 items-center gap-3 text-ink-soft">
                 <StepMark done />
                 <span>{step.label}</span>
                 <span className="sr-only">, listo</span>
@@ -96,7 +96,7 @@ export function FirstSteps({ checklist, bookingEnabled }: { checklist: NonNullab
               <StepAction action={step.action}>
                 <StepMark done={false} />
                 <span className="flex-1 font-medium">{step.label}</span>
-                <ChevronRight aria-hidden className="size-5 text-ink-soft" strokeWidth={1.75} />
+                <ChevronRight aria-hidden className="size-5 text-ink-soft" />
               </StepAction>
             )}
           </li>
@@ -107,7 +107,7 @@ export function FirstSteps({ checklist, bookingEnabled }: { checklist: NonNullab
 }
 
 function StepAction({ action, children }: { action: Step["action"]; children: ReactNode }) {
-  const className = "flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-porcelain";
+  const className = "-mx-3 flex min-h-14 w-[calc(100%+1.5rem)] items-center gap-3 rounded-lg px-3 text-left hover:bg-lilac/60";
   if ("href" in action) {
     return (
       <Link href={action.href} className={className}>
@@ -125,9 +125,9 @@ function StepAction({ action, children }: { action: Step["action"]; children: Re
 function StepMark({ done }: { done: boolean }) {
   return done ? (
     <span aria-hidden className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-sage-soft text-sage">
-      <Check className="size-4" strokeWidth={2.25} />
+      <Check className="size-4" strokeWidth={2.5} />
     </span>
   ) : (
-    <span aria-hidden className="size-6 shrink-0 rounded-full border-[1.5px] border-line" />
+    <span aria-hidden className="size-6 shrink-0 rounded-full border-[1.5px] border-field-line" />
   );
 }

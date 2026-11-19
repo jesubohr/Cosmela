@@ -18,7 +18,7 @@ import { whatsappLink } from "@/lib/whatsapp";
 import { dayAndTime, firstName, Section } from "./parts";
 import type { TodayData } from "./hoy-view";
 
-const listClass = "divide-y divide-line rounded-card border border-line bg-surface";
+const listClass = "divide-y divide-line border-y border-line";
 
 export function Requests({
   rows,
@@ -53,7 +53,7 @@ export function Requests({
         {rows.map((row) => {
           const member = viewer.org.kind === "salon" ? members.get(row.memberId) : undefined;
           return (
-            <li key={row._id} className="flex flex-col gap-3 px-4 py-3">
+            <li key={row._id} className="flex flex-col gap-3 py-3">
               <div className="flex items-start gap-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="font-medium">{row.clientName}</span>
@@ -93,7 +93,7 @@ export function DueFollowUps({ rows }: { rows: FollowUpRow[] }) {
     <Section title="Seguimientos" count={rows.length}>
       <ul className={listClass}>
         {rows.map((row) => (
-          <li key={row._id} className="flex flex-col gap-3 px-4 py-3">
+          <li key={row._id} className="flex flex-col gap-3 py-3">
             <div className="flex flex-col gap-0.5">
               <span className="font-medium">{row.client.name}</span>
               {(row.note || row.treatmentName) && <span className="text-ink-soft">{row.note || row.treatmentName}</span>}
@@ -104,7 +104,7 @@ export function DueFollowUps({ rows }: { rows: FollowUpRow[] }) {
             <div className="flex flex-wrap gap-2 [&>*]:px-3">
               <Button variant="secondary" asChild>
                 <a href={whatsappLink(row.client.phone, followUpMessage(row, viewer.org.name))} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle strokeWidth={1.75} />
+                  <MessageCircle />
                   WhatsApp
                 </a>
               </Button>
@@ -148,14 +148,14 @@ export function PendingPayments({ data }: { data: TodayData["pendingPayments"] }
               type="button"
               onClick={() => openSheet({ kind: "payment", appointmentId: row._id })}
               aria-label={`Registrar pago de ${row.clientName}`}
-              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-porcelain"
+              className="-mx-3 flex min-h-14 w-[calc(100%+1.5rem)] items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-lilac/60"
             >
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="line-clamp-2 font-medium">{row.clientName}</span>
                 <span className="text-ink-soft tabular-nums">{formatShortDate(row.start)}</span>
               </span>
               <span className="font-medium tabular-nums">{formatMoney(row.balance)}</span>
-              <ChevronRight aria-hidden className="size-5 text-ink-soft" strokeWidth={1.75} />
+              <ChevronRight aria-hidden className="size-5 text-ink-soft" />
             </button>
           </li>
         ))}
@@ -180,11 +180,11 @@ export function Birthdays({ rows }: { rows: TodayData["birthdays"] }) {
     <Section title="Cumpleaños" count={rows.length}>
       <ul className={listClass}>
         {rows.map((row) => (
-          <li key={row._id} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
+          <li key={row._id} className="flex min-h-14 items-center gap-3 py-2.5">
             <span className="line-clamp-2 min-w-0 flex-1 font-medium">{row.name}</span>
             <Button variant="secondary" asChild>
               <a href={whatsappLink(row.phone, birthdayMessage(row.name, viewer.org.name))} target="_blank" rel="noopener noreferrer">
-                <MessageCircle strokeWidth={1.75} />
+                <MessageCircle />
                 Felicitar
               </a>
             </Button>

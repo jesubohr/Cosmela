@@ -25,7 +25,7 @@ export function MonthView({
   onDay: (date: string) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+    <div className="overflow-hidden rounded-card border border-line bg-surface">
       <div className="grid grid-cols-7 border-b border-line">
         {WEEKDAYS.map((day) => (
           <div key={day} className="px-2 py-2 text-sm text-ink-soft">
@@ -44,6 +44,7 @@ export function MonthView({
               key={date}
               type="button"
               onClick={() => onDay(date)}
+              aria-current={isToday ? "date" : undefined}
               aria-label={`${label}${items.length ? `, ${items.length} ${items.length === 1 ? "cita" : "citas"}` : ""}`}
               className={cn(
                 "flex min-h-16 flex-col gap-1 border-line p-1 text-left hover:bg-porcelain sm:min-h-28 sm:p-1.5",
