@@ -45,7 +45,7 @@ export function AppShell({ defaultOpen, children }: { defaultOpen: boolean; chil
     <SidebarProvider defaultOpen={defaultOpen}>
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-surface-raised focus:px-4 focus:py-3 focus:text-ink focus:shadow-float"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-surface-raised focus:border focus:border-transparent focus:px-4 focus:py-3 focus:text-ink focus:shadow-float"
       >
         Saltar al contenido
       </a>
@@ -78,7 +78,7 @@ function routeTitle(pathname: string) {
 function ShellSkeleton({ title }: { title?: string }) {
   return (
     <div aria-busy className="w-full max-w-[1120px]">
-      <div className="flex h-14 items-center border-b border-line px-4 lg:h-16 lg:px-8">
+      <div className="flex h-14 items-center border-b border-line px-4 lg:px-8">
         {title ? (
           <p className="font-display text-[1.375rem] leading-tight lg:text-[1.75rem]">{title}</p>
         ) : (

@@ -22,23 +22,23 @@ export function MoreMenu() {
     <div className="flex flex-col gap-6">
       <Link
         href="/configuracion/perfil"
-        className="flex min-h-16 items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+        className="flex min-h-16 items-center gap-3 rounded-card border border-transparent bg-surface px-4 py-3 shadow-border"
       >
         <InitialsAvatar name={name} color={viewer.member.color} />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-medium">{name}</span>
           <span className="truncate text-sm text-ink-soft">{viewer.org.name}</span>
         </span>
-        <ChevronRight className="size-5 text-ink-soft" strokeWidth={1.75} />
+        <ChevronRight className="size-5 text-ink-soft" />
       </Link>
 
-      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+      <ul className="divide-y divide-line overflow-hidden rounded-card border border-transparent bg-surface shadow-border">
         {items.map(({ href, label, icon: Icon }) => (
           <li key={href}>
             <Link href={href} className="flex min-h-14 items-center gap-3 px-4 hover:bg-porcelain">
-              <Icon className="size-5 text-plum" strokeWidth={1.75} />
+              <Icon className="size-5 text-plum" />
               <span className="flex-1 font-medium">{label}</span>
-              <ChevronRight className="size-5 text-ink-soft" strokeWidth={1.75} />
+              <ChevronRight className="size-5 text-ink-soft" />
             </Link>
           </li>
         ))}
@@ -47,9 +47,9 @@ export function MoreMenu() {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="flex min-h-14 items-center gap-3 rounded-xl border border-line bg-surface px-4 text-left font-medium text-rose hover:bg-rose-soft"
+        className="flex min-h-14 items-center gap-3 rounded-card border border-transparent bg-surface px-4 text-left font-medium text-rose shadow-border hover:bg-rose-soft"
       >
-        <LogOut className="size-5" strokeWidth={1.75} />
+        <LogOut className="size-5" />
         Cerrar sesión
       </button>
     </div>

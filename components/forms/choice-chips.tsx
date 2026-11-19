@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
+import { handleRadioKeys } from "./radio-keys";
 
 type ChipProps = Omit<ComponentProps<"button">, "type"> & { selected: boolean };
 
@@ -18,7 +19,7 @@ export function ChoiceChip({ selected, className, children, ...props }: ChipProp
       )}
       {...props}
     >
-      {selected && <Check aria-hidden className="-ml-1 size-4" strokeWidth={2} />}
+      {selected && <Check aria-hidden className="-ml-1 size-4" />}
       {children}
     </button>
   );
@@ -36,7 +37,10 @@ type GroupBase = {
   className?: string;
 };
 
-/** Pick one. Tapping the selected chip again clears it unless `required`. */
+/**
+ * Pick one. Required: a radio group with arrow keys. Optional: toggle buttons,
+ * because tapping the selected chip again clears it, which radios cannot do.
+ */
 export function SingleChoice<T extends string | number | boolean>({
   options,
   value,
@@ -54,22 +58,26 @@ export function SingleChoice<T extends string | number | boolean>({
   onChange: (value: T | null) => void;
   required?: boolean;
 }) {
+  const hasValue = options.some((option) => option.value === value);
   return (
     <div
-      role="radiogroup"
+      role={required ? "radiogroup" : "group"}
       aria-label={label}
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
       aria-invalid={invalid || undefined}
+      onKeyDown={required ? handleRadioKeys : undefined}
       className={cn("flex flex-wrap gap-2", className)}
     >
-      {options.map((option) => {
+      {options.map((option, index) => {
         const selected = option.value === value;
+        const a11y = required
+          ? { role: "radio", "aria-checked": selected, tabIndex: selected || (!hasValue && index === 0) ? 0 : -1 }
+          : { "aria-pressed": selected };
         return (
           <ChoiceChip
             key={String(option.value)}
-            role="radio"
-            aria-checked={selected}
+            {...a11y}
             selected={selected}
             disabled={disabled}
             onClick={() => onChange(selected && !required ? null : option.value)}

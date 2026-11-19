@@ -22,14 +22,14 @@ export function PageHeader({ title, actions, backHref, className }: PageHeaderPr
         className,
       )}
     >
-      <div className="flex h-14 max-w-[1120px] items-center gap-2 px-4 lg:h-16 lg:px-8">
+      <div className="flex h-14 max-w-[1120px] items-center gap-2 px-4 lg:px-8">
         {backHref && (
           <Link
             href={backHref}
             aria-label="Volver"
             className="-ml-2 inline-flex size-11 items-center justify-center rounded-lg text-ink hover:bg-lilac"
           >
-            <ChevronLeft className="size-5" strokeWidth={1.75} />
+            <ChevronLeft className="size-5" />
           </Link>
         )}
         <h1 className="font-display min-w-0 flex-1 truncate text-[1.375rem] leading-tight lg:text-[1.75rem]">{title}</h1>

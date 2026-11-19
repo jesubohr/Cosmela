@@ -146,7 +146,7 @@ export function FormBuilder({ fields, onChange, disabled }: FormBuilderProps) {
 
       {mode === "preview" ? (
         fields.length ? (
-          <div className="rounded-card border border-line bg-surface p-4 lg:p-6">
+          <div className="rounded-card border border-transparent bg-surface p-4 shadow-border lg:p-6">
             <FormRenderer fields={fields} value={answers} onChange={setAnswers} />
           </div>
         ) : (
@@ -211,7 +211,7 @@ export function FormBuilder({ fields, onChange, disabled }: FormBuilderProps) {
                   className="flex min-h-14 w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-lilac"
                 >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-porcelain text-plum">
-                    <Icon className="size-5" strokeWidth={1.75} />
+                    <Icon className="size-5" />
                   </span>
                   <span className="flex flex-col">
                     <span className="font-medium">{label}</span>
@@ -280,7 +280,7 @@ function FieldItem(props: FieldItemProps) {
           onPointerUp={() => setDragArmed(false)}
           className="hidden h-14 w-8 shrink-0 cursor-grab items-center justify-center text-ink-soft lg:flex"
         >
-          <GripVertical className="size-4" strokeWidth={1.75} />
+          <GripVertical className="size-4" />
         </span>
         <button
           type="button"
@@ -289,7 +289,7 @@ function FieldItem(props: FieldItemProps) {
           aria-controls={panelId}
           className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 text-left lg:pl-1"
         >
-          <Icon className="size-5 shrink-0 text-plum" strokeWidth={1.75} />
+          <Icon className="size-5 shrink-0 text-plum" />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className={cn("truncate font-medium", !field.label && "text-ink-soft")}>
               {field.label || "Sin título"}
@@ -300,10 +300,7 @@ function FieldItem(props: FieldItemProps) {
               {field.required && <span>Obligatorio</span>}
             </span>
           </span>
-          <ChevronDown
-            className={cn("size-5 shrink-0 text-ink-soft transition-transform", expanded && "rotate-180")}
-            strokeWidth={1.75}
-          />
+          <ChevronDown className={cn("size-5 shrink-0 text-ink-soft motion-safe:transition-transform", expanded && "rotate-180")} />
         </button>
       </div>
 
@@ -349,7 +346,7 @@ function IconAction({
       onClick={onClick}
       className={cn(destructive && "text-rose hover:bg-rose-soft")}
     >
-      <Icon strokeWidth={1.75} />
+      <Icon />
     </Button>
   );
 }

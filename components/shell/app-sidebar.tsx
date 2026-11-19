@@ -34,7 +34,7 @@ export function AppSidebar({ viewer }: { viewer: Viewer | undefined }) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="h-16 justify-center px-3 group-data-[collapsible=icon]:px-2.5">
+      <SidebarHeader className="h-14 justify-center px-3 group-data-[collapsible=icon]:px-2.5">
         <div className="flex items-center justify-between gap-2">
           <Link
             href="/hoy"
@@ -70,7 +70,7 @@ function NavGroup({ items }: { items: NavItem[] }) {
           <SidebarMenuItem key={href}>
             <SidebarMenuButton asChild isActive={href === activeHref} tooltip={label}>
               <Link href={href}>
-                <Icon strokeWidth={1.75} />
+                <Icon />
                 <span>{label}</span>
               </Link>
             </SidebarMenuButton>
@@ -90,7 +90,7 @@ function CollapseButton() {
       aria-label={state === "expanded" ? "Contraer menú" : "Expandir menú"}
       className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:bg-lilac hover:text-ink"
     >
-      <PanelLeft className="size-5" strokeWidth={1.75} />
+      <PanelLeft className="size-5" />
     </button>
   );
 }
@@ -110,7 +110,7 @@ function UserMenu({ viewer }: { viewer: Viewer }) {
                 <span className="truncate font-medium">{name}</span>
                 <span className="truncate text-sm text-ink-soft">{viewer.org.name}</span>
               </span>
-              <ChevronsUpDown className="ml-auto text-ink-soft" strokeWidth={1.75} />
+              <ChevronsUpDown className="ml-auto text-ink-soft" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-60">
@@ -121,12 +121,12 @@ function UserMenu({ viewer }: { viewer: Viewer }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="min-h-11 text-base">
               <Link href="/configuracion/perfil">
-                <UserRound className="size-5" strokeWidth={1.75} />
+                <UserRound className="size-5" strokeWidth={1.5} />
                 Mi perfil
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem className="min-h-11 text-base" onSelect={() => void signOut()}>
-              <LogOut className="size-5" strokeWidth={1.75} />
+              <LogOut className="size-5" strokeWidth={1.5} />
               Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -4,7 +4,7 @@ import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SIZES = {
-  sm: "size-8 text-xs",
+  sm: "size-8 text-sm",
   md: "size-10 text-sm",
   lg: "size-12 text-base",
 } as const;

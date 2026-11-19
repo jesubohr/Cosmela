@@ -109,7 +109,7 @@ export function ResponsiveDialog({
             <DrawerTitle>{title}</DrawerTitle>
             {description && <DrawerDescription>{description}</DrawerDescription>}
           </DrawerHeader>
-          <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4", bodyClassName)}>{children}</div>
+          <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2 pb-4", bodyClassName)}>{children}</div>
           {footer && <DrawerFooter>{footer}</DrawerFooter>}
         </DrawerContent>
       </Drawer>
@@ -124,7 +124,7 @@ export function ResponsiveDialog({
             <SheetTitle>{title}</SheetTitle>
             {description && <SheetDescription>{description}</SheetDescription>}
           </SheetHeader>
-          <div className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", bodyClassName)}>{children}</div>
+          <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4", bodyClassName)}>{children}</div>
           {footer && <SheetFooter className="flex-row justify-end">{footer}</SheetFooter>}
         </SheetContent>
       </Sheet>
@@ -138,7 +138,7 @@ export function ResponsiveDialog({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className={cn("-mx-6 overflow-y-auto px-6", bodyClassName)}>{children}</div>
+        <div className={cn("-mx-6 overflow-y-auto overscroll-contain px-6", bodyClassName)}>{children}</div>
         {footer && <DialogFooter>{footer}</DialogFooter>}
       </DialogContent>
     </Dialog>

@@ -29,7 +29,7 @@ export function BottomTabs() {
                 )}
               >
                 <span className={cn("flex h-7 w-12 items-center justify-center rounded-full", active && "bg-lilac")}>
-                  <Icon className="size-5" strokeWidth={1.75} />
+                  <Icon className="size-5" />
                 </span>
                 {label}
               </Link>

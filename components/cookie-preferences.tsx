@@ -4,6 +4,7 @@ import { makeFunctionReference } from "convex/server";
 import { useConvex } from "convex/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { disableAnalytics, enableAnalytics } from "@/lib/analytics";
 import { LEGAL_VERSION } from "@/lib/legal-documents";
 
@@ -66,12 +67,15 @@ export function CookiePreferences() {
 
   if (!open) return null;
   return (
-    <div role="region" aria-label="Preferencias de cookies" className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl rounded-xl border bg-background p-5 shadow-lg">
+    <div role="region" aria-label="Preferencias de cookies" className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto overscroll-contain rounded-card border border-transparent bg-popover p-5 shadow-float">
       <p className="text-sm">Usamos almacenamiento necesario para tu sesión y preferencias. Si lo autorizas, activamos analítica limitada para mejorar Cosmela. No enviamos fichas de salud, fotografías ni firmas a la analítica.</p>
-      <p className="mt-2 text-sm"><Link className="underline" href="/cookies">Política de cookies</Link> · <Link className="underline" href="/privacidad">Privacidad</Link></p>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" className="min-h-11 rounded-md border px-4 text-sm font-medium" onClick={() => choose(true)}>Aceptar analítica</button>
-        <button type="button" className="min-h-11 rounded-md border px-4 text-sm font-medium" onClick={() => choose(false)}>Rechazar analítica</button>
+      <p className="mt-1 flex flex-wrap gap-x-5 text-sm">
+        <Link className="inline-flex min-h-11 items-center underline underline-offset-4" href="/cookies">Política de cookies</Link>
+        <Link className="inline-flex min-h-11 items-center underline underline-offset-4" href="/privacidad">Privacidad</Link>
+      </p>
+      <div className="mt-2 flex flex-wrap gap-3">
+        <Button variant="secondary" onClick={() => choose(true)}>Aceptar analítica</Button>
+        <Button variant="secondary" onClick={() => choose(false)}>Rechazar analítica</Button>
       </div>
     </div>
   );

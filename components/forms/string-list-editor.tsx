@@ -59,7 +59,7 @@ export function StringListEditor({ legend, help, items, onChange, placeholder, i
                 aria-label={`Quitar ${item || `${itemLabel.toLowerCase()} ${index + 1}`}`}
                 onClick={() => onChange(items.filter((_, i) => i !== index))}
               >
-                <X strokeWidth={1.75} />
+                <X />
               </Button>
             </li>
           ))}

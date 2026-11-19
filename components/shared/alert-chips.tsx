@@ -59,8 +59,8 @@ export function AlertChips({ client, max, className }: AlertChipsProps) {
   return (
     <ul className={cn("flex flex-wrap gap-1.5", className)} aria-label="Alertas de salud">
       {visible.map(({ key, label, tone, icon: Icon }) => (
-        <li key={key} className={cn("inline-flex min-h-7 items-center gap-1 rounded-full px-2.5 text-sm font-medium", TONES[tone])}>
-          <Icon aria-hidden className="size-4" strokeWidth={1.75} />
+        <li key={key} className={cn("inline-flex min-h-7 items-center gap-1 rounded-full ps-2 pe-2.5 text-sm font-medium", TONES[tone])}>
+          <Icon aria-hidden className="size-4" />
           {label}
         </li>
       ))}

@@ -42,7 +42,7 @@ export function QuickActions() {
     return (
       <>
         <Button ref={triggerRef} size="icon" aria-label="Crear" onClick={() => setOpen(true)} className="rounded-full">
-          <Plus strokeWidth={2} />
+          <Plus />
         </Button>
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent aria-describedby={undefined}>
@@ -60,7 +60,7 @@ export function QuickActions() {
                     }}
                     className="flex min-h-14 w-full items-center gap-3 rounded-lg px-3 text-left text-base font-medium hover:bg-lilac"
                   >
-                    <action.icon className="size-5 text-plum" strokeWidth={1.75} />
+                    <action.icon className="size-5 text-plum" />
                     {action.label}
                   </button>
                 </li>
@@ -76,14 +76,14 @@ export function QuickActions() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button ref={triggerRef}>
-          <Plus strokeWidth={2} />
+          <Plus />
           Crear
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         {ACTIONS.map((action) => (
           <DropdownMenuItem key={action.label} className="min-h-11 text-base" onSelect={() => run(action)}>
-            <action.icon className="size-5 text-plum" strokeWidth={1.75} />
+            <action.icon className="size-5 text-plum" strokeWidth={1.5} />
             {action.label}
           </DropdownMenuItem>
         ))}

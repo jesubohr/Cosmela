@@ -105,7 +105,6 @@ export function SignaturePad({ ref, onChange, label, disabled, className }: Sign
         <Button
           type="button"
           variant="ghost"
-          size="sm"
           disabled={disabled}
           onClick={() => {
             padRef.current?.clear();
