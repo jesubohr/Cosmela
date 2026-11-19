@@ -11,31 +11,48 @@ import {
 import { ProductPreview } from "@/components/landing/product-preview";
 import { styles } from "@/components/landing/styles";
 import { ThemeToggle } from "@/components/landing/theme-toggle";
+import { clientRecordGuidePath, homeShareImagePath, siteUrl } from "@/lib/seo";
 import "@/components/landing/landing.css";
 
+const title = "Software para centros de estética y cosmetología | Cosmela";
+const description =
+  "Cosmela reúne agenda de citas, reservas en línea, fichas de cosmetología y consentimientos informados para profesionales y centros de estética en Colombia.";
+const shareImage = {
+  url: homeShareImagePath,
+  width: 1200,
+  height: 630,
+  type: "image/jpeg",
+  alt: "Cosmela. Tu centro de estética en orden. Citas, fichas y consentimientos.",
+};
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://cosmela.app",
-  ),
-  title: "Cosmela: agenda y fichas para profesionales de la estética",
-  description:
-    "Organiza citas, fichas de clientes, consentimientos y seguimientos. Para profesionales independientes y centros de estética en Colombia.",
+  title: { absolute: title },
+  description,
+  alternates: { canonical: "/" },
   other: { "page-type": "software", "site-kind": "software" },
   openGraph: {
-    title: "Cosmela: tu agenda y tus clientes en un solo lugar",
-    description:
-      "Tus citas, fichas de clientes y seguimientos en un solo lugar.",
+    title,
+    description,
     type: "website",
-    images: [
-      { url: "/icons/icon-512.png", width: 512, height: 512, alt: "Cosmela" },
-    ],
+    url: "/",
+    siteName: "Cosmela",
+    locale: "es_CO",
+    images: [shareImage],
   },
   twitter: {
-    card: "summary",
-    title: "Cosmela",
-    description: "Agenda y fichas para profesionales de la estética.",
-    images: ["/icons/icon-512.png"],
+    card: "summary_large_image",
+    title,
+    description,
+    images: [shareImage],
   },
+};
+
+const website = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Cosmela",
+  url: siteUrl.href,
+  inLanguage: "es-CO",
 };
 
 const workflow = [
@@ -73,7 +90,11 @@ const workflow = [
 
 export default function Home() {
   return (
-    <div className={styles.landing} lang="es-419">
+    <div className={styles.landing}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(website).replace(/</g, "\\u003c") }}
+      />
       <a className={styles.skip} href="#main">
         Ir al contenido
       </a>
@@ -105,13 +126,12 @@ export default function Home() {
             <div className={styles.heroGrid}>
               <div className={styles.heroText}>
                 <h1 id="hero-h">
-                  Menos papeleo,
-                  <br className={styles.desktopBreak} /> más tiempo para tus
-                  clientes.
+                  Software para centros de estética
                 </h1>
                 <p className={styles.lead}>
-                  Tu agenda, las fichas, los consentimientos y los seguimientos
-                  en un solo lugar. Desde tu celular o tu computadora.
+                  Organiza citas, fichas de clientes y consentimientos informados
+                  en un solo lugar. Para profesionales de la cosmetología y
+                  equipos en Colombia.
                 </p>
                 <div className={styles.actions}>
                   <Link className={styles.primary} href="/ingresar">
@@ -141,7 +161,7 @@ export default function Home() {
             <div className={styles.practiceGrid}>
               <article>
                 <CalendarDays aria-hidden="true" size={24} />
-                <h3>Tu agenda organizada</h3>
+                <h3>Agenda de citas y reservas en línea</h3>
                 <p>
                   Consulta las citas del día, confirma solicitudes y bloquea
                   horarios. Comparte tu página de reservas para que tus clientes
@@ -175,11 +195,11 @@ export default function Home() {
               </article>
               <article>
                 <ClipboardList aria-hidden="true" size={24} />
-                <h3>La ficha de cada cliente</h3>
+                <h3>Fichas de cosmetología</h3>
                 <p>
-                  Consulta los antecedentes de salud, las fotos y los
-                  consentimientos firmados de cada cliente. Registra lo que
-                  haces en cada sesión.
+                  Guarda los antecedentes de salud, las fotos y los
+                  consentimientos firmados de cada cliente. Consulta qué
+                  registraste en cada sesión.
                 </p>
                 <div
                   className={styles.record}
@@ -310,11 +330,14 @@ export default function Home() {
                   </dd>
                 </div>
                 <div>
-                  <dt>¿Puedo adaptarlo a mis tratamientos?</dt>
+                  <dt>¿Cómo se registra un tratamiento?</dt>
                   <dd>
                     Usa una plantilla o crea un tratamiento desde cero. Ajusta
                     el formulario, el consentimiento, las contraindicaciones y
-                    los cuidados posteriores.
+                    los cuidados posteriores. Consulta la{" "}
+                    <Link className="underline underline-offset-4" href={clientRecordGuidePath}>
+                      guía de fichas de cosmetología
+                    </Link>.
                   </dd>
                 </div>
                 <div>

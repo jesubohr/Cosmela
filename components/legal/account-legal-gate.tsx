@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/components/shell/use-sign-out";
 import { api } from "@/convex/_generated/api";
 import { ACCOUNT_PRIVACY_LABEL, ACCOUNT_TERMS_LABEL, ADULT_LABEL, LEGAL_VERSION, PROCESSING_LABEL } from "@/lib/legal-documents";
+import { clientRecordGuidePath } from "@/lib/seo";
 
-const PUBLIC_PATHS = ["/ingresar", "/reservar", "/terminos", "/privacidad", "/cookies", "/reembolsos", "/acuerdo-datos"];
+const PUBLIC_PATHS = ["/ingresar", "/reservar", "/terminos", "/privacidad", "/cookies", "/reembolsos", "/acuerdo-datos", clientRecordGuidePath];
 
 
 export function AccountLegalGate({ children }: { children: ReactNode }) {

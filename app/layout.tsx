@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Newsreader, Onest } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { siteUrl } from "@/lib/seo";
 import "./globals.css";
 
 const onest = Onest({ subsets: ["latin"], variable: "--font-onest", display: "swap" });
@@ -12,6 +13,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
+  metadataBase: siteUrl,
   title: { default: "Cosmela", template: "%s · Cosmela" },
   description: "Agenda, fichas clínicas y consentimientos para cosmetólogas en Colombia.",
   applicationName: "Cosmela",

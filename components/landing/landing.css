@@ -884,9 +884,6 @@
     font-size: 64px;
     max-width: 660px;
   }
-  .cl-desktopBreak {
-    display: none;
-  }
   .cl-lead {
     max-width: 600px;
     margin-top: 20px;

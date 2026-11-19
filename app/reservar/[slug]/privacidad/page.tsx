@@ -1,22 +1,16 @@
 import { fetchQuery } from "convex/nextjs";
 import type { Metadata } from "next";
-import { BookingMessage, BookingShell } from "@/components/booking/parts";
+import { notFound } from "next/navigation";
 import { DocumentPage, PolicyText, policyBlocks } from "@/components/booking/document";
 import { api } from "@/convex/_generated/api";
 
-export const metadata: Metadata = { title: "Política de privacidad" };
+export const metadata: Metadata = { title: "Política de privacidad", robots: { index: false, follow: true } };
 
 export default async function BusinessPrivacyPage({ params }: PageProps<"/reservar/[slug]/privacidad">) {
   const { slug } = await params;
   const privacy = await fetchQuery(api.booking.privacy, { slug });
 
-  if (!privacy) {
-    return (
-      <BookingShell>
-        <BookingMessage title="No encontramos este negocio" text="Revisa el enlace o pídele uno nuevo al negocio." />
-      </BookingShell>
-    );
-  }
+  if (!privacy) notFound();
 
   const blocks = policyBlocks(privacy.policy);
   // The generated policy starts with its own title line.

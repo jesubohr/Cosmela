@@ -16,7 +16,6 @@ export const styles = {
   checkCircle: "cl-checkCircle",
   close: "cl-close",
   dayHeading: "cl-dayHeading",
-  desktopBreak: "cl-desktopBreak",
   figure: "cl-figure",
   followup: "cl-followup",
   footer: "cl-footer",

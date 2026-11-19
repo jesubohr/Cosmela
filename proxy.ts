@@ -1,5 +1,14 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
+import { clientRecordGuidePath, homeShareImagePath } from "@/lib/seo";
+
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/robots.txt",
+  "/sitemap.xml",
+  clientRecordGuidePath,
+  homeShareImagePath,
+]);
 
 // Optimistic gate on the session cookie only. Real checks happen in every Convex
 // function (convex/lib/authz.ts) and in the app shell, which signs out stale sessions.
@@ -16,16 +25,25 @@ const PUBLIC_PREFIXES = [
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const path = pathname.replace(/\/$/, "") || "/";
   const isPublic =
-    pathname === "/" ||
+    PUBLIC_PATHS.has(path) ||
     PUBLIC_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`),
     );
-  if (isPublic || getSessionCookie(request)) return NextResponse.next();
+  if (!isPublic && !getSessionCookie(request)) {
+    const url = new URL("/ingresar", request.url);
+    url.searchParams.set("next", pathname + search);
+    const response = NextResponse.redirect(url);
+    response.headers.set("X-Robots-Tag", "noindex");
+    return response;
+  }
 
-  const url = new URL("/ingresar", request.url);
-  if (pathname !== "/") url.searchParams.set("next", pathname + search);
-  return NextResponse.redirect(url);
+  const response = NextResponse.next();
+  if (!isPublic || path === "/ingresar" || path.startsWith("/invitacion/")) {
+    response.headers.set("X-Robots-Tag", "noindex");
+  }
+  return response;
 }
 
 export const config = {
