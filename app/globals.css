@@ -28,7 +28,10 @@
   /* Text and icons on solid plum, sage, or rose fills. */
   --on-solid: #ffffff;
   --scrim: rgb(42 33 49 / 0.3);
-  --float-shadow: 0 8px 30px rgb(42 33 49 / 0.12);
+  /* Elevation (root DESIGN.md): cards get the ring, floating layers the ring plus a soft drop. */
+  --ring-shadow:
+    0 0 0 1px oklch(0 0 0 / 0.06), 0 1px 2px -1px oklch(0 0 0 / 0.06), 0 2px 4px 0 oklch(0 0 0 / 0.04);
+  --float-shadow: 0 0 0 1px oklch(0 0 0 / 0.06), 0 8px 30px rgb(42 33 49 / 0.12);
 
   /* Staff colors (lib/constants.ts): soft fill, strong accent. */
   --staff-plum-soft: #ede3f7;
@@ -107,7 +110,8 @@
   --rose-soft: #3d1e24;
   --on-solid: #1a1320;
   --scrim: rgb(0 0 0 / 0.6);
-  --float-shadow: 0 8px 30px rgb(0 0 0 / 0.45);
+  --ring-shadow: 0 0 0 1px oklch(1 0 0 / 0.08);
+  --float-shadow: 0 0 0 1px oklch(1 0 0 / 0.08), 0 8px 30px rgb(0 0 0 / 0.45);
 
   --staff-plum-soft: #30253f;
   --staff-plum-strong: #c5a3ea;
@@ -195,7 +199,8 @@
   --radius-card: 0.875rem;
   --radius-sheet: 1.25rem;
 
-  /* Only floating layers (sheets, popovers, menus) get a shadow. */
+  /* Pair both with `border border-transparent` so forced-colors mode still draws an edge. */
+  --shadow-border: var(--ring-shadow);
   --shadow-float: var(--float-shadow);
 }
 
@@ -248,5 +253,12 @@
     animation-duration: 100ms !important;
     transition-duration: 100ms !important;
     scroll-behavior: auto !important;
+  }
+  /* Drawers fade instead of sliding (fadeIn/fadeOut are vaul's own keyframes). */
+  [data-vaul-drawer][data-state="open"] {
+    animation-name: fadeIn !important;
+  }
+  [data-vaul-drawer][data-state="closed"] {
+    animation-name: fadeOut !important;
   }
 }

@@ -2,6 +2,7 @@
 
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexReactClient } from "convex/react";
+import { LucideProvider } from "lucide-react";
 import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
@@ -17,9 +18,12 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
         <TooltipProvider delayDuration={400}>
-          <AccountLegalGate>{children}</AccountLegalGate>
-          <Toaster />
-          <CookiePreferences />
+          {/* Most icons sit beside 500-weight labels: a fixed 2px stroke at any size (root DESIGN.md). */}
+          <LucideProvider strokeWidth={2} nonScalingStroke>
+            <AccountLegalGate>{children}</AccountLegalGate>
+            <Toaster />
+            <CookiePreferences />
+          </LucideProvider>
         </TooltipProvider>
       </ConvexBetterAuthProvider>
     </ThemeProvider>

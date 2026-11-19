@@ -5,7 +5,7 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-base font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-base font-medium whitespace-nowrap transition-[background-color,border-color,color,scale] duration-150 ease-out outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
@@ -20,18 +20,25 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-11 gap-2 px-4",
-        xs: "h-8 gap-1 px-2 text-sm [&_svg:not([class*='size-'])]:size-4",
-        sm: "h-9 gap-1.5 px-3 text-sm [&_svg:not([class*='size-'])]:size-4",
+        // Small sizes look compact but keep a 44px hit area through the ::after overlay.
+        xs: "relative h-8 gap-1 px-2 text-sm after:absolute after:-inset-y-1.5 after:inset-x-0 [&_svg:not([class*='size-'])]:size-4",
+        sm: "relative h-9 gap-1.5 px-3 text-sm after:absolute after:-inset-y-1 after:inset-x-0 [&_svg:not([class*='size-'])]:size-4",
         lg: "h-12 gap-2 px-5",
         icon: "size-11",
-        "icon-xs": "size-8 [&_svg:not([class*='size-'])]:size-4",
-        "icon-sm": "size-9",
+        "icon-xs": "relative size-8 after:absolute after:-inset-1.5 [&_svg:not([class*='size-'])]:size-4",
+        "icon-sm": "relative size-9 after:absolute after:-inset-1",
         "icon-lg": "size-12",
+      },
+      // Pass press={false} where the scale would distract (e.g. dense toolbars).
+      press: {
+        true: "motion-safe:not-disabled:not-aria-disabled:active:scale-[0.96]",
+        false: "",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      press: true,
     },
   }
 )
@@ -40,6 +47,7 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  press,
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
@@ -53,7 +61,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, press, className }))}
       {...props}
     />
   )

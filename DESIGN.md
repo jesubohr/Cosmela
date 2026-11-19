@@ -26,13 +26,13 @@ Always keep `border: 1px solid transparent` under the ring. Forced-colors mode r
 
 - Use `lucide-react` only. Do not mix icon libraries on one surface.
 - The rendered stroke follows the weight of the text beside it: `1.5px` next to 400, `2px` next to 500 to 600, `2.5px` next to 700 or on an emphasized standalone icon.
-- Render strokes at a fixed width with `absoluteStrokeWidth` in Tailwind code. The landing page sets `vector-effect: non-scaling-stroke` and a CSS `stroke-width` on its SVGs instead, so markup carries no stroke props.
+- Render strokes at a fixed width. In the app, `components/providers.tsx` sets `<LucideProvider strokeWidth={2} nonScalingStroke>`, so an icon passes `strokeWidth` only to differ from 2 (1.5 beside 400-weight text, 2.5 beside 700); it keeps the fixed width. The landing page sets `vector-effect: non-scaling-stroke` and a CSS `stroke-width` on its SVGs instead, so markup carries no stroke props.
 - Size inline icons from `1em` to `1.25em` of the adjacent text: 16px beside 13 to 14px text.
 - Icons use `currentColor`. Hover, selected, and disabled states change color or opacity in CSS, never the asset. Outline is the default; a filled variant marks the active state.
 
 ## Motion
 
-**Transitions for state, keyframes for one-time sequences.** Hover, press, toggle, open, and close use CSS transitions (or springs), because they reverse mid-flight. Keyframes only run sequences that play once, such as a page entrance.
+**Transitions for state, keyframes for one-time sequences.** Hover, press, toggle, open, and close use CSS transitions (or springs), because they reverse mid-flight. Keyframes only run sequences that play once, such as a page entrance. Exception: Radix overlays (dialog, sheet, popover, menus, select) and vaul drawers keep their `data-open`/`data-closed` keyframes, because Radix unmounts closed content on `animationend`, not `transitionend`.
 
 **Name the properties.** Write `transition-property: background-color, scale`, or `transition-[background-color,scale]` in Tailwind. Never `transition-all` or `transition: all`.
 
@@ -76,9 +76,3 @@ Always keep `border: 1px solid transparent` under the ring. Forced-colors mode r
 - Write resets with `:where()` (for example `.cl-landing :where(h1, p) { margin: 0 }`). The reset then has class-level specificity, and component rules win by source order without `!important`.
 - Keep one rule per selector and breakpoint. Do not add override blocks at the end of a file; fix the original rule.
 - Delete classes, keyframes, and tokens that nothing uses.
-
-## Known gaps in the app
-
-These components still break the rules above and should change when someone next edits them:
-
-- `transition-all` in `components/ui/badge.tsx`, `switch.tsx`, `tabs.tsx`, `toggle.tsx`, `sidebar.tsx`, and `app/(onboarding)/bienvenida/onboarding-flow.tsx`.
