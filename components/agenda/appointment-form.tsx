@@ -263,7 +263,7 @@ function Fields({
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-6">
       <FieldBlock label="Cliente">
-        <ClientPicker value={client} onChange={setClient} error={errors.client} />
+        <ClientPicker value={client} onChange={setClient} error={errors.client} createFor="cita" />
       </FieldBlock>
 
       <FieldBlock label="Tratamiento" htmlFor={ids.treatment} error={errors.treatment}>

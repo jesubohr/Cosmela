@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { Archive, ArchiveRestore, Ellipsis, MessageCircle, Phone, Printer } from "lucide-react";
-import { useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useAgendaSheets } from "@/components/agenda/agenda-sheets";
 import { useNow } from "@/components/agenda/parts";
@@ -56,6 +56,14 @@ export function ClientDetail({ clientId }: { clientId: Id<"clients"> }) {
   const next = summary?.nextAppointment;
   const nextIsToday =
     next && bogotaDateKey(next.start) === bogotaDateKey(now) && (next.status === "scheduled" || next.status === "in_progress");
+
+  // "?nueva=cita|atencion": the client was just created from an appointment or walk-in sheet; reopen it.
+  const reopen = params.get("nueva");
+  useEffect(() => {
+    if (reopen !== "cita" && reopen !== "atencion") return;
+    openSheet(reopen === "cita" ? { kind: "create", prefill: { clientId } } : { kind: "walkIn", clientId });
+    router.replace(pathname, { scroll: false });
+  }, [reopen, clientId, openSheet, router, pathname]);
 
   function startAttention() {
     if (nextIsToday && next) router.push(`/atencion/${next._id}`);

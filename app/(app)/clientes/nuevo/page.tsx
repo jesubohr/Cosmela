@@ -4,12 +4,13 @@ import { PageBody, PageHeader } from "@/components/shell/page-header";
 
 export const metadata: Metadata = { title: "Nuevo cliente" };
 
-export default function NuevoClientePage() {
+export default async function NuevoClientePage({ searchParams }: PageProps<"/clientes/nuevo">) {
+  const { para } = await searchParams;
   return (
     <>
       <PageHeader title="Nuevo cliente" backHref="/clientes" />
       <PageBody>
-        <ClientCreateForm />
+        <ClientCreateForm after={para === "cita" || para === "atencion" ? para : undefined} />
       </PageBody>
     </>
   );

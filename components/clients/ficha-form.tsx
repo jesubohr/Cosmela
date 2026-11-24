@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
+import type { AfterCreate } from "./client-create-form";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ClientDoc, ClientInput } from "@/convex/clients";
 import {
@@ -196,11 +197,14 @@ export function useSaveFicha() {
       value,
       includeHealth = true,
       authorization,
+      after,
     }: {
       clientId?: Id<"clients">;
       value: FichaValue;
       includeHealth?: boolean;
       authorization?: { adult: boolean; evidence: string; policyHash: string; requestKey: string };
+      /** Sheet to reopen on the client's page, including the existing client of a duplicate phone. */
+      after?: AfterCreate;
     }): Promise<SaveFichaResult> => {
       const errors = validateFicha(value);
       if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -212,7 +216,7 @@ export function useSaveFicha() {
         }
         return { ok: true, clientId: await create({ client, ...authorization }) };
       } catch (error) {
-        return { ok: false, errors: fichaErrorsFrom(error) };
+        return { ok: false, errors: fichaErrorsFrom(error, after) };
       }
     },
     [create, update],
@@ -220,7 +224,7 @@ export function useSaveFicha() {
 }
 
 /** Maps a ConvexError from `clients.create`/`update` to field errors. */
-export function fichaErrorsFrom(error: unknown): FichaErrors {
+export function fichaErrorsFrom(error: unknown, after?: AfterCreate): FichaErrors {
   if (!(error instanceof ConvexError)) return { form: "No pudimos guardar. Revisa tu conexión e intenta de nuevo." };
   const data = error.data as { code: string; message: string; clientId?: Id<"clients"> };
   if (data.code === "DUPLICATE_PHONE" && data.clientId) {
@@ -228,7 +232,11 @@ export function fichaErrorsFrom(error: unknown): FichaErrors {
       phone: (
         <>
           {data.message}{" "}
-          <Link href={`/clientes/${data.clientId}`} className="font-medium underline underline-offset-4">
+          <Link
+            href={after ? `/clientes/${data.clientId}?nueva=${after}` : `/clientes/${data.clientId}`}
+            replace={Boolean(after)}
+            className="font-medium underline underline-offset-4"
+          >
             Abrir su ficha
           </Link>
         </>

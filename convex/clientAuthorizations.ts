@@ -3,7 +3,7 @@ import { fail, getOwned, memberMutation, memberQuery } from "./lib/authz";
 import { LABELS, recordAuthorization, requirePurpose } from "./lib/clientAuthorization";
 import { privacyPolicyText } from "./orgs";
 import { sha256Hex } from "./lib/consent";
-import { requireOrgLegalReady } from "./lib/orgLegal";
+import { organizationLegalReady, requireOrgLegalReady } from "./lib/orgLegal";
 
 export const notice = memberQuery({ args: { clientId: v.id("clients") }, handler: async (ctx, { clientId }) => {
   await getOwned(ctx, "clients", clientId);
@@ -20,7 +20,7 @@ export const record = memberMutation({ args: { clientId: v.id("clients"), purpos
   if (args.action === "accepted") requireOrgLegalReady((await ctx.db.get(ctx.orgId))!);
   const evidence = args.evidence.trim();
   if (args.action === "accepted" && !args.adult) fail("FORBIDDEN", "Confirma la mayoría de edad del cliente.");
-  if (evidence.length < 5 || evidence.length > 500 || !args.requestKey || args.requestKey.length > 100) fail("FORBIDDEN", "Describe cómo se recibió la decisión del cliente.");
+  if (evidence.length < 5 || evidence.length > 500 || !args.requestKey || args.requestKey.length > 100) fail("FORBIDDEN", "Elige cómo recibiste la decisión del cliente.");
   return await recordAuthorization(ctx, { ...args, evidence, orgId: ctx.orgId, method: "external_evidence", recordedBy: ctx.member._id });
 } });
 
@@ -34,5 +34,6 @@ export const photoSession = memberQuery({ args: { sessionId: v.id("sessions") },
 
 export const registrationNotice = memberQuery({ args: {}, handler: async (ctx) => {
   const policy = await privacyPolicyText(ctx, ctx.orgId);
-  return { policy, policyHash: await sha256Hex(policy), label: LABELS.basic };
+  const legalReady = organizationLegalReady((await ctx.db.get(ctx.orgId))!);
+  return { policy, policyHash: await sha256Hex(policy), label: LABELS.basic, legalReady };
 } });

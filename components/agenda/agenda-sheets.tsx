@@ -2,6 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { CalendarOff, CalendarPlus } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { errorText } from "@/components/forms/error-message";
@@ -52,6 +53,14 @@ export function AgendaSheets({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<Kind | null>(null);
   const [payloads, setPayloads] = useState<Partial<{ [K in Kind]: SheetOf<K> & { nonce: number } }>>({});
   const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  // A sheet belongs to the page that opened it: leaving the page (e.g. "Crear cliente nuevo") closes it.
+  const pathname = usePathname();
+  const [sheetPath, setSheetPath] = useState(pathname);
+  if (pathname !== sheetPath) {
+    setSheetPath(pathname);
+    setCurrent(null);
+  }
 
   const open = useCallback((sheet: Sheet, opener?: HTMLElement | null) => {
     if (opener) returnFocusRef.current = opener;

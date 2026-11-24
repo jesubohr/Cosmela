@@ -60,7 +60,7 @@ function Fields({ options, initialClient }: { options: NonNullable<ReturnType<ty
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-6">
       <FieldBlock label="Cliente">
-        <ClientPicker value={client} onChange={setClient} error={errors.client} />
+        <ClientPicker value={client} onChange={setClient} error={errors.client} createFor="atencion" />
       </FieldBlock>
       <FieldBlock label="Tratamiento" htmlFor={ids.treatment} error={errors.treatment}>
         <Select value={treatmentId ?? ""} onValueChange={(v) => setTreatmentId(v as Id<"treatments">)}>
