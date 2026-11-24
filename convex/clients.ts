@@ -130,7 +130,7 @@ export const create = memberMutation({
   args: { client: vClientInput, adult: v.optional(v.boolean()), evidence: v.optional(v.string()), policyHash: v.optional(v.string()), requestKey: v.optional(v.string()) },
   handler: async (ctx, { client, adult, evidence, policyHash, requestKey }) => {
     requireOrgLegalReady((await ctx.db.get(ctx.orgId))!);
-    if (!adult || !evidence || evidence.trim().length < 5 || evidence.length > 500 || !policyHash || !requestKey || requestKey.length > 100) invalid("Registra la mayoría de edad y la evidencia de autorización del cliente.");
+    if (!adult || !evidence || evidence.trim().length < 5 || evidence.length > 500 || !policyHash || !requestKey || requestKey.length > 100) invalid("Elige cómo recibiste la autorización y confirma la mayoría de edad.");
     const fields = normalize(client);
     await assertPhoneFree(ctx, fields.phone);
     if (client.health || client.habits || client.skin || client.notes) invalid("Registra primero la autorización para datos de salud.");

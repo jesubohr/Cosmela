@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { toast } from "sonner";
+import { errorText } from "@/components/forms/error-message";
 import { Button } from "@/components/ui/button";
 import type { ClientDoc } from "@/convex/clients";
 import { AuthorizationInputs } from "./authorization-inputs";
@@ -36,20 +37,24 @@ function Authorizations({ client, status }: { client: ClientDoc; status: { healt
   const [evidence, setEvidence] = useState("");
   const [adult, setAdult] = useState(false);
   const [pending, setPending] = useState(false);
+  // Remounts the inputs after each decision, so the next one starts from an empty choice.
+  const [round, setRound] = useState(0);
   async function decide(purpose: "health" | "record_photos", action: "accepted" | "rejected" | "withdrawn") {
     if (!notice) return;
     setPending(true);
     try {
       await record({ clientId: client._id, purpose, action, evidence, adult, policyHash: notice.policyHash, requestKey: crypto.randomUUID() });
       setEvidence("");
+      setRound((n) => n + 1);
       toast.success("Decisión registrada");
-    } catch { toast.error("Describe cómo recibiste la decisión del cliente."); } finally { setPending(false); }
+    } catch (error) { toast.error(errorText(error)); } finally { setPending(false); }
   }
   if (!notice) return null;
   return (
     <section className="flex flex-col gap-4 rounded-card border border-transparent bg-surface p-4 shadow-border">
       <p className="max-w-[70ch]">Los datos de salud son sensibles. El cliente puede negarse a autorizarlos sin perder su reserva.</p>
       <AuthorizationInputs
+        key={round}
         policy={notice.policy}
         evidenceLabel="Cómo recibiste la decisión"
         evidence={evidence}
