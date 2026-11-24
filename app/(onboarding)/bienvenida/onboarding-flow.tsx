@@ -5,7 +5,6 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { toast } from "sonner";
 import { SingleChoice } from "@/components/forms/choice-chips";
 import { errorMessage } from "@/components/forms/error-message";
 import { ColorPicker } from "@/components/forms/color-picker";
@@ -24,16 +23,26 @@ import { TREATMENT_TEMPLATES } from "@/data/treatment-templates";
 import { MEMBER_TITLES, ORG_KIND_LABELS } from "@/lib/constants";
 import { isValidPhone } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { CreatingSplash } from "./creating-splash";
 
 /** DOM ids of the fields that can show an error. */
-type FieldId = "kind-solo" | "business-name" | "whatsapp" | "name";
+type FieldId = "kind-solo" | "business-name" | "legal-name" | "tax-id" | "address" | "city" | "whatsapp" | "name";
 
-const STEPS = ["¿Cómo trabajas?", "Tu perfil", "Tus tratamientos", "Tu horario"];
+const STEPS = [
+  { key: "kind", title: "¿Cómo trabajas?" },
+  { key: "legal", title: "Datos legales del negocio" },
+  { key: "profile", title: "Tu perfil" },
+  { key: "treatments", title: "Tus tratamientos" },
+  { key: "schedule", title: "Tu horario" },
+] as const;
 
 export function OnboardingFlow() {
   const router = useRouter();
   const { isLoading, isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.auth.viewer, isAuthenticated ? {} : "skip");
+  // Creating the business adds `viewer.member` before the redirect ends; keep the wizard (and its splash) mounted.
+  const [wizardShown, setWizardShown] = useState(false);
+  if (!wizardShown && viewer && !viewer.member) setWizardShown(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/ingresar?next=/bienvenida");
@@ -41,7 +50,7 @@ export function OnboardingFlow() {
     else if (viewer?.member) router.replace("/hoy");
   }, [isLoading, isAuthenticated, viewer, router]);
 
-  if (!viewer || viewer.member) {
+  if (!wizardShown || !isAuthenticated) {
     return (
       <Frame step={0}>
         <div aria-busy className="flex flex-col gap-4">
@@ -53,8 +62,8 @@ export function OnboardingFlow() {
     );
   }
 
-  const name = viewer.user.name?.includes("@") ? "" : (viewer.user.name ?? "");
-  return <Wizard initialName={name} />;
+  const userName = viewer?.user.name ?? "";
+  return <Wizard initialName={userName.includes("@") ? "" : userName} />;
 }
 
 function Wizard({ initialName }: { initialName: string }) {
@@ -64,6 +73,7 @@ function Wizard({ initialName }: { initialName: string }) {
   const invitations = useQuery(api.invitations.mine);
 
   const [step, setStep] = useState(0);
+  const current = STEPS[step].key;
   // Step errors show after the first "Continuar" and clear as soon as the step is fixed.
   const [attempted, setAttempted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -71,6 +81,9 @@ function Wizard({ initialName }: { initialName: string }) {
 
   const [kind, setKind] = useState<OrgKind | null>(null);
   const [businessName, setBusinessName] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [name, setName] = useState(initialName);
@@ -80,22 +93,32 @@ function Wizard({ initialName }: { initialName: string }) {
   const [picks, setPicks] = useState<TemplatePicks>(() => picksFor(TREATMENT_TEMPLATES.filter((t) => t.popular)));
   const [schedule, setSchedule] = useState<ScheduleRange[]>(DEFAULT_SCHEDULE);
 
-  /** Errors of the fields in steps 1 and 2, in page order. They derive from the values, so they clear once the field is valid. */
+  // Prefetch so the redirect after "Crear negocio" does not wait for the page code.
+  useEffect(() => {
+    router.prefetch("/hoy");
+  }, [router]);
+
+  /** Errors of the text fields of the current step, in page order. They derive from the values, so they clear once the field is valid. */
   function fieldErrors(): Partial<Record<FieldId, string>> {
     const errors: Partial<Record<FieldId, string>> = {};
-    if (step === 0) {
+    if (current === "kind") {
       if (!kind) errors["kind-solo"] = "Elige cómo trabajas.";
       else if (!businessName.trim()) errors["business-name"] = "Escribe el nombre de tu negocio.";
-      if (whatsapp && !isValidPhone(whatsapp)) errors.whatsapp = "Escribe un WhatsApp de 10 dígitos.";
-    } else if (step === 1 && !name.trim()) {
+    } else if (current === "legal") {
+      if (!legalName.trim()) errors["legal-name"] = "Escribe la razón social o tu nombre completo.";
+      if (!taxId.trim()) errors["tax-id"] = "Escribe el NIT o tu número de cédula.";
+      if (!address.trim()) errors.address = "Escribe la dirección del negocio.";
+      if (!city.trim()) errors.city = "Escribe la ciudad.";
+      if (!isValidPhone(whatsapp)) errors.whatsapp = "Escribe un WhatsApp de 10 dígitos.";
+    } else if (current === "profile" && !name.trim()) {
       errors.name = "Escribe tu nombre.";
     }
     return errors;
   }
 
   function stepError(): string | null {
-    if (step === 2) return picksError(picks);
-    if (step === 3) return scheduleError(schedule);
+    if (current === "treatments") return picksError(picks);
+    if (current === "schedule") return scheduleError(schedule);
     return Object.values(fieldErrors())[0] ?? null;
   }
 
@@ -118,13 +141,15 @@ function Wizard({ initialName }: { initialName: string }) {
       await createOrg({
         kind: kind!,
         name: businessName,
-        city: city.trim() || undefined,
-        whatsapp: whatsapp || undefined,
+        legalName,
+        taxId,
+        address,
+        city,
+        whatsapp,
         profile: { name, title: (title === "Otro" ? otherTitle : title) || undefined, color },
         schedule,
         treatments: picksToArgs(picks),
       });
-      toast.success("Negocio creado");
       router.replace("/hoy");
     } catch (err) {
       setServerError(errorMessage(err, "No pudimos crear tu negocio. Revisa tu conexión e intenta de nuevo."));
@@ -141,7 +166,8 @@ function Wizard({ initialName }: { initialName: string }) {
 
   const pickCount = Object.keys(picks).length;
   const errors = attempted ? fieldErrors() : {};
-  const bottomError = (attempted && step >= 2 ? stepError() : null) ?? serverError;
+  const listStep = current === "treatments" || current === "schedule";
+  const bottomError = (attempted && listStep ? stepError() : null) ?? serverError;
 
   return (
     <Frame
@@ -159,9 +185,11 @@ function Wizard({ initialName }: { initialName: string }) {
         </>
       }
     >
+      {saving && <CreatingSplash />}
       <form
         id="onboarding"
         noValidate
+        inert={saving}
         onSubmit={(event) => {
           event.preventDefault();
           void next();
@@ -169,16 +197,22 @@ function Wizard({ initialName }: { initialName: string }) {
         className="flex flex-col gap-8"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[1.75rem] leading-tight lg:text-[2.25rem]">{STEPS[step]}</h1>
-          {step === 2 && (
+          <h1 className="font-display text-[1.75rem] leading-tight lg:text-[2.25rem]">{STEPS[step].title}</h1>
+          {current === "legal" && (
+            <p className="max-w-[70ch] text-ink-soft">
+              La ley de protección de datos exige que tus clientes sepan quién guarda su información y cómo contactarte. Sin
+              estos datos no puedes registrar clientes. Aparecen en tu política de datos y en las fichas impresas.
+            </p>
+          )}
+          {current === "treatments" && (
             <p className="text-ink-soft">
               Elige los que ofreces y ajusta el precio y la duración. Puedes cambiar esto después.
             </p>
           )}
-          {step === 3 && <p className="text-ink-soft">Tus clientes solo podrán reservar en estas horas.</p>}
+          {current === "schedule" && <p className="text-ink-soft">Tus clientes solo podrán reservar en estas horas.</p>}
         </div>
 
-        {step === 0 && (
+        {current === "kind" && (
           <>
             {invitations?.map((invitation) => (
               <div key={invitation.token} className="flex flex-col gap-3 rounded-card border border-transparent bg-surface p-4 shadow-border">
@@ -205,36 +239,63 @@ function Wizard({ initialName }: { initialName: string }) {
               <FieldError id="kind-error">{errors["kind-solo"]}</FieldError>
             </div>
             {kind && (
-              <div className="flex flex-col gap-5">
-                <TextField
-                  id="business-name"
-                  label="¿Cómo se llama tu negocio?"
-                  hint={kind === "solo" ? "Puede ser tu nombre." : undefined}
-                  value={businessName}
-                  onChange={setBusinessName}
-                  autoComplete="organization"
-                  error={errors["business-name"]}
-                />
-                <TextField id="city" label="Ciudad" value={city} onChange={setCity} autoComplete="address-level2" />
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="whatsapp" className="text-base">
-                    WhatsApp del negocio
-                  </Label>
-                  <PhoneInput
-                    id="whatsapp"
-                    value={whatsapp}
-                    onChange={setWhatsapp}
-                    aria-invalid={errors.whatsapp ? true : undefined}
-                    aria-describedby={errors.whatsapp ? "whatsapp-error" : undefined}
-                  />
-                  <FieldError id="whatsapp-error">{errors.whatsapp}</FieldError>
-                </div>
-              </div>
+              <TextField
+                id="business-name"
+                label="¿Cómo se llama tu negocio?"
+                hint={kind === "solo" ? "Puede ser tu nombre." : undefined}
+                value={businessName}
+                onChange={setBusinessName}
+                autoComplete="organization"
+                error={errors["business-name"]}
+              />
             )}
           </>
         )}
 
-        {step === 1 && (
+        {current === "legal" && (
+          <div className="flex flex-col gap-5">
+            <TextField
+              id="legal-name"
+              label="Razón social o nombre legal"
+              hint="Si trabajas como persona natural, escribe tu nombre completo."
+              value={legalName}
+              onChange={setLegalName}
+              error={errors["legal-name"]}
+            />
+            <TextField
+              id="tax-id"
+              label="NIT o cédula"
+              hint="Si no tienes NIT, usa tu número de cédula."
+              value={taxId}
+              onChange={setTaxId}
+              error={errors["tax-id"]}
+            />
+            <TextField
+              id="address"
+              label="Dirección"
+              value={address}
+              onChange={setAddress}
+              autoComplete="street-address"
+              error={errors.address}
+            />
+            <TextField id="city" label="Ciudad" value={city} onChange={setCity} autoComplete="address-level2" error={errors.city} />
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="whatsapp" className="text-base">
+                WhatsApp del negocio
+              </Label>
+              <PhoneInput
+                id="whatsapp"
+                value={whatsapp}
+                onChange={setWhatsapp}
+                aria-invalid={errors.whatsapp ? true : undefined}
+                aria-describedby={errors.whatsapp ? "whatsapp-error" : undefined}
+              />
+              <FieldError id="whatsapp-error">{errors.whatsapp}</FieldError>
+            </div>
+          </div>
+        )}
+
+        {current === "profile" && (
           <div className="flex flex-col gap-6">
             <TextField id="name" label="Tu nombre" value={name} onChange={setName} autoComplete="name" error={errors.name} />
             <div className="flex flex-col gap-2">
@@ -260,7 +321,7 @@ function Wizard({ initialName }: { initialName: string }) {
           </div>
         )}
 
-        {step === 2 && (
+        {current === "treatments" && (
           <div className="flex flex-col gap-4">
             <p aria-live="polite" className="text-sm text-ink-soft">
               {pickCount === 1 ? "1 tratamiento elegido" : `${pickCount} tratamientos elegidos`}
@@ -269,7 +330,7 @@ function Wizard({ initialName }: { initialName: string }) {
           </div>
         )}
 
-        {step === 3 && <ScheduleEditor value={schedule} onChange={setSchedule} />}
+        {current === "schedule" && <ScheduleEditor value={schedule} onChange={setSchedule} />}
 
         {bottomError && (
           <p role="alert" className="text-rose">
@@ -277,7 +338,7 @@ function Wizard({ initialName }: { initialName: string }) {
           </p>
         )}
 
-        {step === 0 && (
+        {current === "kind" && (
           <Button type="button" variant="link" className="h-11 self-start px-0 text-ink-soft" onClick={() => void signOut()}>
             Cerrar sesión
           </Button>
@@ -307,9 +368,9 @@ function Frame({ step, footer, children }: { step: number; footer?: ReactNode; c
 function ProgressDots({ step }: { step: number }) {
   return (
     <ol aria-label={`Paso ${step + 1} de ${STEPS.length}`} className="flex items-center gap-2">
-      {STEPS.map((label, index) => (
+      {STEPS.map(({ key, title }, index) => (
         <li
-          key={label}
+          key={key}
           aria-current={index === step ? "step" : undefined}
           className={cn(
             "h-2 rounded-full transition-[width,background-color]",
@@ -318,7 +379,7 @@ function ProgressDots({ step }: { step: number }) {
             index > step && "bg-line",
           )}
         >
-          <span className="sr-only">{label}</span>
+          <span className="sr-only">{title}</span>
         </li>
       ))}
     </ol>

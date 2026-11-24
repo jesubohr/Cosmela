@@ -15,6 +15,9 @@ const modules = import.meta.glob("./**/*.ts");
 const ONBOARDING = {
   kind: "solo" as const,
   name: "Estética Ana María",
+  legalName: "Ana María Ríos",
+  taxId: "CC 43.123.456",
+  address: "Calle 10 # 43-12",
   city: "Medellín",
   whatsapp: "+573001234567",
   profile: { name: "Ana María Ríos", title: "Cosmetóloga", color: "teal" as const },
@@ -55,10 +58,14 @@ describe("onboarding", () => {
       slug: "estetica-ana-maria",
       kind: "solo",
       ownerId: "ana",
+      legalName: "Ana María Ríos",
+      taxId: "CC 43.123.456",
+      address: "Calle 10 # 43-12",
       city: "Medellín",
       whatsapp: "+573001234567",
       reminders: { email: true },
     });
+    expect((await ana.query(api.clientAuthorizations.registrationNotice, {})).legalReady).toBe(true);
     expect(docs.members).toHaveLength(1);
     expect(docs.members[0]).toMatchObject({
       orgId,

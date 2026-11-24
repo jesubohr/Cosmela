@@ -246,6 +246,19 @@
   }
 }
 
+/* Onboarding "Creando tu negocio" sparkles. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
