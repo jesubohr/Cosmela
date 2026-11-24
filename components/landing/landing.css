@@ -277,6 +277,11 @@
   gap: 20px;
   margin-top: 32px;
 }
+.cl-ctaNote {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
 .cl-heroVisual {
   grid-column: 7 / -1;
   align-self: start;

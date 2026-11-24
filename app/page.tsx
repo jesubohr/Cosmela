@@ -133,12 +133,14 @@ export default function Home() {
                 </p>
                 <div className={styles.actions}>
                   <Link className={styles.primary} href="/ingresar">
-                    Empieza ahora <ArrowUpRight size={16} aria-hidden="true" />
+                    Prueba Cosmela gratis{" "}
+                    <ArrowUpRight size={16} aria-hidden="true" />
                   </Link>
                   <a className={styles.textLink} href="#practice">
                     Ver cómo funciona <span aria-hidden="true">↓</span>
                   </a>
                 </div>
+                <p className={styles.ctaNote}>Solo necesitas tu correo.</p>
               </div>
               <div className={styles.heroVisual}>
                 <ProductPreview />

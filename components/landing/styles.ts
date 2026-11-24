@@ -15,6 +15,7 @@ export const styles = {
   break: "cl-break",
   checkCircle: "cl-checkCircle",
   close: "cl-close",
+  ctaNote: "cl-ctaNote",
   dayHeading: "cl-dayHeading",
   figure: "cl-figure",
   followup: "cl-followup",
